@@ -1,0 +1,9 @@
+{
+    "error.unknown": "未知的错误，请联系程序开发者",
+    "error.code_format": "未知错误代码: {0}",
+    "error.git.timeout": "Git命令执行超时",
+    "error.git.not_found": "Git命令未找到",
+    "error.git.crash": "Git发生了系统中止崩溃",
+    "error.git.write_error": "Git执行过程中发生写入错误",
+    "error.git.read_error": "Git执行过程中发生读取错误"
+}

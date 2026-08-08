@@ -1,0 +1,12 @@
+{
+  "name": "TXT Config Parser",
+  "version": "1.0.0",
+  "dll": "NeoParser_TXT.dll",
+  "capability": {
+    "name": "TXT",
+    "extensions": [".txt", ".properties", ".cfg"],
+    "supported_modes": ["full_sync", "line_by_line", "no_sync"],
+    "line_tracking": true,
+    "priority": 60
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "DirectURL Pointer Editor Extension",
+  "version": "1.0.0",
+  "dll": "NeoEditorExtension_Pointer_DirectURL.dll",
+  "resolver_type": "direct_url",
+  "description": "DirectURL 类型指针文件的专属编辑器"
+}

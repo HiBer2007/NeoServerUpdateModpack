@@ -1,0 +1,113 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "msvc",
+            "displayName": "VS2022 MSVC Debug + Qt6.11 (vcpkg)",
+            "description": "构建全部模块: Shared(Lib) + Plugin DLLs(Parsers/Pointers/Exporters) + Editor Extensions + GUI(NeoGUI/NeoCLI) + CrashTracker + EXEs(Editor/Server)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_CXX_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/msvc2022_64",
+                "CMAKE_RC_COMPILER": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe",
+                "CMAKE_MT": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe",
+                "CMAKE_MAKE_PROGRAM": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
+            },
+            "environment": {
+                "INCLUDE": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/ucrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/um;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/shared;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/winrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/cppwinrt",
+                "LIB": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/um/x64"
+            }
+        },
+        {
+            "name": "msvc-release",
+            "displayName": "VS2022 MSVC Release + Qt6.11 (vcpkg)",
+            "description": "Release 构建全部模块，优化 + 无调试符号",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build_release",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_CXX_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/msvc2022_64",
+                "CMAKE_RC_COMPILER": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe",
+                "CMAKE_MT": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe",
+                "CMAKE_MAKE_PROGRAM": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe"
+            },
+            "environment": {
+                "INCLUDE": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/ucrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/um;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/shared;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/winrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/cppwinrt",
+                "LIB": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/um/x64"
+            }
+        },
+        {
+            "name": "installer-static",
+            "displayName": "Installer Static (vcpkg static Qt)",
+            "description": "仅构建 NeoInstaller.exe (静态Qt, 内嵌全部文件, ~48MB)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build_installer",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_CXX_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_RC_COMPILER": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe",
+                "CMAKE_MT": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe",
+                "CMAKE_PREFIX_PATH": "C:/Qt-static/6.11.1/msvc2022_64",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "INSTALLER_ONLY_BUILD": "ON",
+                "DEPLOY_SOURCE": "${sourceDir}/build/deploy"
+            },
+            "environment": {
+                "INCLUDE": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/ucrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/um;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/shared;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/winrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/cppwinrt",
+                "LIB": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/um/x64"
+            }
+        },
+        {
+            "name": "powerhelper-standalone",
+            "displayName": "PowerHelper Standalone (static Qt, 独立 EXE)",
+            "description": "PowerHelper 独立 EXE (静态 Qt, 单文件自包含, 需静态 Qt 环境 C:/Qt-static)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build_powerhelper_standalone",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_CXX_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_RC_COMPILER": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe",
+                "CMAKE_MT": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe",
+                "CMAKE_PREFIX_PATH": "C:/Qt-static/6.11.1/msvc2022_64",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "POWERHELPER_STANDALONE_ONLY": "ON"
+            },
+            "environment": {
+                "INCLUDE": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/ucrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/um;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/shared;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/winrt;C:/Program Files (x86)/Windows Kits/10/include/10.0.26100.0/cppwinrt",
+                "LIB": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/lib/10.0.26100.0/um/x64"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "msvc-debug",
+            "displayName": "MSVC Debug (全部模块)",
+            "configurePreset": "msvc",
+            "configuration": "Debug"
+        },
+        {
+            "name": "msvc-release",
+            "displayName": "MSVC Release (全部模块)",
+            "configurePreset": "msvc-release",
+            "configuration": "Release"
+        },
+        {
+            "name": "installer-static-release",
+            "displayName": "Installer Static Release",
+            "configurePreset": "installer-static",
+            "configuration": "Release"
+        }
+    ]
+}

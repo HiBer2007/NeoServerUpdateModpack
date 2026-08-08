@@ -1,0 +1,12 @@
+{
+  "name": "SNBT Config Parser",
+  "version": "1.0.0",
+  "dll": "NeoParser_SNBT.dll",
+  "capability": {
+    "name": "SNBT",
+    "extensions": [".snbt"],
+    "supported_modes": ["full_sync", "config_merge", "no_sync"],
+    "line_tracking": false,
+    "priority": 70
+  }
+}

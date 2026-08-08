@@ -1,0 +1,1 @@
+{"name":"SNBT Config Editor Extension","version":"1.0.0","dll":"NeoEditorExtension_Parser_SNBT.dll","editor_type":"parser","extensions":[".snbt"],"description":"SNBT配置文件编辑器，支持NBT键追踪"}

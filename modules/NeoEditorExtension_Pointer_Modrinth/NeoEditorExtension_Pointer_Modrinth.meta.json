@@ -1,0 +1,7 @@
+{
+  "name": "Modrinth Pointer Editor Extension",
+  "version": "1.0.0",
+  "dll": "NeoEditorExtension_Pointer_Modrinth.dll",
+  "resolver_type": "modrinth",
+  "description": "Modrinth 类型指针文件的专属编辑器，支持API查询模组信息"
+}

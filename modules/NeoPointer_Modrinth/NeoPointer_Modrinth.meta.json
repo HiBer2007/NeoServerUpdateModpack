@@ -1,0 +1,13 @@
+{
+  "name": "Modrinth Pointer Resolver",
+  "version": "1.0.0",
+  "dll": "NeoPointer_Modrinth.dll",
+  "resolver": "modrinth",
+  "description": "通过 Modrinth API 解析文件下载地址",
+  "features": [
+    "resolve_url",
+    "validate",
+    "batch_search",
+    "reverse_lookup"
+  ]
+}

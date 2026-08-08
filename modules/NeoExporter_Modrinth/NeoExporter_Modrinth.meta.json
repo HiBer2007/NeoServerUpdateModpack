@@ -1,0 +1,15 @@
+{
+  "name": "Modrinth Modpack Exporter",
+  "version": "1.0.0",
+  "dll": "NeoExporter_Modrinth.dll",
+  "format": "modrinth",
+  "extension": ".mrpack",
+  "description": "Modrinth Modpack Format (.mrpack)",
+  "fields": [
+    { "key": "name", "label": "整合包名称", "required": true, "group": "基本信息", "placeholder": "例如: 我的整合包" },
+    { "key": "version", "label": "版本号", "required": true, "group": "基本信息", "placeholder": "例如: 1.0.0" },
+    { "key": "summary", "label": "简介", "required": false, "group": "基本信息", "placeholder": "Modrinth 展示用简介" },
+    { "key": "author", "label": "作者", "required": false, "group": "可选信息", "placeholder": "作者名称" },
+    { "key": "description", "label": "详细描述", "required": false, "group": "可选信息", "type": "multiline", "placeholder": "详细描述 (可选)" }
+  ]
+}

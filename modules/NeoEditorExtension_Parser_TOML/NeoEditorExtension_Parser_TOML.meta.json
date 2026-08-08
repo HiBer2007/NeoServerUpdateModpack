@@ -1,0 +1,1 @@
+{"name":"TOML Config Editor Extension","version":"1.0.0","dll":"NeoEditorExtension_Parser_TOML.dll","editor_type":"parser","extensions":[".toml"],"description":"TOML配置文件编辑器，支持section.key追踪"}

@@ -1,0 +1,1 @@
+{"name":"TXT Config Editor Extension","version":"1.0.0","dll":"NeoEditorExtension_Parser_TXT.dll","editor_type":"parser","extensions":[".txt",".properties",".cfg"],"description":"TXT/properties/cfg配置文件编辑器，支持行号追踪"}

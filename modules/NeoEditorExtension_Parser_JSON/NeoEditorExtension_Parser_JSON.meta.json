@@ -1,0 +1,8 @@
+{
+  "name": "JSON Config Editor Extension",
+  "version": "1.0.0",
+  "dll": "NeoEditorExtension_Parser_JSON.dll",
+  "editor_type": "parser",
+  "extensions": [".json", ".json5", ".jsonc"],
+  "description": "JSON配置文件编辑器，支持key-path追踪"
+}

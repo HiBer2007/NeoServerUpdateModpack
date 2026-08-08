@@ -1,0 +1,4 @@
+{
+    "error.unknown": "Unknown error, please contact the program developer",
+    "error.code_format": "Unknown error code: {0}"
+}

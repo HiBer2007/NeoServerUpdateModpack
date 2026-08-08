@@ -1,0 +1,8 @@
+{
+  "name": "HMCL 工作区同步",
+  "version": "1.0.0",
+  "dll": "NeoExporter_HMCL.dll",
+  "format": "hmcl",
+  "extension": "工作目录",
+  "description": "HMCL 工作区同步（同步到游戏工作目录）"
+}

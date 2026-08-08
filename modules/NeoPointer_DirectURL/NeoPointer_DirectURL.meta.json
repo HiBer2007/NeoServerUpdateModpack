@@ -1,0 +1,11 @@
+{
+  "name": "DirectURL Pointer Resolver",
+  "version": "1.0.0",
+  "dll": "NeoPointer_DirectURL.dll",
+  "resolver": "direct_url",
+  "description": "直链下载，直接使用指针 metadata 中的 url 字段",
+  "features": [
+    "resolve_url",
+    "validate"
+  ]
+}

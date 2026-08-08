@@ -1,0 +1,1 @@
+{"name":"YAML Config Editor Extension","version":"1.0.0","dll":"NeoEditorExtension_Parser_YAML.dll","editor_type":"parser","extensions":[".yml",".yaml"],"description":"YAML配置文件编辑器，支持嵌套键追踪"}

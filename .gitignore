@@ -1,0 +1,90 @@
+# 构建输出
+build/
+build_asan/
+build_installer/
+build_installer_static/
+build_release/
+cmake-build-*/
+out/
+vcpkg_installed/
+
+# 插件构建输出
+parsers/
+pointers/
+exporters/
+
+# IDE 文件
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.opendb
+*.VC.db
+
+# Qt Creator
+*.autosave
+*.user
+*-build-*
+
+# 工具本地配置
+.opencode/
+.ocx/
+
+# 计划 / AI 文档
+PLAN.md
+NEXT_PLAN.md
+NEXT_STEP.md
+AGENTS.md
+.agents/
+
+# 测试文件夹
+test_output/
+test_repo/
+
+# 参考文件夹
+参考/
+
+# 测试产物
+asan_*.txt
+locate_*.txt
+
+# 崩溃报告
+crash-report/
+*.dmp
+*.trace
+
+# 编译产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.obj
+*.o
+*.lib
+*.a
+
+# nbtcpp 构建/测试产物
+nbtcpp/_b/
+nbtcpp/build/
+nbtcpp/build2/
+nbtcpp/lib/
+nbtcpp/.vscode/
+nbtcpp/*.nbt
+nbtcpp/*.dat
+nbtcpp/*.mca
+nbtcpp/*_dump.txt
+nbtcpp/test_output.txt
+
+# 打包产物
+*.7z
+
+# 其他
+*.log
+*.cache
+*.dir
+Thumbs.db
+.DS_Store
