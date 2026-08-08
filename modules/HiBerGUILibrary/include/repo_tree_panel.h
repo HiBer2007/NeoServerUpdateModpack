@@ -30,6 +30,10 @@ struct RepoObjectInfo {
     QString marker;  // "delete" / "override" / 空
 };
 
+// Prompts for a folder name and creates it under absParent.
+// Returns true if a folder was created.
+bool createFolderInteractive(QWidget* parent, const QString& absParent);
+
 class RepoTreePanel : public QWidget {
     Q_OBJECT
 

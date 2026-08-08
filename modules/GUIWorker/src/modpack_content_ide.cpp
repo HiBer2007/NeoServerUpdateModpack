@@ -517,6 +517,7 @@ void ModpackContentIde::buildUI()
     auto* leftTabs = new QTabWidget(this);
     leftTabs->setDocumentMode(true);
     leftTabs->setTabPosition(QTabWidget::North);
+    leftTabs_ = leftTabs;
 
     outputPanel_ = new OutputTreePanel(leftTabs);
     CLogger::Info("BISECT heap after OutputTreePanel: {}",
@@ -598,6 +599,21 @@ void ModpackContentIde::buildUI()
         &ModpackContentIde::refreshPreview);
     connect(outputPanel_, &OutputTreePanel::filesDropped, this,
         &ModpackContentIde::importDroppedFiles);
+    connect(outputPanel_, &OutputTreePanel::deleteRequested, this,
+        [this](const RepoObjectInfo& info) {
+            deletePath(info.path, info.type == RepoObjectType::Folder);
+        });
+    connect(outputPanel_, &OutputTreePanel::batchDeleteRequested, this,
+        [this](const QList<RepoObjectInfo>& infos) {
+            deletePaths(infos);
+        });
+    connect(outputPanel_, &OutputTreePanel::pasteRequested, this,
+        [this](const QStringList& relPaths, const QString& targetRel,
+            bool isCut) {
+            pasteBranchFiles(relPaths, targetRel, isCut);
+        });
+    connect(outputPanel_, &OutputTreePanel::newFolderRequested, this,
+        &ModpackContentIde::createBranchFolder);
     connect(repoPanel_, &RepoTreePanel::objectActivated, this,
         &ModpackContentIde::routeObject);
     connect(repoPanel_, &RepoTreePanel::filesDropped, this,
@@ -1161,8 +1177,14 @@ void ModpackContentIde::pasteBranchFiles(const QStringList& relPaths,
     QStringList conflicts;
     QStringList existRels;
     for (const QString& rel : relPaths) {
-        const QString srcAbs = branchDir + QLatin1Char('/') + rel;
-        if (!QFileInfo::exists(srcAbs)) continue;
+        QString srcAbs = branchDir + QLatin1Char('/') + rel;
+        bool srcInherited = false;
+        if (!QFileInfo::exists(srcAbs)) {
+            const QString parentAbs = parentEntityPath(rel);
+            if (parentAbs.isEmpty()) continue;
+            srcAbs = parentAbs;
+            srcInherited = true;
+        }
         QString fileName = QFileInfo(rel).fileName();
         if (fileName.isEmpty()) fileName = QFileInfo(srcAbs).fileName();
         QString dstRel = targetRel;
@@ -1173,7 +1195,7 @@ void ModpackContentIde::pasteBranchFiles(const QStringList& relPaths,
         PasteOp op;
         op.src = srcAbs;
         op.dst = dstAbs;
-        op.wasCut = isCut;
+        op.wasCut = isCut && !srcInherited;
         ops->push_back(op);
         if (QFileInfo::exists(dstAbs)) {
             existRels << dstRel;
@@ -1516,8 +1538,32 @@ void ModpackContentIde::redoBranchOp()
     }
 }
 
+QWidget* ModpackContentIde::activeLeftPanel() const
+{
+    if (!leftTabs_) return repoPanel_;
+    const QWidget* w = leftTabs_->currentWidget();
+    if (w == outputPanel_) return outputPanel_;
+    if (w == repoPanel_) return repoPanel_;
+    return nullptr;
+}
+
 void ModpackContentIde::deleteCurrentSelection()
 {
+    if (activeLeftPanel() == outputPanel_) {
+        const RepoObjectInfo info = outputPanel_->currentSelection();
+        if (info.type == RepoObjectType::Root || info.path.isEmpty()) {
+            emit logMessage(
+                QString::fromUtf8("\u8bf7\u5148\u5728\u6587\u4ef6\u6811\u4e2d\u9009\u62e9\u9879\u76ee\u3002"));
+            return;
+        }
+        if (info.marker == QLatin1String("D")) {
+            emit logMessage(QString::fromUtf8(
+                "\u8be5\u6587\u4ef6\u5df2\u4ece\u6253\u5305\u4e2d\u5220\u9664\u3002"));
+            return;
+        }
+        deletePath(info.path, info.type == RepoObjectType::Folder);
+        return;
+    }
     const RepoObjectInfo info = repoPanel_->currentSelection();
     if (info.type == RepoObjectType::Root || info.path.isEmpty()) {
         emit logMessage(QString::fromUtf8("\u8bf7\u5148\u5728\u4ed3\u5e93\u6587\u4ef6\u6811\u4e2d\u9009\u62e9\u9879\u76ee\u3002"));
@@ -1528,6 +1574,11 @@ void ModpackContentIde::deleteCurrentSelection()
 
 void ModpackContentIde::restoreCurrentSelection()
 {
+    if (activeLeftPanel() != repoPanel_) {
+        emit logMessage(QString::fromUtf8(
+            "\u8fd8\u539f\u7236\u7248\u672c\u4ec5\u652f\u6301\u4ed3\u5e93\u6587\u4ef6\u6811\u3002"));
+        return;
+    }
     const RepoObjectInfo info = repoPanel_->currentSelection();
     if (info.type == RepoObjectType::Root || info.path.isEmpty()) {
         emit logMessage(QString::fromUtf8("\u8bf7\u5148\u5728\u4ed3\u5e93\u6587\u4ef6\u6811\u4e2d\u9009\u62e9\u9879\u76ee\u3002"));
@@ -1538,6 +1589,22 @@ void ModpackContentIde::restoreCurrentSelection()
         return;
     }
     restoreInherited(info.path);
+}
+
+void ModpackContentIde::createBranchFolder(const QString& parentRel)
+{
+    if (repoDir_.isEmpty() || branch_.isEmpty()) {
+        emit logMessage(QString::fromUtf8("\u8bf7\u5148\u6253\u5f00\u4ed3\u5e93\u5e76\u9009\u62e9\u5206\u652f\u3002"));
+        return;
+    }
+    QString absParent = branchDir();
+    if (!parentRel.isEmpty()) {
+        absParent += QLatin1Char('/') + parentRel;
+    }
+    if (HiBerGUI::createFolderInteractive(this, absParent)) {
+        refreshBranchMeta();
+        refreshPreview();
+    }
 }
 
 void ModpackContentIde::refreshPreview()

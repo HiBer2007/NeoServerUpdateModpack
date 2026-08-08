@@ -864,46 +864,51 @@ bool RepoTreePanel::eventFilter(QObject* watched, QEvent* event)
 
 void RepoTreePanel::createNewFolder(const QString& parentRel)
 {
+    QString absParent = rootPath_;
+    if (!parentRel.isEmpty()) {
+        absParent += QLatin1Char('/') + parentRel;
+    }
+    if (createFolderInteractive(this, absParent)) {
+        refresh();
+    }
+}
+
+bool createFolderInteractive(QWidget* parent, const QString& absParent)
+{
     bool ok = false;
-    const QString name = QInputDialog::getText(this,
+    const QString name = QInputDialog::getText(parent,
         QString::fromUtf8("\u65b0\u5efa\u6587\u4ef6\u5939"),
         QString::fromUtf8("\u6587\u4ef6\u5939\u540d\u79f0:"),
         QLineEdit::Normal, QString(), &ok);
-    if (!ok || name.trimmed().isEmpty()) return;
+    if (!ok || name.trimmed().isEmpty()) return false;
 
     const QString trimmed = name.trimmed();
     static const QString illegal = QStringLiteral("\\/:*?\"<>|");
     for (const QChar& c : trimmed) {
         if (illegal.contains(c)) {
-            QMessageBox::warning(this,
+            QMessageBox::warning(parent,
                 QString::fromUtf8("\u65b0\u5efa\u6587\u4ef6\u5939"),
                 QString::fromUtf8("\u540d\u79f0\u542b\u6709\u975e\u6cd5\u5b57\u7b26: %1").arg(c));
-            return;
+            return false;
         }
     }
 
-    QString absParent = rootPath_;
-    if (!parentRel.isEmpty()) {
-        absParent = rootPath_ + QLatin1Char('/') + parentRel;
-    }
-
     QDir parentDir(absParent);
-    if (!parentDir.exists()) return;
+    if (!parentDir.exists()) return false;
     if (parentDir.exists(trimmed)) {
-        QMessageBox::warning(this,
+        QMessageBox::warning(parent,
             QString::fromUtf8("\u65b0\u5efa\u6587\u4ef6\u5939"),
             QString::fromUtf8("\u540c\u540d\u6587\u4ef6\u5939\u5df2\u5b58\u5728: %1").arg(trimmed));
-        return;
+        return false;
     }
 
     if (!parentDir.mkpath(trimmed)) {
-        QMessageBox::warning(this,
+        QMessageBox::warning(parent,
             QString::fromUtf8("\u65b0\u5efa\u6587\u4ef6\u5939"),
             QString::fromUtf8("\u521b\u5efa\u5931\u8d25\u3002"));
-        return;
+        return false;
     }
-
-    refresh();
+    return true;
 }
 
 void RepoTreePanel::applyStyle()

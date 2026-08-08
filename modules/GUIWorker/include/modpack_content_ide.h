@@ -26,6 +26,8 @@ class CancelToken;
 
 class QUndoStack;
 
+class QTabWidget;
+
 namespace HiBerGUI {
 class OutputTreePanel;
 class RepoTreePanel;
@@ -99,6 +101,7 @@ private:
     OutputTreePanel* outputPanel_;
     RepoTreePanel* repoPanel_;
     QWidget* optionsPanel_;
+    QTabWidget* leftTabs_ = nullptr;
     QStackedWidget* editorStack_;
     FolderPolicyEditor* folderEditor_;
     ConfigFileEditor* configEditor_;
@@ -130,6 +133,8 @@ private:
     QStringList scanBranchRootDirs() const;
     QString trashDir() const;
     void refreshBranchMeta();
+    QWidget* activeLeftPanel() const;
+    void createBranchFolder(const QString& parentRel);
     void deletePath(const QString& rel, bool isDir);
     void deletePaths(const QList<RepoObjectInfo>& infos);
     void deleteFileList(const QStringList& files);
