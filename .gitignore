@@ -92,3 +92,13 @@ Thumbs.db
 # 编辑器缓存 (仓库内 .NSUM)
 .NSUM/editor-trash/
 
+# Node 依赖 (AI 集成工具, 与项目无关)
+node_modules/
+package.json
+package-lock.json
+
+# 本机工具产物
+build_log.txt
+conanfile.txt
+src/tset.cpp
+
