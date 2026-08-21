@@ -37,6 +37,6 @@ public:
     std::string mergePreview(QWidget*) const override { return ""; }
 };
 
-extern "C" NeoCore::IConfigEditorExtension* CreateConfigEditor() {
+extern "C" __declspec(dllexport) NeoCore::IConfigEditorExtension* CreateConfigEditor() {
     return new TXTConfigEditorExtension();
 }

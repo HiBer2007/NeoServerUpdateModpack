@@ -43,7 +43,7 @@ std::string AnalyzeGitError(const std::string& stderrOutput)
     }
 
     if (contains("detected dubious ownership")) {
-        return "Git 仓库所有权可疑，请检查目录权限";
+        return "Git 仓库所有权可疑（未信任的仓库），请先信任该仓库后重试";
     }
 
     if (contains("fatal: not a valid object name")) {

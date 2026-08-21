@@ -9,7 +9,7 @@
 | [CLI-usage.md](CLI-usage.md) | 参数解析规则、帮助/版本写法、退出码、JSON 协议、stdout/stderr 路由、仓库缓存与克隆语义、Ctrl+C 取消 |
 | [CLI-info.md](CLI-info.md) | `info` 13 个信息获取命令：参数、必配项、完整 JSON schema、成功/失败示例 |
 | [CLI-flow.md](CLI-flow.md) | `flow gui` / `flow console` 向导流程：页面语义、`--prefill`、交互规则、JSON、取消 |
-| [CLI-exec.md](CLI-exec.md) | `exec` 7 个执行命令：参数、必配项、双模式、JSON schema、错误 |
+| [CLI-exec.md](CLI-exec.md) | `exec` 9 个执行命令：参数、必配项、双模式、JSON schema、错误 |
 | [CLI-errors.md](CLI-errors.md) | 退出码速查、常见错误信息、参数搭配问题、故障排查 |
 
 ---
@@ -78,7 +78,7 @@ NeoServerUpdateModpack.exe <category> <verb> [options]
 
 页面：`repo|branch|modpack|export-type|export-dir|extra-info|checklist|build|done`
 
-### exec —— 执行操作（7 个命令）
+### exec —— 执行操作（9 个命令）
 
 | 命令 | 必配参数 | 可选参数 | 说明 | 详细 |
 |------|---------|---------|------|------|
@@ -89,6 +89,8 @@ NeoServerUpdateModpack.exe <category> <verb> [options]
 | `exec resolve-pointer` | `<file.pointer>` | `--json` | 解析指针文件为下载 URL | [CLI-exec](CLI-exec.md#5-exec-resolve-pointer) |
 | `exec crash-test` | — | `--json` | 故意崩溃（校验崩溃处理） | [CLI-exec](CLI-exec.md#6-exec-crash-test) |
 | `exec git-update` | — | `--json` | 安装/更新内置 Git 并写配置 | [CLI-exec](CLI-exec.md#7-exec-git-update) |
+| `exec repo-trust` | `--repo` | `--json` | 信任仓库（写入 safe.directory） | [CLI-exec](CLI-exec.md#8-exec-repo-trust) |
+| `exec repo-trust-check` | `--repo` | `--json` | 检查仓库是否受信任 | [CLI-exec](CLI-exec.md#9-exec-repo-trust-check) |
 
 ## 3. 退出码速查
 
@@ -101,7 +103,7 @@ NeoServerUpdateModpack.exe <category> <verb> [options]
 
 ## 4. JSON 输出协议
 
-所有 info 命令、`exec verify-repo/resolve-pointer/crash-test/git-update`、以及 flow 全部命令，输出统一标记块（**始终写 stdout**）：
+所有 info 命令、`exec verify-repo/resolve-pointer/crash-test/git-update/repo-trust/repo-trust-check`、以及 flow 全部命令，输出统一标记块（**始终写 stdout**）：
 
 ```
 =====JSON-BEGIN=====

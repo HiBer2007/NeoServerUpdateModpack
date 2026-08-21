@@ -111,8 +111,13 @@ namespace fs = std::filesystem;
 PluginLoader::PluginLoader() {}
 PluginLoader::~PluginLoader()
 {
+    std::vector<void*> handles;
     for (auto& p : owned_parsers_) {
-        FREE_LIBRARY(p.handle);
+        handles.push_back(p.handle);
+    }
+    owned_parsers_.clear();
+    for (auto* h : handles) {
+        FREE_LIBRARY(h);
     }
 }
 
@@ -132,8 +137,16 @@ void PluginLoader::ScanDirectory(const std::string& parsersDir)
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
         if (ext == ".json") {
-            auto dllPath = path;
-            dllPath.replace_extension(".dll");
+            // meta 命名: NeoParser_XXX.meta.json -> DLL: NeoParser_XXX.dll
+            const std::string fname = path.filename().string();
+            const std::string metaSuffix = ".meta.json";
+            if (fname.size() < metaSuffix.size()
+                || fname.compare(fname.size() - metaSuffix.size(),
+                    metaSuffix.size(), metaSuffix) != 0) {
+                continue;
+            }
+            auto dllPath = path.parent_path()
+                / (fname.substr(0, fname.size() - metaSuffix.size()) + ".dll");
             if (fs::exists(dllPath)) {
                 if (LoadPlugin(dllPath.string(), path.string())) {
                     ++loadedCount;

@@ -134,6 +134,6 @@ public:
     }
 };
 
-extern "C" NeoCore::IPointerEditorExtension* CreateEditorExtension() {
+extern "C" __declspec(dllexport) NeoCore::IPointerEditorExtension* CreateEditorExtension() {
     return new ModrinthEditorExtension();
 }

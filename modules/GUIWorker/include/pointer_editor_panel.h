@@ -7,8 +7,9 @@
 #include <QTextEdit>
 #include <QComboBox>
 #include <QStackedWidget>
-#include <QCheckBox>
 #include <QListWidget>
+#include <QScrollArea>
+#include <QGroupBox>
 #include <QLibrary>
 #include <QJsonObject>
 
@@ -22,9 +23,19 @@
 
 #include <IPluginPointer.h>
 #include <IPointerEditorExtension.h>
+#include <cancel_token.h>
+#include "batch_convert_card.h"
+
+namespace HiBerGUI {
+class ProgressCard;
+}
+
+class QResizeEvent;
+class QVBoxLayout;
+class QFrame;
 
 namespace GUIWorker {
-
+class EditorExtensionRegistry;
 
 struct ConvertedItem {
     QString sha;
@@ -49,9 +60,11 @@ public:
 
     void setContext(const QString& repoDir, const QString& branch,
         const QString& branchConfigDir);
+    void setExtensionRegistry(EditorExtensionRegistry* reg);
     void loadPointer(const QString& sha, const NeoCore::PointerFileData& data);
     void loadFileToConvert(const QString& relPath, const QString& absPath);
     void batchConvertJars(const QString& folderPath);
+    void batchConvertJarsList(const QStringList& relPaths);
 
 signals:
     void pointerSaved(const QString& sha);
@@ -66,8 +79,9 @@ private slots:
     void onRestoreToFile();
     void onConvertCurrent();
     void onAddResolver();
-    void onRemoveResolver();
-    void onResolverTypeChanged();
+
+protected:
+    void resizeEvent(QResizeEvent* event) override;
 
 public:
     // 撤销批量转换：把缓存中的 jar 移回分支目录 + 删 .pointer + 清 branch_config 登记
@@ -86,16 +100,21 @@ private:
         QWidget* widget = nullptr;
     };
 
-    void loadExtensions();
-    void unloadExtensions();
     void clearResolverEditors();
+    void populateResolverCombo();
+    // 添加一张解析器卡片 (类型标题 + 编辑器内容 + 删除按钮), 返回编辑器控件
+    QWidget* addResolverCard(const QString& type);
+    // 卡片增删后强制重排重绘 (QScrollArea 动态内容不会自动失效视口)
+    void refreshResolverArea();
+    // 解析器板块高度上限 = 窗口剩余 (模式切换/控件显隐后主动重算)
+    void updateResolverHeight();
     NeoCore::PointerFileData currentData() const;
     static bool updateBranchConfig(const std::string& bcDir,
         const std::string& branch, const std::string& relPath,
         const std::string& sha, const NeoCore::PointerInfo& info,
         bool removePointer);
     std::string branchConfigPath() const;
-    void doBatchConvert(const QString& folderPath);
+    void startBatchConvert(const QStringList& absPaths);
     void appendLog(const QString& line);
 
     QString repoDir_;
@@ -107,10 +126,11 @@ private:
     bool convertMode_ = false;
 
     std::unique_ptr<std::thread> batchThread_;
+    std::unique_ptr<NeoCore::CancelToken> batchCancelToken_;
+    BatchConvertCard* batchCard_ = nullptr;
 
-    std::vector<NeoCore::IPointerEditorExtension*> loadedExtensions_;
     std::map<QString, NeoCore::IPointerEditorExtension*> extRegistry_;
-    std::vector<QLibrary*> libs_;
+    EditorExtensionRegistry* extReg_ = nullptr;
     std::vector<ResolverEditor> resolverEditors_;
 
     QLabel* pathLabel_;
@@ -118,17 +138,24 @@ private:
     QLineEdit* shaEdit_;
     QTextEdit* namesEdit_;
     QComboBox* resolverTypeCombo_;
-    QStackedWidget* editorStack_;
     QPushButton* addResolverBtn_;
-    QPushButton* removeResolverBtn_;
-    QCheckBox* curlCheck_;
-    QCheckBox* psCheck_;
-    QCheckBox* qtCheck_;
     QPushButton* saveButton_;
     QPushButton* restoreButton_;
     QPushButton* convertButton_;
     QLabel* convertHint_;
     QLabel* batchInfoLabel_;
+
+    // 解析器板块 (动态高度, 上限为窗口剩余) 与下载方式 (有序列表)
+    QGroupBox* idGroup_;
+    QGroupBox* namesGroup_;
+    QGroupBox* dlGroup_;
+    QScrollArea* scrollArea_;
+    // 解析器卡片列表: 每张卡片 = 类型标题 + 编辑器内容 + 删除按钮
+    QFrame* resolverListHost_ = nullptr;
+    QVBoxLayout* resolverListLayout_ = nullptr;
+    QListWidget* dlList_;
+    QPushButton* dlUpBtn_;
+    QPushButton* dlDownBtn_;
 
     static const int MaxResolvers = 6;
 };

@@ -4,12 +4,23 @@
 #include <QDir>
 #include <QFile>
 #include <cctype>
+#include <algorithm>
+#include <sstream>
 #include <logger.h>
 #include <git_analyzer.h>
 
 namespace NeoWorkspace {
 
 std::string GitOperations::defaultGitPath_;
+
+namespace {
+// git 的 safe.directory 按正斜杠规范化路径匹配, 反斜杠条目不生效 (2026-08-20 实测)
+std::string toForwardSlashes(std::string p)
+{
+    std::replace(p.begin(), p.end(), '\\', '/');
+    return p;
+}
+} // namespace
 
 GitOperations::GitOperations(const std::string& gitPath)
     : gitPath_(gitPath)
@@ -153,6 +164,34 @@ std::string GitOperations::lastError() const
     return lastError_;
 }
 
+bool GitOperations::isDubiousOwnership(const std::string& dir)
+{
+    GitResult r = execute({"rev-parse", "--git-dir"}, dir, 5000);
+    return r.stderrOutput.find("detected dubious ownership") != std::string::npos;
+}
+
+bool GitOperations::isTrustedRepository(const std::string& dir)
+{
+    GitResult r = execute({"config", "--get-all", "safe.directory"}, "", 5000);
+    if (r.exitCode != 0 && r.exitCode != 1) return false;
+    const QString target = QString::fromStdString(toForwardSlashes(dir));
+    std::istringstream stream(r.stdoutOutput);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line == "*") return true;
+        const QString entry = QString::fromStdString(toForwardSlashes(line));
+        if (entry.compare(target, Qt::CaseInsensitive) == 0) return true;
+    }
+    return false;
+}
+
+GitResult GitOperations::trustRepository(const std::string& dir)
+{
+    return execute({"config", "--global", "--add", "safe.directory",
+        toForwardSlashes(dir)}, "", 10000);
+}
+
 GitResult GitOperations::execute(const std::vector<std::string>& args,
     const std::string& workingDir, int timeoutMs)
 {
@@ -212,6 +251,14 @@ GitResult GitOperations::execute(const std::vector<std::string>& args,
         result.exitCode = process.exitCode();
         result.stdoutOutput = QString::fromUtf8(process.readAllStandardOutput()).toStdString();
         result.stderrOutput = QString::fromUtf8(process.readAllStandardError()).toStdString();
+
+        // git 输出实时挂日志/终端 (不再静默)
+        if (!result.stdoutOutput.empty()) {
+            CLogger::Info("Git out: {}", result.stdoutOutput);
+        }
+        if (!result.stderrOutput.empty()) {
+            CLogger::Warn("Git err: {}", result.stderrOutput);
+        }
 
         if (process.exitStatus() == QProcess::CrashExit) {
             result.errorCode = NeoCore::ErrorCode::GitCrash;

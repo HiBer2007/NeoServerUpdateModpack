@@ -64,6 +64,6 @@ PowerHelper::Bridge::launchReader(
 
 ## 独立 EXE（静态 Qt）
 
-预设 `powerhelper-standalone`：`POWERHELPER_STANDALONE_ONLY=ON` + 静态 Qt（`C:/Qt-static`）
+预设 `powerhelper-standalone`：`POWERHELPER_STANDALONE_ONLY=ON` + 静态 Qt（`H:/Qt-static`，2026-08-16 迁移后路径；本机尚未安装静态 Qt）
 + `x64-windows-static`。此模式下 PowerHelperCore 编译为静态库并入 EXE，无 DLL 依赖。
 WebView2 运行时为系统组件，无需分发。

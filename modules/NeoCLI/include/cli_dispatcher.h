@@ -47,11 +47,14 @@ private:
     int cmdResolvePointer(const CliCommand& cmd);
     int cmdCrashTest(const CliCommand& cmd);
     int cmdGitUpdate(const CliCommand& cmd);
+    int cmdRepoTrust(const CliCommand& cmd);
+    int cmdRepoTrustCheck(const CliCommand& cmd);
 
     int notImplemented(const CliCommand& cmd);
 
     std::string gitVersion() const;
     std::string resolveWorkDir(const std::string& repoUrl) const;
+    std::string resolveRepoPath(const std::string& repoUrl) const;
     std::string ensureRepoCloned(const std::string& repoUrl,
         const std::string& gitBranch);
     std::string findWorkspaceJson(const std::string& workDir) const;

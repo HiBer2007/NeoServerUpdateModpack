@@ -1,7 +1,7 @@
 # exec —— 执行操作命令详解（CLI-exec）
 
 > exec 执行实际操作（构建 / 导出 / 同步 / 仓库校验 / 指针解析 / 崩溃测试 / Git 安装）。
-> `--json` 支持面：**仅** `verify-repo`、`resolve-pointer`、`crash-test`、`git-update`；
+> `--json` 支持面：**仅** `verify-repo`、`resolve-pointer`、`crash-test`、`git-update`、`repo-trust`、`repo-trust-check`；
 > `build`、`export`、`sync-serverconfig` 为人类输出（`--json` 传入被忽略）。
 > 统一 JSON 外壳：`{ "category": "exec", "command": "<verb>", "data": {...} }`。
 
@@ -415,6 +415,103 @@ NeoServerUpdateModpack.exe exec git-update [--json]
 
 ---
 
+## 8. `exec repo-trust`
+
+信任一个 Git 仓库（写入 `git config --global safe.directory`），用于解决
+**陌生仓库（dubious ownership）** 问题：仓库从其他设备/账户复制而来时，git 会拒绝所有
+命令（`detected dubious ownership in repository at '...'`），此命令将仓库加入全局信任列表。
+
+```
+NeoServerUpdateModpack.exe exec repo-trust --repo <path> [--json]
+```
+
+| 参数 | 必配 | 说明 |
+|------|:---:|------|
+| `--repo` | ✅ | 本地仓库路径（也接受 URL，自动解析到缓存目录） |
+
+**输出（人类模式）：**
+
+```
+[+] Repository trusted: K:/path/to/repo
+```
+
+**输出（`--json`）：**
+
+```
+=====JSON-BEGIN=====
+{
+  "category": "exec",
+  "command": "repo-trust",
+  "data": {
+    "path": "K:/path/to/repo",
+    "trusted": true,
+    "already_trusted": false
+  }
+}
+=====JSON-END=====
+```
+
+| 字段 | 说明 |
+|------|------|
+| `path` | 实际操作的仓库路径（`resolveWorkDir` 解析结果） |
+| `trusted` | 操作后是否受信任 |
+| `already_trusted` | 是否原本就在信任列表中（无需改动） |
+
+**退出码：** 成功（含已信任）exit 0；`--repo` 缺失 exit 2；`git config` 失败 exit 1。
+
+> **陌生仓库行为（所有涉及仓库的命令）**：`ensureRepoCloned` 检测到 dubious ownership 时，
+> 输出警告 `[-] Repository ownership is dubious (untrusted repository).` +
+> `[-] Run 'exec repo-trust --repo <path>' to trust it, then retry.` 并退出（exit 1），
+> 不再误报"克隆失败/仓库不存在"。信任后重试即可。
+
+---
+
+## 9. `exec repo-trust-check`
+
+检查一个 Git 仓库是否已被信任（是否处于陌生仓库状态）。
+
+```
+NeoServerUpdateModpack.exe exec repo-trust-check --repo <path> [--json]
+```
+
+**输出（人类模式）：**
+
+```
+[*] Repository: K:/path/to/repo
+[*] Trusted: no
+[*] Dubious ownership: yes
+[-] Repository is not trusted. Run: exec repo-trust --repo <path>
+```
+
+**输出（`--json`）：**
+
+```
+=====JSON-BEGIN=====
+{
+  "category": "exec",
+  "command": "repo-trust-check",
+  "data": {
+    "path": "K:/path/to/repo",
+    "trusted": false,
+    "is_git_repository": false,
+    "dubious_ownership": true
+  }
+}
+=====JSON-END=====
+```
+
+| 字段 | 说明 |
+|------|------|
+| `path` | 检查的仓库路径 |
+| `trusted` | 是否在全局 `safe.directory` 信任列表中 |
+| `is_git_repository` | `git rev-parse --git-dir` 是否成功（未信任的陌生仓库为 false） |
+| `dubious_ownership` | 是否处于 dubious ownership（陌生仓库）状态 |
+
+**退出码：** 仓库可用（未触发陌生仓库，或已在信任列表）exit 0；处于陌生仓库且未信任 exit 1
+（提示运行 `exec repo-trust`）；`--repo` 缺失 exit 2。
+
+---
+
 ## 附：exec 必配参数总表
 
 | 命令 | 必配 | 可选 | `--json` |
@@ -426,3 +523,5 @@ NeoServerUpdateModpack.exe exec git-update [--json]
 | `resolve-pointer` | `<file.pointer>` | — | ✅ |
 | `crash-test` | — | — | ✅ |
 | `git-update` | — | — | ✅ |
+| `repo-trust` | `--repo` | — | ✅ |
+| `repo-trust-check` | `--repo` | — | ✅ |

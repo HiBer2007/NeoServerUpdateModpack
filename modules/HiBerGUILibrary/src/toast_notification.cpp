@@ -90,14 +90,14 @@ QPoint ToastNotification::targetPos() const
 {
     QWidget* p = parentWidget();
     int pw = p ? p->width() : 800;
-    return QPoint(pw - width() - 16, 16);
+    return QPoint(pw - width() - 16, 16 + topOffset_);
 }
 
 QPoint ToastNotification::startPos() const
 {
     QWidget* p = parentWidget();
     int pw = p ? p->width() : 800;
-    return QPoint(pw, 16);
+    return QPoint(pw, 16 + topOffset_);
 }
 
 void ToastNotification::showError(const QString& title, const QString& detail,

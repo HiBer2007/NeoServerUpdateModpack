@@ -18,8 +18,11 @@ add_library(GUIWorker STATIC
     src/folder_policy_editor.cpp
     src/config_file_editor.cpp
     src/pointer_editor_panel.cpp
+    src/batch_convert_card.cpp
     src/serverconfig_rules_editor.cpp
     src/sync_policies_editor.cpp
+    src/batch_editor_panel.cpp
+    src/editor_extension_registry.cpp
         include/build_checklist_page.h
         include/extra_info_page.h
         include/done_page.h
@@ -39,9 +42,12 @@ add_library(GUIWorker STATIC
         include/wizard_window.h
         include/modpack_content_ide.h
         include/pointer_editor_panel.h
+        include/batch_convert_card.h
         include/serverconfig_rules_editor.h
         include/sync_policies_editor.h
         include/sync_policy_display.h
+        include/batch_editor_panel.h
+        include/editor_extension_registry.h
 )
 target_include_directories(GUIWorker
     PUBLIC  include
@@ -60,4 +66,5 @@ target_link_libraries(GUIWorker
     PRIVATE
         PowerHelperBridge
         libzippp::libzippp
+        tomlplusplus::tomlplusplus
 )

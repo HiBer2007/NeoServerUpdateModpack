@@ -10,6 +10,7 @@
 #include "done_page.h"
 #include "toast_notification.h"
 #include <build_engine.h>
+#include <git_operations.h>
 #include <QDesktopServices>
 #include <QUrl>
 
@@ -465,14 +466,43 @@ void WizardWindow::onRepoReady(QString url)
     CLogger::Info("User selected repo: type={} url={}",
         remoteSource_ ? "remote" : "local", url.toUtf8().constData());
 
+    // 陌生仓库 (dubious ownership): git 拒绝访问, 询问用户是否信任后继续
+    auto ensureRepoTrusted = [this](const QString& dir) -> bool {
+        NeoWorkspace::GitOperations gitOps;
+        if (gitOps.isGitRepository(dir.toStdString())) return true;
+        if (!gitOps.isDubiousOwnership(dir.toStdString())) return true;
+        auto reply = QMessageBox::warning(this, "仓库信任",
+            QString("检测到该目录是一个未信任的 Git 仓库（可能从其他设备复制而来）:\n%1\n\n"
+                    "是否信任该仓库并继续?").arg(dir),
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            CLogger::Info("Repo: user declined to trust dubious repo at {}",
+                dir.toUtf8().constData());
+            return false;
+        }
+        auto trust = gitOps.trustRepository(dir.toStdString());
+        if (trust.exitCode != 0) {
+            CLogger::Error("Repo: failed to trust repo at {}: {}",
+                dir.toUtf8().constData(), trust.stderrOutput);
+            QMessageBox::critical(this, "信任失败",
+                QString("无法将仓库加入信任列表:\n%1")
+                    .arg(QString::fromStdString(trust.stderrOutput)));
+            return false;
+        }
+        CLogger::Info("Repo: trusted at {}", dir.toUtf8().constData());
+        return true;
+    };
+
     if (remoteSource_) {
         startClone(url);
     } else if (repoPage_->sourceType() == RepoPage::SourceCache
         && QDir(url + QStringLiteral("/.git")).exists()) {
+        if (!ensureRepoTrusted(url)) return;
         repoLocalPath_ = url;
         CLogger::Info("Using remote repo local cache: {}", url.toUtf8().constData());
         startSyncCache(url);
     } else {
+        if (!ensureRepoTrusted(url)) return;
         setProgressTitle(QString::fromUtf8("\u89e3\u6790\u4ed3\u5e93"));
         showProgressDialog(QString::fromUtf8("\u6b63\u5728\u89e3\u6790\u4ed3\u5e93..."), true, false);
         repoLocalPath_ = url;

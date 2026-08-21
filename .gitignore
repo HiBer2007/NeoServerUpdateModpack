@@ -88,3 +88,7 @@ nbtcpp/test_output.txt
 *.dir
 Thumbs.db
 .DS_Store
+
+# 编辑器缓存 (仓库内 .NSUM)
+.NSUM/editor-trash/
+

@@ -9,6 +9,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QHeaderView>
+#include <QLineEdit>
 #include <QApplication>
 #include <QSet>
 #include <QSignalBlocker>
@@ -30,11 +31,11 @@ namespace {
 
 QString canonicalMode(const QString& mode)
 {
-    if (mode == QLatin1String("full") || mode == QLatin1String("merge")) {
-        if (mode == QLatin1String("merge")) return QStringLiteral("partial");
-        return QStringLiteral("overwrite");
-    }
-    if (mode == QLatin1String("overwrite")
+    // 旧值兼容: overwrite/merge -> full/partial; 与 config 同步逻辑统一
+    if (mode == QLatin1String("overwrite")) return QStringLiteral("full");
+    if (mode == QLatin1String("merge")) return QStringLiteral("partial");
+    if (mode == QLatin1String("full")
+        || mode == QLatin1String("force")
         || mode == QLatin1String("partial")
         || mode == QLatin1String("ignore")) {
         return mode;
@@ -47,6 +48,13 @@ QString canonicalMode(const QString& mode)
 ServerConfigRulesEditor::ServerConfigRulesEditor(QWidget* parent)
     : QWidget(parent)
 {
+    // 该页内容 (QGroupBox 内含大表格) 的 sizeHint 会撑大 QStackedWidget 的
+    // minimumSizeHint (编辑器栈取各页最大值), 进一步把外层主分割条的右侧
+    // 挤死, 导致左侧 GitPanel 无法扩展。显式归零最小尺寸: 页面不再以内容
+    // sizeHint/minimumSizeHint 参与空间分配, 尺寸完全交给 splitter。
+    setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    setMinimumSize(0, 0);
+
     auto* lay = new QVBoxLayout(this);
     lay->setContentsMargins(16, 12, 16, 12);
     lay->setSpacing(8);
@@ -86,30 +94,47 @@ ServerConfigRulesEditor::ServerConfigRulesEditor(QWidget* parent)
     lay->addWidget(srcGroup, 1);
 
     auto* globleGroup = new QGroupBox(QString::fromUtf8("\u9ed8\u8ba4\u540c\u6b65\u8bbe\u7f6e (.rule/globle.json)"), this);
-    auto* globleLay = new QHBoxLayout(globleGroup);
-    globleLay->addWidget(new QLabel(QString::fromUtf8("default_mode:"), globleGroup));
+    auto* globleLay = new QVBoxLayout(globleGroup);
+    auto* modeRow = new QHBoxLayout;
+    modeRow->addWidget(new QLabel(QString::fromUtf8("default_mode:"), globleGroup));
     defaultModeCombo_ = new QComboBox(globleGroup);
     for (const auto& item : serverConfigModeDisplayItems()) {
         defaultModeCombo_->addItem(item.first, item.second);
     }
     defaultModeCombo_->setMaxVisibleItems(8);
-    globleLay->addWidget(defaultModeCombo_, 1);
-    globleLay->addWidget(new QLabel(
+    modeRow->addWidget(defaultModeCombo_, 1);
+    modeRow->addWidget(new QLabel(
         QString::fromUtf8("\u672a\u5728\u6e05\u5355\u4e2d\u7684\u6587\u4ef6\u7684\u9ed8\u8ba4\u884c\u4e3a"), globleGroup));
+    globleLay->addLayout(modeRow);
+    auto* folderRow = new QHBoxLayout;
+    folderRow->addWidget(new QLabel(QString::fromUtf8("folder_mode:"), globleGroup));
+    folderModeCombo_ = new QComboBox(globleGroup);
+    for (const auto& item : folderPolicyDisplayItems()) {
+        // 四选一: 跳过/镜像/增量覆盖/增量补充 (不含 default 兜底)
+        if (item.second == QLatin1String("default")) continue;
+        folderModeCombo_->addItem(item.first, item.second);
+    }
+    folderModeCombo_->setMaxVisibleItems(8);
+    folderRow->addWidget(folderModeCombo_, 1);
+    folderRow->addWidget(new QLabel(
+        QString::fromUtf8("\u672c\u5c42\u6587\u4ef6\u5939\u540c\u6b65\u6a21\u5f0f (full \u6a21\u5f0f\u5e94\u7528)"), globleGroup));
+    globleLay->addLayout(folderRow);
     lay->addWidget(globleGroup);
 
     auto* listGroup = new QGroupBox(QString::fromUtf8("\u9010\u6587\u4ef6\u6a21\u5f0f\u8868 (.rule/list.json)"), this);
     auto* listLay = new QVBoxLayout(listGroup);
     modeTable_ = new QTableWidget(listGroup);
-    modeTable_->setColumnCount(3);
+    modeTable_->setColumnCount(4);
     modeTable_->setHorizontalHeaderLabels({
         QString::fromUtf8("\u76f8\u5bf9\u8def\u5f84"),
         QString::fromUtf8("\u6a21\u5f0f"),
+        QString::fromUtf8("\u8ffd\u8e2a\u952e (partial)"),
         QString::fromUtf8("\u89e3\u6790\u5668\u63d0\u793a"),
     });
     modeTable_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     modeTable_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     modeTable_->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    modeTable_->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
     modeTable_->verticalHeader()->setVisible(false);
     modeTable_->setSelectionBehavior(QAbstractItemView::SelectRows);
     listLay->addWidget(modeTable_);
@@ -173,7 +198,10 @@ void ServerConfigRulesEditor::load()
         stateLabel_->setText(QString::fromUtf8(
             "\u76ee\u6807\u4e3a\u6bcf\u4e2a\u5b58\u6863\u7684 serverconfig/\u76ee\u5f55\uff0c\u6e90\u6587\u4ef6=镜像\u5185\u5bb9\u3002"));
         hintLabel_->setText(QString::fromUtf8(
-            "overwrite \u6574\u6587\u4ef6\u8986\u76d6\uff1bpartial \u534a\u540c\u6b65 merge\uff08\u9700\u5bf9\u5e94\u89e3\u6790\u5668\uff0c\u5426\u5219\u56de\u9000\u8986\u76d6\uff09\uff1bignore \u4e0d\u78b0\u3002"));
+            "full \u6574\u6587\u4ef6\u8986\u76d6\uff1bforce \u5f3a\u5236\u8986\u76d6\uff1b"
+            "partial \u534a\u540c\u6b65 merge\uff08\u53ef\u586b\u8ffd\u8e2a\u952e\uff0c"
+            "\u9700\u5bf9\u5e94\u89e3\u6790\u5668\uff0c\u5426\u5219\u56de\u9000\u8986\u76d6\uff09\uff1b"
+            "ignore \u4e0d\u78b0\u3002"));
     }
 
     loader_.reset();
@@ -209,16 +237,22 @@ void ServerConfigRulesEditor::loadGloble()
             QString::fromStdString(j.value("default_mode", "overwrite")));
         const int idx = defaultModeCombo_->findData(mode);
         defaultModeCombo_->setCurrentIndex(idx < 0 ? 0 : idx);
+        const QString fm = QString::fromStdString(j.value("folder_mode", "mirror"));
+        const int fidx = folderModeCombo_->findData(fm);
+        folderModeCombo_->setCurrentIndex(fidx < 0 ? 0 : fidx);
         globleVersion_ = QString::fromStdString(j.value("version", ""));
         globleDescription_ = QString::fromStdString(j.value("description", ""));
     } catch (...) {
         f.close();
         defaultModeCombo_->setCurrentIndex(0);
+        folderModeCombo_->setCurrentIndex(0);
     }
 }
 
 void ServerConfigRulesEditor::loadList()
 {
+    listedModes_.clear();
+    listedKeys_.clear();
     QFile f(ruleDir() + QStringLiteral("/list.json"));
     if (!f.open(QIODevice::ReadOnly)) {
         return;
@@ -227,12 +261,34 @@ void ServerConfigRulesEditor::loadList()
         const auto j = nlohmann::json::parse(f.readAll().toStdString());
         f.close();
         if (j.contains("files") && j["files"].is_object()) {
-            for (const auto& [rel, mode] : j["files"].items()) {
-                if (!mode.is_string()) continue;
+            for (const auto& [rel, val] : j["files"].items()) {
+                const QString relQ = QString::fromStdString(rel);
+                if (val.is_string()) {
+                    // 旧格式: { <rel>: "mode" }
+                    const QString canonical = canonicalMode(
+                        QString::fromStdString(val.get<std::string>()));
+                    if (!canonical.isEmpty()) {
+                        listedModes_[relQ] = canonical;
+                    }
+                    continue;
+                }
+                if (!val.is_object()) continue;
+                // 新格式: { <rel>: {mode, tracked_keys} }
                 const QString canonical = canonicalMode(
-                    QString::fromStdString(mode.get<std::string>()));
+                    QString::fromStdString(val.value("mode", "full")));
                 if (!canonical.isEmpty()) {
-                    listedModes_[QString::fromStdString(rel)] = canonical;
+                    listedModes_[relQ] = canonical;
+                }
+                if (val.contains("tracked_keys") && val["tracked_keys"].is_array()) {
+                    QStringList keys;
+                    for (const auto& k : val["tracked_keys"]) {
+                        if (k.is_string()) {
+                            keys << QString::fromStdString(k.get<std::string>());
+                        }
+                    }
+                    if (!keys.isEmpty()) {
+                        listedKeys_[relQ] = keys.join(QStringLiteral(","));
+                    }
                 }
             }
         }
@@ -314,9 +370,22 @@ void ServerConfigRulesEditor::buildModeTable()
         combo->setCurrentIndex(idx < 0 ? 0 : idx);
         modeTable_->setCellWidget(i, 1, combo);
 
+        auto* keysEdit = new QLineEdit(modeTable_);
+        keysEdit->setPlaceholderText(QString::fromUtf8("\u9017\u53f7\u5206\u9694"));
+        {
+            auto kit = listedKeys_.find(rel);
+            if (kit != listedKeys_.end()) {
+                keysEdit->setText(kit->second);
+            }
+        }
+        keysEdit->setStyleSheet(QStringLiteral(
+            "background-color: #262a30; color: #d8dce2;"
+            " border: 1px solid #3a4048; border-radius: 3px; padding: 2px 6px;"));
+        modeTable_->setCellWidget(i, 2, keysEdit);
+
         auto* hint = new QTableWidgetItem();
         hint->setFlags(Qt::ItemIsEnabled);
-        modeTable_->setItem(i, 2, hint);
+        modeTable_->setItem(i, 3, hint);
         updateParserHint(i);
     }
     blocker.unblock();
@@ -325,10 +394,14 @@ void ServerConfigRulesEditor::buildModeTable()
 void ServerConfigRulesEditor::updateParserHint(int row)
 {
     auto* combo = qobject_cast<QComboBox*>(modeTable_->cellWidget(row, 1));
-    auto* hint = modeTable_->item(row, 2);
+    auto* hint = modeTable_->item(row, 3);
+    auto* keysEdit = qobject_cast<QLineEdit*>(modeTable_->cellWidget(row, 2));
     if (!combo || !hint) return;
     const QString rel = modeTable_->item(row, 0)->text();
     const QString mode = combo->currentData().toString();
+    if (keysEdit) {
+        keysEdit->setEnabled(mode == QLatin1String("partial"));
+    }
     if (mode != QLatin1String("partial")) {
         hint->setText(QString());
         return;
@@ -409,6 +482,7 @@ void ServerConfigRulesEditor::onSave()
 
     nlohmann::json globle;
     globle["default_mode"] = defaultModeCombo_->currentData().toString().toStdString();
+    globle["folder_mode"] = folderModeCombo_->currentData().toString().toStdString();
     if (!globleVersion_.isEmpty()) {
         globle["version"] = globleVersion_.toStdString();
     }
@@ -431,12 +505,27 @@ void ServerConfigRulesEditor::onSave()
     for (int i = 0; i < modeTable_->rowCount(); ++i) {
         auto* relItem = modeTable_->item(i, 0);
         auto* combo = qobject_cast<QComboBox*>(modeTable_->cellWidget(i, 1));
+        auto* keysEdit = qobject_cast<QLineEdit*>(modeTable_->cellWidget(i, 2));
         if (!relItem || !combo) continue;
         const QString rel = relItem->text().trimmed();
         if (rel.isEmpty()) continue;
         const QString mode = combo->currentData().toString();
         if (mode.isEmpty()) continue;
-        files[rel.toStdString()] = mode.toStdString();
+        // 新格式: { mode, tracked_keys } (与 sync_policies.files 一致)
+        nlohmann::json entry;
+        entry["mode"] = mode.toStdString();
+        if (keysEdit && !keysEdit->text().trimmed().isEmpty()) {
+            nlohmann::json keys = nlohmann::json::array();
+            const QStringList parts = keysEdit->text().split(
+                QRegularExpression(QStringLiteral("[\\s,;]+")), Qt::SkipEmptyParts);
+            for (const auto& p : parts) {
+                keys.push_back(p.toStdString());
+            }
+            if (!keys.empty()) {
+                entry["tracked_keys"] = keys;
+            }
+        }
+        files[rel.toStdString()] = entry;
     }
     nlohmann::json list;
     list["files"] = files;

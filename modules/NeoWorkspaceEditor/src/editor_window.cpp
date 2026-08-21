@@ -1,5 +1,7 @@
 #include "editor_window.h"
 
+#include <editor_extension_registry.h>
+
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
@@ -221,22 +223,65 @@ EditorWindow::EditorWindow(QWidget* parent)
     resize(960, 700);
     setMinimumSize(800, 550);
 
+    CLogger::Info("EditorWindow: constructor start");
     buildUI();
+    CLogger::Info("EditorWindow: buildUI done");
     buildMenus();
+    CLogger::Info("EditorWindow: buildMenus done");
     buildToolBar();
+    CLogger::Info("EditorWindow: buildToolBar done");
     connectSignals();
+    CLogger::Info("EditorWindow: connectSignals done");
+
+    // 应用上次保存的整合包内容两树列布局 (config/custom/editor.ini)
+    loadCustomLayout();
 
     recentFiles_ = settings_.value("recentFiles2").toStringList();
 
     restoreGeometry(settings_.value("windowGeometry").toByteArray());
-    auto sizes = settings_.value("splitterSizes").toByteArray();
-    if (!sizes.isEmpty())
-        mainSplitter_->restoreState(sizes);
-    else
-        mainSplitter_->setSizes({75, 885});
+    {
+        const int gw = settings_.value("gitPanelWidth", -1).toInt();
+        const int tw = settings_.value("tabWidth", -1).toInt();
+        settings_.remove("splitterSizes");
+        if (gw > 0 && tw > 0)
+            mainSplitter_->setSizes({gw, tw});
+        else
+            mainSplitter_->setSizes({1, 3});
+        CLogger::Info("EditorWindow: splitter load gw={} tw={} -> setSizes({}, {})",
+            gw, tw, gw > 0 ? gw : 1, tw > 0 ? tw : 3);
+    }
+    clampGitPanelWidth();
+
+    // DIAG3: 枚举右侧子树 minimumSizeHint, 找 1236 出处
+    QTimer::singleShot(1500, this, [this]() {
+        std::function<void(const QWidget*, int, QList<QString>&)> dump;
+        dump = [&dump](const QWidget* w, int depth, QList<QString>& out) {
+            if (!w || depth > 7) return;
+            const QSize mh = w->minimumSizeHint();
+            const QSize sh = w->sizeHint();
+            out << QString("%1%2 [%3] minHint=%4,%5 sizeHint=%6,%7")
+                   .arg(QString(depth * 2, ' '))
+                   .arg(w->metaObject()->className())
+                   .arg(w->objectName())
+                   .arg(mh.width()).arg(mh.height())
+                   .arg(sh.width()).arg(sh.height());
+            const auto kids = w->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+            for (const auto* k : kids) dump(k, depth + 1, out);
+        };
+        QList<QString> rows;
+        dump(tabWidget_, 0, rows);
+        CLogger::Info("DIAG3 tab subtree (w={}):", tabWidget_->width());
+        for (const auto& r : rows) CLogger::Info("DIAG3 | {}", r.toStdString());
+    });
 
     updateTitle();
     updateStatus();
+
+    // 仓库加载进度卡片 (居中于窗口, 加载大仓库时显示)
+    loadProgressCard_ = new HiBerGUI::ProgressCard(this);
+    loadProgressCard_->raise();
+    positionLoadCard();
+    CLogger::Info("EditorWindow: constructor done");
 }
 
 EditorWindow::~EditorWindow()
@@ -245,17 +290,39 @@ EditorWindow::~EditorWindow()
         _CrtCheckMemory() ? "OK" : "CORRUPT");
     CLogger::Info("Destruct flow: EditorWindow destructor end");
 }
+void EditorWindow::clampGitPanelWidth()
+{
+    if (!mainSplitter_) return;
+    const QList<int> cur = mainSplitter_->sizes();
+    if (cur.size() != 2) return;
+    const int total = cur[0] + cur[1];
+    if (total <= 0) return;
+    const int maxW = total / 3;
+    if (cur[0] > maxW) {
+        QList<int> fixed = {maxW, qMax(0, total - maxW)};
+        mainSplitter_->setSizes(fixed);
+    }
+}
+
 void EditorWindow::buildUI()
 {
     mainSplitter_ = new QSplitter(Qt::Horizontal, this);
+    CLogger::Info("EditorWindow: splitter created");
 
     gitPanel_ = new HiBerGUI::GitPanel(mainSplitter_);
-    gitPanel_->setMaximumWidth(420);
+    CLogger::Info("EditorWindow: GitPanel created (git: {})",
+        NeoWorkspace::GitOperations::GetDefaultGitPath());
     // GitPanel 与领域层使用同一 git 路径 (由 main 经 InstallConfig/SetDefaultGitPath 统一设置)
     gitPanel_->setGitPath(QString::fromStdString(
         NeoWorkspace::GitOperations::GetDefaultGitPath()));
 
     tabWidget_ = new QTabWidget(mainSplitter_);
+    // 主分割条两侧都忽略内容 sizeHint/minimumSizeHint 约束:
+    // 内容区 (编辑器栈等) 的 minHint 会强行把左侧 GitPanel 压小,
+    // 设为 Ignored 后 QSplitter 完全按 stretch 比例 (1:3) 分配尺寸。
+    gitPanel_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    tabWidget_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    CLogger::Info("EditorWindow: tab widget created");
 
     repoEditor_ = new GUIWorker::RepoEditor(tabWidget_);
     CLogger::Info("BISECT heap after RepoEditor: {}",
@@ -270,12 +337,17 @@ void EditorWindow::buildUI()
     tabWidget_->addTab(repoEditor_, "仓库设置");
     tabWidget_->addTab(branchEditor_, "分支管理");
     tabWidget_->addTab(contentIde_, "\u6574\u5408\u5305\u5185\u5bb9");
+    CLogger::Info("EditorWindow: 3 tabs added (repo/branch/content)");
 
     mainSplitter_->addWidget(gitPanel_);
     mainSplitter_->addWidget(tabWidget_);
     mainSplitter_->setStretchFactor(0, 1);
     mainSplitter_->setStretchFactor(1, 3);
-    mainSplitter_->setSizes({280, 680});
+    mainSplitter_->setSizes({1, 3});
+
+    // Panel 尺寸规则: 默认 1/4, 最大 1/3 (拖拽越界时弹回上限)
+    connect(mainSplitter_, &QSplitter::splitterMoved, this,
+        [this](int, int) { clampGitPanelWidth(); });
 
     setCentralWidget(mainSplitter_);
 
@@ -292,11 +364,22 @@ void EditorWindow::buildUI()
     verLabel->setStyleSheet("color: #999; font-size: 9px; padding-right: 6px;");
     verLabel->installFilter(this);
     statusBar->addPermanentWidget(verLabel);
+    CLogger::Info("EditorWindow: status bar ready");
 }
 
 void EditorWindow::buildMenus()
 {
     auto* fileMenu = menuBar()->addMenu("文件(&F)");
+
+    saveAction_ = fileMenu->addAction("\u4fdd\u5b58(&S)");
+    saveAction_->setShortcut(QKeySequence::Save);
+    connect(saveAction_, &QAction::triggered, this, &EditorWindow::onSave);
+
+    saveAsAction_ = fileMenu->addAction("\u53e6\u5b58\u4e3a(&A)...");
+    saveAsAction_->setShortcut(QKeySequence::SaveAs);
+    connect(saveAsAction_, &QAction::triggered, this, &EditorWindow::onSaveAs);
+
+    fileMenu->addSeparator();
 
     auto* exitAction = fileMenu->addAction("\u9000\u51fa(&X)");
     exitAction->setShortcut(QKeySequence::Quit);
@@ -381,6 +464,15 @@ void EditorWindow::buildMenus()
     branchMetaAction_->setEnabled(false);
     connect(branchMetaAction_, &QAction::triggered, this, &EditorWindow::onBranchMeta);
 
+    gitMenu->addSeparator();
+
+    // 合并提交 (squash): 闭区间合并所选提交及其之后的所有提交
+    auto* softResetAction = gitMenu->addAction("\u5408\u5e76\u63d0\u4ea4(&O)...");
+    connect(softResetAction, &QAction::triggered, this, [this]() {
+        if (!gitPanel_ || gitPanel_->repoPath().empty()) return;
+        gitPanel_->squashDialog();
+    });
+
     auto* editMenu = menuBar()->addMenu("编辑(&E)");
     auto* undoAction = editMenu->addAction("撤销(&U)");
     undoAction->setShortcut(QKeySequence::Undo);
@@ -424,6 +516,9 @@ void EditorWindow::buildMenus()
     backupAction_ = toolsMenu->addAction("导出备份(&B)...");
     connect(backupAction_, &QAction::triggered, this, &EditorWindow::onExportBackup);
 
+    extMenu_ = menuBar()->addMenu("\u6269\u5c55(&X)");
+    rebuildExtensionsMenu();
+
     auto* helpMenu = menuBar()->addMenu("帮助(&H)");
     auto* docsAction = helpMenu->addAction("帮助文档(&D)");
     connect(docsAction, &QAction::triggered, []() {
@@ -442,6 +537,57 @@ void EditorWindow::buildMenus()
     });
 }
 
+void EditorWindow::rebuildExtensionsMenu()
+{
+    if (!extMenu_ || !contentIde_) return;
+    extMenu_->clear();
+
+    const auto exts = contentIde_->extensionRegistry()->extensions();
+    auto* parserMenu = extMenu_->addMenu(
+        "\u914d\u7f6e\u6587\u4ef6\u7f16\u8f91\u5668\u6269\u5c55(&P)");
+    auto* pointerMenu = extMenu_->addMenu(
+        "\u6307\u9488\u7f16\u8f91\u5668\u6269\u5c55(&N)");
+
+    for (const auto& info : exts) {
+        const bool isParser = info.kind == GUIWorker::EditorExtensionKind::Parser;
+        QMenu* target = isParser ? parserMenu : pointerMenu;
+        QString text = info.name;
+        if (!info.version.isEmpty()) {
+            text += QStringLiteral("  v") + info.version;
+        }
+        QString tooltip = QString::fromUtf8("\u7c7b\u578b: %1\n")
+                .arg(isParser
+                    ? QString::fromUtf8("\u89e3\u6790\u5668 (parser)")
+                    : QString::fromUtf8("\u6307\u9488 (pointer)"))
+            + QString::fromUtf8("\u6587\u4ef6\u7c7b\u578b: %2")
+                .arg(info.fileTypes.join(QStringLiteral(", ")));
+        if (!info.description.isEmpty()) {
+            tooltip += QStringLiteral("\n") + info.description;
+        }
+        auto* act = target->addAction(text);
+        act->setToolTip(tooltip);
+        act->setEnabled(false);
+    }
+
+    if (parserMenu->isEmpty()) {
+        auto* none = parserMenu->addAction(QString::fromUtf8("\u65e0"));
+        none->setEnabled(false);
+    }
+    if (pointerMenu->isEmpty()) {
+        auto* none = pointerMenu->addAction(QString::fromUtf8("\u65e0"));
+        none->setEnabled(false);
+    }
+
+    extMenu_->addSeparator();
+    auto* rescanAction = extMenu_->addAction(
+        QString::fromUtf8("\u91cd\u65b0\u626b\u63cf\u6269\u5c55(&R)"));
+    connect(rescanAction, &QAction::triggered, this, [this]() {
+        if (contentIde_) {
+            contentIde_->rescanExtensions();
+        }
+    });
+}
+
 void EditorWindow::buildToolBar()
 {
     toolBar_ = addToolBar("主工具栏");
@@ -449,8 +595,10 @@ void EditorWindow::buildToolBar()
     toolBar_->setIconSize(QSize(16, 16));
 
     openAction_->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
+    saveAction_->setIcon(style()->standardIcon(QStyle::SP_DialogSaveButton));
 
     toolBar_->addAction(openAction_);
+    toolBar_->addAction(saveAction_);
     toolBar_->addSeparator();
 
     toolBar_->addWidget(new QLabel(" 分支: ", this));
@@ -582,6 +730,19 @@ void EditorWindow::connectSignals()
                 *target = nlohmann::json::object();
             }
             nlohmann::json entry;
+            if (mode.isEmpty()) {
+                if ((*target)["files"].is_object()) {
+                    (*target)["files"].erase(path.toStdString());
+                }
+                if (!currentFilePath_.empty()) {
+                    saveWorkspace();
+                }
+                if (!toBranch) {
+                    contentIde_->refreshPoliciesView();
+                }
+                contentIde_->refreshPreview();
+                return;
+            }
             entry["mode"] = mode.toStdString();
             nlohmann::json keys = nlohmann::json::array();
             for (const auto& k : trackedKeys) keys.push_back(k);
@@ -599,8 +760,83 @@ void EditorWindow::connectSignals()
             contentIde_->refreshPreview();
         });
 
+    connect(contentIde_, &GUIWorker::ModpackContentIde::batchPolicySaveRequested,
+        [this](QStringList paths, QString mode,
+            std::vector<std::string> trackedKeys,
+            std::vector<int> trackedLines, bool toBranch) {            nlohmann::json* target = &workspaceConfig_["sync_policies"];
+            if (toBranch) {
+                std::string bn = contentIde_->currentBranch().toStdString();
+                nlohmann::json* branchObj = nullptr;
+                for (auto& b : workspaceConfig_["branches"]) {
+                    if (b.value("name", "") == bn) {
+                        branchObj = &b;
+                        break;
+                    }
+                }
+                if (branchObj) {
+                    target = &(*branchObj)["sync_policies"];
+                }
+            }
+            if (!target->is_object()) {
+                *target = nlohmann::json::object();
+            }
+            if (!(*target)["files"].is_object()) {
+                (*target)["files"] = nlohmann::json::object();
+            }
+            for (const QString& path : paths) {
+                if (mode.isEmpty()) {
+                    (*target)["files"].erase(path.toStdString());
+                    continue;
+                }
+                nlohmann::json entry;
+                entry["mode"] = mode.toStdString();
+                nlohmann::json keys = nlohmann::json::array();
+                for (const auto& k : trackedKeys) keys.push_back(k);
+                nlohmann::json lines = nlohmann::json::array();
+                for (int l : trackedLines) lines.push_back(l);
+                if (!keys.empty()) entry["tracked_keys"] = keys;
+                if (!lines.empty()) entry["tracked_lines"] = lines;
+                (*target)["files"][path.toStdString()] = entry;
+            }
+            if (!currentFilePath_.empty()) {
+                saveWorkspace();
+            }
+            if (!toBranch) {
+                contentIde_->refreshPoliciesView();
+            }
+            contentIde_->refreshPreview();
+        });
+
     connect(contentIde_, &GUIWorker::ModpackContentIde::contentModified,
         this, &EditorWindow::onAnyModified);
+
+    // 普通文件 ↔ 配置文件标记: 持久化到 workspace.json 顶层 sync_policies.config_files
+    connect(contentIde_, &GUIWorker::ModpackContentIde::configFileMarkChanged,
+        this, [this](const QString& rel, bool mark) {
+            nlohmann::json& sp = workspaceConfig_["sync_policies"];
+            if (!sp.is_object()) {
+                sp = nlohmann::json::object();
+            }
+            if (!sp["config_files"].is_array()) {
+                sp["config_files"] = nlohmann::json::array();
+            }
+            auto& arr = sp["config_files"];
+            auto it = std::find_if(arr.begin(), arr.end(),
+                [&rel](const nlohmann::json& x) {
+                    return x.is_string() && x.get<std::string>() == rel.toStdString();
+                });
+            if (mark && it == arr.end()) {
+                arr.push_back(rel.toStdString());
+            }
+            if (!mark && it != arr.end()) {
+                arr.erase(it);
+            }
+            if (!currentFilePath_.empty()) {
+                saveWorkspace();
+            }
+            contentIde_->reloadExtraConfigFiles();
+            contentIde_->refreshPreview();
+        });
 
     connect(contentIde_, &GUIWorker::ModpackContentIde::branchConfigChanged,
         this, [this](const QString& branch) {
@@ -622,6 +858,9 @@ void EditorWindow::connectSignals()
 
     connect(contentIde_, &GUIWorker::ModpackContentIde::gitAddRequested,
         this, &EditorWindow::gitAddPaths);
+
+    connect(contentIde_, &GUIWorker::ModpackContentIde::extensionRegistryChanged,
+        this, &EditorWindow::rebuildExtensionsMenu);
 
     connect(contentIde_, &GUIWorker::ModpackContentIde::logMessage,
         this, [this](const QString& line) {
@@ -648,13 +887,48 @@ void EditorWindow::connectSignals()
                             : "干净"));
         });
 
-    connect(gitPanel_, &HiBerGUI::GitPanel::commitFinished, contentIde_,
+    // commit/revert/reset 等历史变更后刷新工作区 (文件树/预览/暂存)
+    // 只用 historyChanged (commit 时已覆盖), 避免 commitFinished+historyChanged
+    // 双触发 onCommitFinished 造成提交后重复全量重建
+    connect(gitPanel_, &HiBerGUI::GitPanel::historyChanged, contentIde_,
         &GUIWorker::ModpackContentIde::onCommitFinished);
+
+    // git 进程输出实时挂到终端/日志 (错误不再静默)
+    connect(gitPanel_, &HiBerGUI::GitPanel::gitOutput,
+        this, [this](const QString& line) {
+            CLogger::Info("Git: {}", line.toStdString());
+        });
+    connect(gitPanel_, &HiBerGUI::GitPanel::gitOperationFinished,
+        this, [this](bool ok, const QString& errMsg) {
+            if (!ok && !errMsg.isEmpty()) {
+                CLogger::Error("Git operation failed: {}",
+                    errMsg.trimmed().toStdString());
+            }
+        });
 }
 
 bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
 {
     QString dir = QString::fromStdString(dirPath);
+
+    // 加载进度卡片: 仓库较大时 git 同步/解析/树构建耗时, 居中显示进度
+    struct LoadGuard {
+        HiBerGUI::ProgressCard* card = nullptr;
+        // 完整性检查阶段接管卡片: 完成后由异步回调隐藏
+        bool keepOpen = false;
+        ~LoadGuard() { if (card && !keepOpen) card->hideCard(); }
+    } guard;
+    if (loadProgressCard_) {
+        loadProgressCard_->showCard(QString::fromUtf8("\u52a0\u8f7d\u4ed3\u5e93"), false);
+        loadProgressCard_->setProgress(2, QString::fromUtf8("\u6b63\u5728\u68c0\u67e5\u76ee\u5f55\u2026"));
+        positionLoadCard();
+        QApplication::processEvents();
+        guard.card = loadProgressCard_;
+    }
+    auto setStage = [this](int pct, const QString& text) {
+        updateLoadProgress(pct, text);
+    };
+
     QDir qdir(dir);
     if (!qdir.exists()) {
         QMessageBox::critical(this, "打开失败",
@@ -667,6 +941,31 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
     QString wsPath = dir + "/workspace.json";
     bool hasWorkspace = QFile::exists(wsPath);
 
+    // 仓库加载时检查 .gitignore: 确保 .NSUM 编辑器缓存不被 git 追踪
+    // (editor-trash / pointer-cache / hashes.json 均位于 .NSUM 下)
+    ensureGitIgnore(dir);
+
+    // 陌生仓库 (dubious ownership): git 判定所有权不可信, 需用户确认信任 (safe.directory)
+    if (!isGitRepo && gitOps.isDubiousOwnership(dirPath)) {
+        auto reply = QMessageBox::question(this, "仓库信任",
+            QString("检测到该目录是一个未信任的 Git 仓库（可能从其他设备复制而来）:\n%1\n\n"
+                    "是否信任该仓库并继续加载?").arg(dir),
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            CLogger::Info("Workspace: user declined to trust dubious repo at {}", dirPath);
+            return false;
+        }
+        auto trust = gitOps.trustRepository(dirPath);
+        if (trust.exitCode != 0) {
+            QMessageBox::critical(this, "信任失败",
+                QString("无法将仓库加入信任列表:\n%1")
+                    .arg(QString::fromStdString(trust.stderrOutput)));
+            return false;
+        }
+        isGitRepo = gitOps.isGitRepository(dirPath);
+        CLogger::Info("Workspace: repo trusted at {}", dirPath);
+    }
+
     if (!isGitRepo && !hasWorkspace) {
         QMessageBox::critical(this, "无效仓库",
             QString("该目录既不是 Git 仓库也不包含 workspace.json:\n%1").arg(dir));
@@ -674,9 +973,9 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
     }
 
     if (!isGitRepo && hasWorkspace) {
-        auto reply = QMessageBox::question(this, "\u521d\u59cb\u5316\u4ed3\u5e93",
-            QString("\u76ee\u5f55\u4e0b\u7684 workspace.json \u5df2\u4e0d\u5728\u521d\u59cb\u5316 Git \u4ed3\u5e93:\n%1\n\n"
-                    "\u662f\u5426\u521d\u59cb\u5316 Git \u4ed3\u5e93\u5e76\u91cd\u65b0\u63d0\u4ea4\u914d\u7f6e?").arg(dir),
+        auto reply = QMessageBox::question(this, "初始化仓库",
+            QString("该目录包含 workspace.json，但 Git 仓库尚未初始化:\n%1\n\n"
+                    "是否初始化 Git 仓库并提交配置?").arg(dir),
             QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::Yes) {
             auto result = gitOps.init(dirPath);
@@ -697,13 +996,13 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
         if (source == RepoSource::Clone) {
             QMessageBox::critical(this, "无效仓库",
                 QString("远程仓库不是一个有效的整合包仓库。\n\n"
-                        "仓库地址: %1\n"
-                        "工作目录: %2\n\n"
-                        "检查仓库地址是否正确或仓库是否有效！")
-                    .arg(QString::fromStdString(gitOps.isGitRepository(dirPath)
-                        ? (gitOps.revParse(dirPath, "HEAD").exitCode == 0 ? "(有效)" : "(无效)")
-                        : ""),
-                        dir));
+                        "工作目录: %1\n"
+                        "仓库状态: %2\n\n"
+                        "请检查仓库地址是否正确，或该仓库是否包含整合包配置！")
+                    .arg(dir,
+                         QString::fromStdString(gitOps.isGitRepository(dirPath)
+                            ? (gitOps.revParse(dirPath, "HEAD").exitCode == 0 ? "(有效)" : "(无效)")
+                            : "")));
             CLogger::Error("Workspace: cloned repo lacks workspace.json at {}", dirPath);
             return false;
         }
@@ -822,7 +1121,7 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
                 }
 
                 if (!ws) {
-                    appendLog("git show HEAD:workspace.json \u52fe\u51fa\u5386\u53f2\u7248\u672c");
+                    appendLog("git show HEAD:workspace.json 取出历史版本");
                     auto [sho, she] = runGit({"show", "HEAD:workspace.json"}, 10000);
                     if (!sho.isEmpty() && sho.contains("\"workspace\"")) {
                 appendLog("  fetch OK");
@@ -859,7 +1158,7 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
             };
 
             auto findLastValidCommit = [&]() -> bool {
-                appendLog("\u5bfb\u627e\u6700\u8fd1\u4e00\u4e2a workspace.json \u6709\u6548\u7684\u7248\u672c..");
+                appendLog("寻找最近一个有效的 workspace.json 版本...");
                 auto [lo, le] = runGit({"log", "--oneline", "-30", "--", "workspace.json"}, 10000);
                 if (lo.isEmpty()) {
                     appendLog("  \u672a\u627e\u5230\u542b workspace.json \u7684\u7248\u672c");
@@ -921,10 +1220,10 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
 
             if (foundWs && !verifyWorkspace()) {
                 QString logSoFar = log.join("\n");
-                auto vreply = QMessageBox::question(this, "\u81ea\u52a8\u6062\u590d\u5931\u8d25",
+                auto vreply = QMessageBox::question(this, "自动恢复失败",
                     QString("工作区已恢复但存在未提交的更改，可能不完整。\n\n"
-                            "\u662f\u5426\u5bfb\u627e\u6700\u8fd1\u4e00\u4e2a workspace.json \u6709\u6548\u7684\u7248\u672c?")
-                        .arg(logSoFar),
+                            "操作日志:\n%1\n\n"
+                            "是否寻找最近一个有效的 workspace.json 版本?").arg(logSoFar),
                     QMessageBox::Yes | QMessageBox::No);
                 if (vreply == QMessageBox::Yes) {
                     foundWs = findLastValidCommit();
@@ -959,6 +1258,8 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
         }
     }
 
+    setStage(25, QString::fromUtf8("\u540c\u6b65\u5b8c\u6210\uff0c\u89e3\u6790 workspace.json\u2026"));
+
     std::ifstream file(wsPath.toStdString());
     if (!file.is_open()) {
         QMessageBox::critical(this, "打开失败", "无法读取 workspace.json");
@@ -975,6 +1276,7 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
     }
 
     currentFilePath_ = wsPath.toStdString();
+    setStage(50, QString::fromUtf8("\u89e3\u6790\u5b8c\u6210\uff0c\u52a0\u8f7d\u5206\u652f\u914d\u7f6e\u2026"));
 
     if (workspaceConfig_.contains("git") && workspaceConfig_["git"].contains("current_branch")) {
         auto target = workspaceConfig_["git"]["current_branch"].get<std::string>();
@@ -1014,6 +1316,7 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
     }
 
     ensureBranchConfigs();
+    setStage(70, QString::fromUtf8("\u52a0\u8f7d\u5206\u652f\u4e0e\u4ed3\u5e93\u6587\u4ef6\u6811\u2026"));
 
     repoEditor_->loadFromJson(workspaceConfig_);
     contentIde_->setRepository(dir);
@@ -1034,6 +1337,7 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
     if (!branchCombo_->currentText().isEmpty()) {
         onBranchChanged(branchCombo_->currentText().toStdString());
     }
+    setStage(95, QString::fromUtf8("\u751f\u6210\u9884\u89c8\u5b8c\u6210\u2026"));
 
     modified_ = false;
 
@@ -1058,6 +1362,9 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
     switchBranchAction_->setEnabled(true);
     forkRepoAction_->setEnabled(true);
     branchMetaAction_->setEnabled(true);
+    // 完整性检查 = 加载流程的最后一个阶段 (98% → 完成回调 100%)
+    setStage(98, QString::fromUtf8("\u68c0\u67e5\u4ed3\u5e93\u5b8c\u6574\u6027\u2026"));
+    guard.keepOpen = true;
     runIntegrityCheck(false);
 
     CLogger::Info("Open repo: {}", dirPath);
@@ -1136,7 +1443,17 @@ void EditorWindow::closeEvent(QCloseEvent* event)
 
     CLogger::Info("Close flow: saving window settings");
     settings_.setValue("windowGeometry", saveGeometry());
-    settings_.setValue("splitterSizes", mainSplitter_->saveState());
+    {
+        const QList<int> sz = mainSplitter_->sizes();
+        const int gw = sz.size() > 0 ? sz[0] : -1;
+        const int tw = sz.size() > 1 ? sz[1] : -1;
+        settings_.setValue("gitPanelWidth", gw);
+        settings_.setValue("tabWidth", tw);
+        CLogger::Info("Close flow: splitter saved gitPanelWidth={} tabWidth={}",
+            gw, tw);
+    }
+    settings_.remove("splitterSizes");
+    saveCustomLayout();
     settings_.sync();
     if (contentIde_) {
         contentIde_->cleanupOnExit();
@@ -1200,16 +1517,14 @@ void EditorWindow::onVerify()
 
             std::string parent = b.value("parent", "");
             if (!parent.empty() && !names.count(parent)) {
-                warnings.push_back("\u7236\u5206\u652f \u0027" + parent + "\u0027 \u672a\u5728\u5206\u652f\u5217\u8868\u4e2d\u627e\u5230\uff0c\u5c06\u5728\u7ee7\u627f\u524d\u63d0\u524d\u505c\u6b62");
+                warnings.push_back("\u7236\u5206\u652f \u0027" + parent + "\u0027 \u672a\u5728\u5206\u652f\u5217\u8868\u4e2d\u627e\u5230\uff0c\u7ee7\u627f\u5c06\u5728\u8be5\u5904\u505c\u6b62");
             }
         }
     }
 
     if (errors.empty() && warnings.empty()) {
         QMessageBox::information(this, "验证通过",
-            "工作区配置文件结构有效，未发现问题。\n\n"
-            "  \u81ea\u5b9a\u4e49\u5b57\u6bb5\u76f8\u4e92\u77db\u76fe\n"
-            "  \u53c2\u6570\u4e0d\u6ee1\u8db3\u89c4\u5219");
+            "工作区配置文件结构有效，未发现问题。");
     } else {
         QString msg;
         if (!errors.empty()) {
@@ -1224,6 +1539,15 @@ QMessageBox::warning(this, "验证结果", msg);
     }
 }
 
+void EditorWindow::updateLoadProgress(int pct, const QString& text)
+{
+    if (loadProgressCard_ && loadProgressCard_->isActive()) {
+        loadProgressCard_->setProgress(pct, text);
+        positionLoadCard();
+        QApplication::processEvents();
+    }
+}
+
 void EditorWindow::onCheckIntegrity()
 {
     runIntegrityCheck(true);
@@ -1234,27 +1558,64 @@ void EditorWindow::runIntegrityCheck(bool manual)
     if (currentFilePath_.empty()) {
         if (manual)
             QMessageBox::information(this, "\u5b8c\u6574\u6027\u68c0\u67e5", "\u8bf7\u5148\u6253\u5f00\u4e00\u4e2a\u4ed3\u5e93\u3002");
+        else if (loadProgressCard_)
+            loadProgressCard_->hideCard();
         return;
     }
 
     QFileInfo fi(QString::fromStdString(currentFilePath_));
     QString dir = fi.absolutePath();
-    if (!QDir(dir).exists()) return;
+    if (!QDir(dir).exists()) {
+        if (!manual && loadProgressCard_)
+            loadProgressCard_->hideCard();
+        return;
+    }
 
-    auto runGit = [&](const QStringList& args) {
-        QProcess proc;
-        proc.setWorkingDirectory(dir);
-        proc.start("git", args);
-        proc.waitForFinished(15000);
-        return QString::fromUtf8(proc.readAllStandardOutput());
-    };
+    if (integrityBusy_) return;
+    integrityBusy_ = true;
+    if (manual) {
+        // git status 异步执行, 不阻塞界面
+        statusBar()->showMessage(
+            QString::fromUtf8("\u6b63\u5728\u6267\u884c\u5b8c\u6574\u6027\u68c0\u67e5\u2026"), 0);
+    }
 
-    QString statusOut = runGit({"status", "--porcelain", "-b"});
+    auto* proc = new QProcess(this);
+    proc->setWorkingDirectory(dir);
+    proc->setProcessChannelMode(QProcess::SeparateChannels);
+    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this, [this, proc, dir, manual](int, QProcess::ExitStatus) {
+            const QString statusOut = QString::fromUtf8(proc->readAllStandardOutput());
+            proc->deleteLater();
+            integrityBusy_ = false;
+            statusBar()->clearMessage();
+            finishIntegrityCheck(statusOut, dir, manual);
+        });
+    connect(proc, &QProcess::errorOccurred, this,
+        [this, proc, manual](QProcess::ProcessError err) {
+            if (err != QProcess::FailedToStart) return;
+            proc->deleteLater();
+            integrityBusy_ = false;
+            statusBar()->clearMessage();
+            if (manual) {
+                QMessageBox::warning(this,
+                    QString::fromUtf8("\u5b8c\u6574\u6027\u68c0\u67e5"),
+                    QString::fromUtf8("\u65e0\u6cd5\u542f\u52a8 git\u3002"));
+            } else if (loadProgressCard_) {
+                loadProgressCard_->hideCard();
+            }
+        });
+    proc->start("git", { "status", "--porcelain", "-b" });
+}
 
+void EditorWindow::finishIntegrityCheck(const QString& statusOut,
+    const QString& dir, bool manual)
+{
     struct Item {
-        enum class Kind { Untracked, Modified, Deleted };
+        enum class Kind { Untracked, Added, Modified, Deleted, Conflict };
         Kind kind;
         QString path;
+        char x = ' ';
+        char y = ' ';
     };
     std::vector<Item> items;
     QString syncNote;
@@ -1274,27 +1635,40 @@ void EditorWindow::runIntegrityCheck(bool manual)
                 if (m2.hasMatch()) behind = m2.captured(1).toInt();
             }
             if (ahead > 0 && behind > 0)
-                syncNote = QString("\u672c\u5730\u5df2\u8d85\u8fc7 origin %1 \u4e2a\u63d0\u4ea4\u5e76\u843d\u540e %2 \u4e2a\u63d0\u4ea4").arg(ahead).arg(behind);
+                syncNote = QString("本地领先 origin %1 个提交并落后 %2 个提交").arg(ahead).arg(behind);
             else if (ahead > 0)
-                syncNote = QString("\u672c\u5730\u5df2\u8d85\u8fc7 origin %1 \u4e2a\u63d0\u4ea4\u5c1a\u672a\u63a8\u9001").arg(ahead);
+                syncNote = QString("本地领先 origin %1 个提交，尚未推送").arg(ahead);
             else if (behind > 0)
-                syncNote = QString("\u672c\u5730\u5df2\u843d\u540e origin %1 \u4e2a\u63d0\u4ea4\u5c1a\u672a\u62c9\u53d6").arg(behind);
+                syncNote = QString("本地落后 origin %1 个提交，尚未拉取").arg(behind);
             else
-                syncNote = "\u5df2\u4e0e origin \u540c\u6b65";
-            continue;
-        }
-        if (line.startsWith("?? ")) {
-            items.push_back({Item::Kind::Untracked, line.mid(3)});
+                syncNote = "已与 origin 同步";
             continue;
         }
         if (line.length() < 4) continue;
         char x = line.at(0).toLatin1();
         char y = line.at(1).toLatin1();
         QString path = line.mid(3);
-        if (x == 'D' || y == 'D')
-            items.push_back({Item::Kind::Deleted, path});
-        else
-            items.push_back({Item::Kind::Modified, path});
+        Item item;
+        item.x = x;
+        item.y = y;
+        if (line.startsWith("?? ")) {
+            item.kind = Item::Kind::Untracked;
+            item.path = line.mid(3);
+        } else if (x == 'U' || y == 'U'
+                || (x == 'D' && y == 'D') || (x == 'A' && y == 'A')) {
+            item.kind = Item::Kind::Conflict;
+            item.path = path;
+        } else if (x == 'A' || y == 'A') {
+            item.kind = Item::Kind::Added;
+            item.path = path;
+        } else if (x == 'D' || y == 'D') {
+            item.kind = Item::Kind::Deleted;
+            item.path = path;
+        } else {
+            item.kind = Item::Kind::Modified;
+            item.path = path;
+        }
+        items.push_back(item);
     }
 
     std::set<std::string> branchNames;
@@ -1335,6 +1709,11 @@ void EditorWindow::runIntegrityCheck(bool manual)
         if (manual)
             QMessageBox::information(this, "\u5b8c\u6574\u6027\u68c0\u67e5", msg);
         else {
+            // 加载流程: 完整性检查阶段完成
+            updateLoadProgress(100, QString::fromUtf8("\u52a0\u8f7d\u5b8c\u6210"));
+            if (loadProgressCard_) {
+                loadProgressCard_->hideCard();
+            }
             statusBar()->showMessage(msg, 6000);
             const int nMissing = missingBc.isEmpty() ? 0 : missingBc.split('\n').size();
             const int nOrphan = orphanBc.isEmpty() ? 0 : orphanBc.split('\n').size();
@@ -1366,6 +1745,8 @@ void EditorWindow::runIntegrityCheck(bool manual)
     table->verticalHeader()->setVisible(false);
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    // 长路径不被列宽省略号截断, 悬浮时 tooltip 显示完整路径
+    table->setTextElideMode(Qt::ElideNone);
 
     std::vector<std::pair<Item, QComboBox*>> rows;
     for (auto& it : items) {
@@ -1374,26 +1755,53 @@ void EditorWindow::runIntegrityCheck(bool manual)
         QString kindStr;
         switch (it.kind) {
             case Item::Kind::Untracked: kindStr = "\u672a\u8ddf\u8e2a"; break;
+            case Item::Kind::Added:
+                kindStr = (it.x == 'A' && it.y == 'D')
+                    ? "\u65b0\u589e(\u5de5\u4f5c\u533a\u5df2\u5220)"
+                    : "\u65b0\u589e"; break;
             case Item::Kind::Modified:  kindStr = "\u5df2\u4fee\u6539"; break;
             case Item::Kind::Deleted:   kindStr = "\u5df2\u5220\u9664"; break;
+            case Item::Kind::Conflict:  kindStr = "\u51b2\u7a81"; break;
         }
         table->setItem(row, 0, new QTableWidgetItem(kindStr));
-        table->setItem(row, 1, new QTableWidgetItem(it.path));
-        auto* combo = new QComboBox(&dlg);
+        auto* pathItem = new QTableWidgetItem(it.path);
+        // 悬浮显示完整路径 (长路径被列宽裁剪时仍有完整信息)
+        pathItem->setToolTip(it.path);
+        table->setItem(row, 1, pathItem);
+auto* combo = new QComboBox(&dlg);
         if (it.kind == Item::Kind::Untracked) {
-            combo->addItem("\u4e0d\u5904\u7406\u8be5\u9879", "track");
-            combo->addItem("忽略 (.gitignore)", "ignore");
-            combo->addItem("\u4ece\u6e05\u5355\u5220\u9664", "delete");
-            combo->addItem("跳过", "skip");
+            combo->addItem("\u8ddf\u8e2a", "track");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a", "untrack");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a + \u5ffd\u7565", "untrack-ignore");
+            combo->addItem("\u5f7b\u5e95\u5220\u9664", "delete");
+            combo->addItem("\u8df3\u8fc7", "skip");
+        } else if (it.kind == Item::Kind::Added) {
+            combo->addItem("\u4fdd\u7559", "keep");
+            combo->addItem("\u53d6\u6d88\u6682\u5b58", "unstage");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a", "untrack");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a + \u5ffd\u7565", "untrack-ignore");
+            combo->addItem("\u5f7b\u5e95\u5220\u9664", "delete");
+            combo->addItem("\u8df3\u8fc7", "skip");
         } else if (it.kind == Item::Kind::Modified) {
-            combo->addItem("\u4fdd\u7559 (\u4ec5\u65b0\u589e\u9879\u76ee)", "track");
+            combo->addItem("\u4fdd\u7559\u4fee\u6539", "track");
             combo->addItem("\u8fd8\u539f Git \u7248\u672c", "restore");
-            combo->addItem("忽略 (.gitignore)", "ignore");
-            combo->addItem("跳过", "skip");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a", "untrack");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a + \u5ffd\u7565", "untrack-ignore");
+            combo->addItem("\u5f7b\u5e95\u5220\u9664", "delete");
+            combo->addItem("\u8df3\u8fc7", "skip");
+        } else if (it.kind == Item::Kind::Deleted) {
+            combo->addItem("\u4fdd\u7559\u5220\u9664", "track");
+            combo->addItem("\u8fd8\u539f\u6587\u4ef6", "restore");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a", "untrack");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a + \u5ffd\u7565", "untrack-ignore");
+            combo->addItem("\u5f7b\u5e95\u5220\u9664", "delete");
+            combo->addItem("\u8df3\u8fc7", "skip");
         } else {
-            combo->addItem("保留 (保留删除)", "track");
-            combo->addItem("还原文件", "restore");
-            combo->addItem("跳过", "skip");
+            combo->addItem("\u4fdd\u7559\u51b2\u7a81\u6807\u8bb0", "keep");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a", "untrack");
+            combo->addItem("\u64a4\u9500\u8ffd\u8e2a + \u5ffd\u7565", "untrack-ignore");
+            combo->addItem("\u5f7b\u5e95\u5220\u9664", "delete");
+            combo->addItem("\u8df3\u8fc7", "skip");
         }
         table->setCellWidget(row, 2, combo);
         rows.push_back({it, combo});
@@ -1408,7 +1816,16 @@ void EditorWindow::runIntegrityCheck(bool manual)
     connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
     layout->addWidget(box);
 
-    if (dlg.exec() != QDialog::Accepted) return;
+    if (dlg.exec() != QDialog::Accepted) {
+        // 用户取消: 加载流程同样收尾 (进度条 100% + 关闭)
+        if (!manual) {
+            updateLoadProgress(100, QString::fromUtf8("\u52a0\u8f7d\u5b8c\u6210"));
+            if (loadProgressCard_) {
+                loadProgressCard_->hideCard();
+            }
+        }
+        return;
+    }
 
     auto runGitFor = [&](const QStringList& args) {
         QProcess proc;
@@ -1417,14 +1834,16 @@ void EditorWindow::runIntegrityCheck(bool manual)
         proc.waitForFinished(15000);
     };
 
-    QStringList trackPaths, restorePaths, deletePaths;
-    QStringList ignorePaths;
+    QStringList trackPaths, restorePaths, deletePaths, unstagePaths;
+    QStringList untrackPaths, untrackIgnorePaths;
     for (auto& [it, combo] : rows) {
         QString action = combo->currentData().toString();
         if (action == "track") trackPaths << it.path;
         else if (action == "restore") restorePaths << it.path;
         else if (action == "delete") deletePaths << it.path;
-        else if (action == "ignore") ignorePaths << it.path;
+        else if (action == "unstage") unstagePaths << it.path;
+        else if (action == "untrack") untrackPaths << it.path;
+        else if (action == "untrack-ignore") untrackIgnorePaths << it.path;
     }
 
     if (!deletePaths.isEmpty()) {
@@ -1435,32 +1854,81 @@ void EditorWindow::runIntegrityCheck(bool manual)
         if (reply != QMessageBox::Yes) deletePaths.clear();
     }
 
+    auto runGitForCode = [&](const QStringList& args) {
+        QProcess proc;
+        proc.setWorkingDirectory(dir);
+        proc.start("git", args);
+        proc.waitForFinished(15000);
+        return proc.exitCode();
+    };
+
     if (!trackPaths.isEmpty()) runGitFor(QStringList{"add", "--"} + trackPaths);
     if (!restorePaths.isEmpty()) runGitFor(QStringList{"checkout", "--"} + restorePaths);
-    if (!ignorePaths.isEmpty() || !deletePaths.isEmpty()) {
+
+    if (!untrackPaths.isEmpty()) {
+        // 逐文件撤销追踪: git rm --cached (磁盘保留)。跳过的 ?? 文件失败无妨 (本来未跟踪)
+        for (auto& p : untrackPaths)
+            runGitForCode(QStringList{"rm", "--cached", "--"} + QStringList{p});
+    }
+    if (!untrackIgnorePaths.isEmpty()) {
+        // 撤销追踪 + 追加 .gitignore
+        for (auto& p : untrackIgnorePaths)
+            runGitForCode(QStringList{"rm", "--cached", "--"} + QStringList{p});
+    }
+    if (!unstagePaths.isEmpty()) {
+        QString err;
+        // 无 HEAD 的初始仓库 (首次暂存) 不能 git restore --staged:
+        // HEAD 解析失败 (exit 128)。对新增文件改用 git rm --cached
+        auto runGitForErr = [&](const QStringList& args) {
+            QProcess proc;
+            proc.setWorkingDirectory(dir);
+            proc.start("git", args);
+            proc.waitForFinished(15000);
+            err = QString::fromUtf8(proc.readAllStandardError());
+            return proc.exitCode();
+        };
+        bool hasHead = runGitForErr({"rev-parse", "--verify", "HEAD"}) == 0;
+        for (auto& p : unstagePaths) {
+            if (hasHead)
+                runGitFor(QStringList{"restore", "--staged", "--"} + QStringList{p});
+            else
+                runGitFor(QStringList{"rm", "--cached", "--"} + QStringList{p});
+        }
+    }
+
+    if (!deletePaths.isEmpty()) {
+        for (auto& p : deletePaths) {
+            bool ok = QFile::remove(dir + "/" + p);
+            if (!ok) untrackIgnorePaths << p;
+        }
+    }
+    if (!untrackIgnorePaths.isEmpty()) {
+        // 撤销追踪+忽略: 将路径追加到 .gitignore (撤销追踪已在上方执行)
         QFile gi(dir + "/.gitignore");
         QString appendText;
         if (gi.open(QIODevice::Append | QIODevice::Text)) {
-            for (auto& p : ignorePaths) appendText += p + "\n";
+            for (auto& p : untrackIgnorePaths) appendText += p + "\n";
             gi.write(appendText.toUtf8());
             gi.close();
         }
-        if (!deletePaths.isEmpty()) {
-            for (auto& p : deletePaths) {
-                bool ok = QFile::remove(dir + "/" + p);
-                if (!ok) ignorePaths << p;
-            }
-        }
     }
-    if (!ignorePaths.isEmpty()) runGitFor(QStringList{"add", "--"} + ignorePaths);
 
     QString done;
     if (!trackPaths.isEmpty()) done += QString("%1 项已暂存\n").arg(trackPaths.size());
     if (!restorePaths.isEmpty()) done += QString("%1 项已还原\n").arg(restorePaths.size());
+    if (!untrackPaths.isEmpty()) done += QString("%1 项已撤销追踪\n").arg(untrackPaths.size());
+    if (!untrackIgnorePaths.isEmpty()) done += QString("%1 项已撤销追踪并忽略\n").arg(untrackIgnorePaths.size());
     if (!deletePaths.isEmpty()) done += QString("%1 项已从磁盘删除\n").arg(deletePaths.size());
-    if (!ignorePaths.isEmpty()) done += QString("%1 项已加入 .gitignore\n").arg(ignorePaths.size());
+    if (!unstagePaths.isEmpty()) done += QString("%1 项已取消暂存\n").arg(unstagePaths.size());
     if (done.isEmpty()) done = "\u672a\u505a\u4efb\u4f55\u5904\u7406";
 
+    if (!manual) {
+        // 加载流程: 完整性检查阶段完成 (待处理对话框已关闭)
+        updateLoadProgress(100, QString::fromUtf8("\u52a0\u8f7d\u5b8c\u6210"));
+        if (loadProgressCard_) {
+            loadProgressCard_->hideCard();
+        }
+    }
     QMessageBox::information(this, "\u5b8c\u6574\u6027\u68c0\u67e5", done.trimmed());
     gitPanel_->refresh();
 }
@@ -1554,18 +2022,36 @@ void EditorWindow::gitAddPaths(const QStringList& paths)
     QFileInfo fi(QString::fromStdString(currentFilePath_));
     QProcess proc;
     proc.setWorkingDirectory(fi.absolutePath());
-    proc.start("git", QStringList{"add", "--"} + paths);
+    // -A: 同时暂存新增/修改/删除 (git add 对已删除文件不生效)
+    proc.start("git", QStringList{"add", "-A", "--"} + paths);
     proc.waitForFinished(15000);
+    const QString err = QString::fromUtf8(proc.readAllStandardError());
+    // git 的 warning（如 LF→CRLF 提示）不算失败, 仅崩溃或退出码非 0 才报错
+    if (proc.exitStatus() == QProcess::CrashExit || proc.exitCode() != 0) {
+        CLogger::Error("gitAddPaths failed: {}", err.trimmed().toStdString());
+    }
 }
 
 void EditorWindow::ensureGitIgnore(const QString& dir)
 {
     QString path = dir + "/.gitignore";
-    if (QFile::exists(path)) return;
 
     QFile f(path);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+    if (f.exists() && f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        const QString content = QString::fromUtf8(f.readAll());
+        f.close();
+        // 已有 .gitignore: 缺少 .NSUM 规则时追加 (防止 editor-trash 被追踪)
+        if (!content.contains(".NSUM")) {
+            QFile af(path);
+            if (af.open(QIODevice::Append | QIODevice::Text)) {
+                af.write("\n# NeoServerUpdateModpack - editor trash\n.NSUM/\n");
+                af.close();
+            }
+        }
+        return;
+    }
 
+    f.open(QIODevice::WriteOnly | QIODevice::Text);
     f.write("# NeoServerUpdateModpack - 默认忽略规则\n");
     f.write("build/\n");
     f.write("*.log\n");
@@ -1575,6 +2061,7 @@ void EditorWindow::ensureGitIgnore(const QString& dir)
     f.write(".vscode/\n");
     f.write(".DS_Store\n");
     f.write("Thumbs.db\n");
+    f.write(".NSUM/\n");
     f.close();
 }
 
@@ -1960,7 +2447,7 @@ void EditorWindow::onNewRepo()
 
     QObject::connect(urlEdit, &QLineEdit::textChanged, [&](const QString& text) {
         auto proto = detectProtocol(text.trimmed());
-        protoLabel->setText("\u534f\u8bae\u68c0\u6d4b " + protocolLabel(proto));
+        protoLabel->setText("\u534f\u8bae\u68c0\u6d4b\uff1a" + protocolLabel(proto));
         protoLabel->setStyleSheet(proto == GitProtocol::Unknown && !text.isEmpty()
             ? "color: red;" : "color: green;");
     });
@@ -1992,7 +2479,7 @@ void EditorWindow::onNewRepo()
         if (remoteResult.exitCode != 0) {
             QMessageBox::warning(this, "远程配置警告",
                 QString("仓库已初始化，但远程配置失败:\n%1\n\n"
-                "\u53ef\u4ee5\u5728\u4ed3\u5e93\u4e2d\u624b\u52a8\u521b\u5efa\u540e\u518d\u8bd5\u3002")
+                        "可在仓库中手动添加远程地址后重试。")
                     .arg(QString::fromStdString(remoteResult.stderrOutput)));
         }
     }
@@ -2047,7 +2534,7 @@ void EditorWindow::onCloneRepo()
     examplesLabel->setStyleSheet("color: #888; font-size: 10px;");
 
     auto* pathEdit = new QLineEdit(&dlg);
-    pathEdit->setPlaceholderText("\u76ee\u6807\u7236\u76ee\u5f55..");
+    pathEdit->setPlaceholderText("\u76ee\u6807\u7236\u76ee\u5f55...");
     pathEdit->setReadOnly(true);
 
     auto* pathBtn = new QPushButton("选择...", &dlg);
@@ -2103,7 +2590,7 @@ void EditorWindow::onCloneRepo()
     QObject::connect(urlEdit, &QLineEdit::textChanged, updateProto);
 
     QObject::connect(pathBtn, &QPushButton::clicked, [&]() {
-        QString d = QFileDialog::getExistingDirectory(&dlg, "\u9009\u62e9\u65b0\u76ee\u5f55\u7236\u76ee\u5f55",
+        QString d = QFileDialog::getExistingDirectory(&dlg, "\u9009\u62e9\u65b0\u76ee\u5f55\u7684\u7236\u76ee\u5f55",
             settings_.value("lastDirectory", "").toString());
         if (!d.isEmpty()) {
             pathEdit->setText(d);
@@ -2127,7 +2614,7 @@ void EditorWindow::onCloneRepo()
 
     NeoWorkspace::GitOperations git;
     QMessageBox::information(this, "正在克隆...",
-        QString("\u6b63\u5728\u514b\u9686 %1\n\u5230 %2\n\n\u8bf7\u7a0d\u5019..").arg(url, targetDir));
+        QString("正在克隆 %1\n到 %2\n\n请稍候...").arg(url, targetDir));
 
     auto result = git.clone(url.toStdString(), targetDir.toStdString());
 
@@ -2136,11 +2623,11 @@ void EditorWindow::onCloneRepo()
         QStringList wsFiles = wsDir.entryList({"workspace.json"}, QDir::Files);
         if (!wsFiles.isEmpty()) {
             QMessageBox::information(this, "克隆完成",
-                QString("\u4ed3\u5e93\u5df2\u514b\u9686\u5230:\n%1\n\nworkspace.json \u672a\u627e\u5230").arg(targetDir));
+                QString("仓库已克隆到:\n%1").arg(targetDir));
             loadWorkspace(targetDir.toStdString(), RepoSource::Clone);
         } else {
             auto reply = QMessageBox::question(this, "克隆完成",
-                QString("\u4ed3\u5e93\u5df2\u514b\u9686\u5230:\n%1\n\n\u672a\u627e\u5230 workspace.json\u3002\n\u662f\u5426\u521b\u5efa\u4e00\u4e2a").arg(targetDir),
+                QString("仓库已克隆到:\n%1\n\n未找到 workspace.json。\n是否创建一个新的 workspace.json?").arg(targetDir),
                 QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::Yes) {
                 nlohmann::json ws;
@@ -2289,10 +2776,10 @@ void EditorWindow::onGitInfo()
 
     QMessageBox::information(this, "Git 信息",
         QString("仓库路径: %1\n\n"
-                "Git \u5df2\u6267\u884c\u5b8c\u6bd5\u3002 %2\n\n"
+                "Git 可执行文件: %2\n\n"
                 "当前分支: %3\n\n"
                 "远程仓库: %4\n\n"
-                "\u5f53\u524d\u72b6\u6001\u3002 %5")
+                "工作区状态: %5")
             .arg(repoDir,
                  QString::fromStdString(NeoWorkspace::GitOperations::GetDefaultGitPath()),
                  branch, remote, dirty));
@@ -2325,9 +2812,9 @@ void EditorWindow::onCreateBranch()
         return;
     }
 
-    QMessageBox::information(this, "\u5206\u652f\u5df2\u521b\u5efa",
+    QMessageBox::information(this, "分支已创建",
         QString("分支 %1 已创建（基于 %2）。\n\n"
-            "\u5c1a\u672a\u5207\u6362\u5230\u8be5\u5206\u652f\uff0c\u53ef\u4ee5\u5728\u5207\u6362\u540e\u4f7f\u7528\u3002\u5207\u6362\u5206\u652f\u540e\u518d\u8bd5\u3002")
+                "尚未切换到该分支，如需使用请先切换。")
             .arg(name, base));
     gitPanel_->refresh();
 }
@@ -2403,7 +2890,7 @@ void EditorWindow::onForkRepo()
     }
 
     QMessageBox info(this);
-    info.setWindowTitle("\u672c\u5730\u514b\u9686..");
+    info.setWindowTitle("\u672c\u5730\u514b\u9686...");
     info.setText(QString("\u6b63\u5728\u514b\u9686 %1 \u5230 %2/%3 ...").arg(srcDir, target, name));
     info.show();
     QApplication::processEvents();
@@ -2438,6 +2925,53 @@ void EditorWindow::onBranchMeta()
     BranchMetaDialog dlg(repoDir, this);
     dlg.exec();
     gitPanel_->refresh();
+}
+
+void EditorWindow::positionLoadCard()
+{
+    if (!loadProgressCard_ || !loadProgressCard_->isActive()) return;
+    loadProgressCard_->move(
+        (width() - loadProgressCard_->width()) / 2,
+        (height() - loadProgressCard_->height()) / 2);
+    loadProgressCard_->raise();
+}
+
+void EditorWindow::loadCustomLayout()
+{
+    if (!contentIde_) return;
+
+    CLogger::Info("Loading custom layout...");
+    const QByteArray outState = settings_.value("layoutOutputTree").toByteArray();
+    const QByteArray repoState = settings_.value("layoutRepoTree").toByteArray();
+    if (!outState.isEmpty() && contentIde_->outputPanel()
+        && contentIde_->outputPanel()->tree()) {
+        contentIde_->outputPanel()->tree()->header()->restoreState(outState);
+    }
+    if (!repoState.isEmpty() && contentIde_->repoPanel()
+        && contentIde_->repoPanel()->tree()) {
+        contentIde_->repoPanel()->tree()->header()->restoreState(repoState);
+    }
+}
+
+void EditorWindow::saveCustomLayout()
+{
+    if (!contentIde_) return;
+
+    if (contentIde_->outputPanel() && contentIde_->outputPanel()->tree()) {
+        settings_.setValue("layoutOutputTree",
+            contentIde_->outputPanel()->tree()->header()->saveState());
+    }
+    if (contentIde_->repoPanel() && contentIde_->repoPanel()->tree()) {
+        settings_.setValue("layoutRepoTree",
+            contentIde_->repoPanel()->tree()->header()->saveState());
+    }
+    settings_.sync();
+}
+
+void EditorWindow::resizeEvent(QResizeEvent* event)
+{
+    QMainWindow::resizeEvent(event);
+    positionLoadCard();
 }
 
 // moc handled by AUTOMOC

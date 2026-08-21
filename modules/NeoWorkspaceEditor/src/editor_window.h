@@ -13,12 +13,15 @@
 #include <QFileInfo>
 #include <QStringList>
 #include <QSplitter>
+#include <QResizeEvent>
 
 #include <string>
 #include <set>
 #include <map>
 
 #include <nlohmann/json.hpp>
+
+#include "progress_card.h"
 
 namespace GUIWorker {
 class RepoEditor;
@@ -47,6 +50,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private slots:
     void onOpen();
@@ -67,7 +71,9 @@ private slots:
 
 private:
     void buildUI();
+    void clampGitPanelWidth();
     void buildMenus();
+    void rebuildExtensionsMenu();
     void buildToolBar();
     void connectSignals();
     void updateTitle();
@@ -82,8 +88,14 @@ private:
 
     void onCheckIntegrity();
     void runIntegrityCheck(bool manual);
+    // 完整性检查: git status 异步完成后在 GUI 线程解析并展示结果
+    void finishIntegrityCheck(const QString& statusOut, const QString& dir,
+        bool manual);
     void gitAddPaths(const QStringList& paths);
     void ensureGitIgnore(const QString& dir);
+
+    void loadCustomLayout();
+    void saveCustomLayout();
 
     QTabWidget* tabWidget_;
 
@@ -107,6 +119,7 @@ private:
     QAction* forkRepoAction_;
     QAction* branchMetaAction_;
     QComboBox* branchCombo_;
+    QMenu* extMenu_ = nullptr;
 
     QLabel* filePathLabel_;
     QLabel* modifiedLabel_;
@@ -115,10 +128,18 @@ private:
     HiBerGUI::GitPanel* gitPanel_;
     QSplitter* mainSplitter_;
 
+    HiBerGUI::ProgressCard* loadProgressCard_ = nullptr;
+    void positionLoadCard();
+    // 加载进度卡片阶段更新 (loadWorkspace 与异步完整性检查共用)
+    void updateLoadProgress(int pct, const QString& text);
+
     std::string currentFilePath_;
     nlohmann::json workspaceConfig_;
     std::map<std::string, nlohmann::json> branchConfigs_;
     bool modified_;
+
+    // 完整性检查异步进行中标志 (防重入)
+    bool integrityBusy_ = false;
 
     QSettings settings_;
     QStringList recentFiles_;

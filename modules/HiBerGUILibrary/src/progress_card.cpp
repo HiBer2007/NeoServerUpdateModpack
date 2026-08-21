@@ -15,8 +15,8 @@ ProgressCard::ProgressCard(QWidget* parent)
     setAttribute(Qt::WA_StyledBackground, true);
     setObjectName(QStringLiteral("progressCard"));
     setFixedWidth(360);
-    setMinimumHeight(96);
-    setMaximumHeight(150);
+    setMinimumHeight(128);
+    setMaximumHeight(190);
 
     auto* card = new QFrame(this);
     card->setObjectName(QStringLiteral("progressCardFrame"));
@@ -25,7 +25,6 @@ ProgressCard::ProgressCard(QWidget* parent)
     titleLabel_->setObjectName(QStringLiteral("progressCardTitle"));
 
     progress_ = new AnimatedProgress(card);
-    progress_->setMinimumHeight(18);
 
     statusLabel_ = new QLabel(card);
     statusLabel_->setObjectName(QStringLiteral("progressCardStatus"));

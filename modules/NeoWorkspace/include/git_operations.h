@@ -50,6 +50,10 @@ public:
     bool isGitRepository(const std::string& dir);
     // 仓库是否配置了远程 (git remote 非空); 本地仓库无 remote 时同步操作应跳过
     bool hasRemote(const std::string& dir);
+    // 陌生仓库 (dubious ownership): git 判定目录所有权不可信时所有 git 命令失败
+    bool isDubiousOwnership(const std::string& dir);
+    bool isTrustedRepository(const std::string& dir);
+    GitResult trustRepository(const std::string& dir);
     std::string lastError() const;
 
 private:

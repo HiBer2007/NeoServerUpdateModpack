@@ -46,8 +46,40 @@ public:
         return rule;
     }
     std::string mergePreview(QWidget*) const override { return ""; }
+
+    // 追踪键行列表: 维护段上下文 ([section]), 键 = 段前缀 + 键名,
+    // 行内键名或完整段路径任一匹配即计入 (1-based)
+    std::vector<int> trackedLines(const std::string& content,
+        const std::vector<std::string>& trackedKeys) const override
+    {
+        std::vector<int> lines;
+        std::string section;
+        int lineNo = 0;
+        for (auto& raw : QString::fromStdString(content).split('\n')) {
+            ++lineNo;
+            QString line = raw;
+            QRegularExpression secRe("^\\s*\\[([^\\]]+)\\]");
+            auto sm = secRe.match(line);
+            if (sm.hasMatch()) {
+                section = sm.captured(1).toStdString() + ".";
+                continue;
+            }
+            QRegularExpression keyRe("^\\s*([a-zA-Z_][a-zA-Z0-9_-]*)\\s*=");
+            auto km = keyRe.match(line);
+            if (!km.hasMatch()) continue;
+            const std::string localKey = km.captured(1).toStdString();
+            const std::string fullKey = section + localKey;
+            for (const auto& k : trackedKeys) {
+                if (k == localKey || k == fullKey) {
+                    lines.push_back(lineNo);
+                    break;
+                }
+            }
+        }
+        return lines;
+    }
 };
 
-extern "C" NeoCore::IConfigEditorExtension* CreateConfigEditor() {
+extern "C" __declspec(dllexport) NeoCore::IConfigEditorExtension* CreateConfigEditor() {
     return new TOMLConfigEditorExtension();
 }

@@ -1,0 +1,12 @@
+{
+  "name": "Properties Config Parser",
+  "version": "1.0.0",
+  "dll": "NeoParser_Properties.dll",
+  "capability": {
+    "name": "Properties",
+    "extensions": [".properties"],
+    "supported_modes": ["full_sync", "config_merge", "no_sync"],
+    "line_tracking": false,
+    "priority": 80
+  }
+}

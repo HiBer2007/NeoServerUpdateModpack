@@ -19,6 +19,9 @@ public:
     void setIndeterminate(bool on);
     void setText(const QString& text);
 
+    // 紧凑模式: 隐藏文字, 进度条收窄为细条 (常驻显示用)
+    void setCompact(bool on);
+
     int value() const;
     QString text() const;
 
@@ -32,6 +35,8 @@ private slots:
     void onAnimationTick();
 
 private:
+    bool event(QEvent* e) override;
+
     QProgressBar* bar_;
     QLabel* textLabel_;
     QTimer* animTimer_;
@@ -40,7 +45,8 @@ private:
     int animatedValue_;
     int targetValue_;
     bool indeterminate_;
-    int pulseDirection_;
+    bool pulseDirection_;
+    bool compact_;
 
     void applyStyle();
     void smoothToValue(int value);

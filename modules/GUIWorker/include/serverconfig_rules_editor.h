@@ -22,8 +22,9 @@ namespace GUIWorker {
 // serverconfig 规则编辑（P4）：
 // 仓库 branches/<branch>/[save]/serverconfig/（[save] 字面目录名）
 //   .rule/globle.json -> { default_mode, version, description }
-//   .rule/list.json   -> { files: { <rel>: overwrite|partial|ignore } }
+//   .rule/list.json   -> { files: { <rel>: {mode, tracked_keys} } } (兼容旧字符串格式)
 //   .rule/<其他文件>    -> 规则文件组（只读展示）
+// 模式与 config 同步逻辑统一: full/force/partial/ignore, partial 支持 tracked_keys。
 class ServerConfigRulesEditor : public QWidget {
     Q_OBJECT
 
@@ -62,6 +63,7 @@ private:
     QString globleVersion_;
     QString globleDescription_;
     std::map<QString, QString> listedModes_;
+    std::map<QString, QString> listedKeys_;   // rel -> tracked_keys 逗号分隔
     QStringList sourceFiles_;
     QStringList reservedFiles_;
 
@@ -71,6 +73,7 @@ private:
     QPushButton* addSourceBtn_;
     QPushButton* removeSourceBtn_;
     QComboBox* defaultModeCombo_;
+    QComboBox* folderModeCombo_;
     QTableWidget* modeTable_;
     QTextEdit* reservedView_;
     QPushButton* saveButton_;

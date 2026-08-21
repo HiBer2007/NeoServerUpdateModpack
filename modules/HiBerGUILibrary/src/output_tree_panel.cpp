@@ -7,6 +7,7 @@
 #include <QBrush>
 #include <QDropEvent>
 #include <QDragEnterEvent>
+#include <QDragMoveEvent>
 #include <QMimeData>
 #include <QUrl>
 #include <QContextMenuEvent>
@@ -15,6 +16,25 @@
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QKeySequence>
+
+#include "deep_tree_behavior.h"
+
+namespace {
+
+bool isConfigPath(const QString& path)
+{
+    const QString lower = path.toLower();
+    return lower.endsWith(QStringLiteral(".json"))
+        || lower.endsWith(QStringLiteral(".yaml"))
+        || lower.endsWith(QStringLiteral(".yml"))
+        || lower.endsWith(QStringLiteral(".toml"))
+        || lower.endsWith(QStringLiteral(".snbt"))
+        || lower.endsWith(QStringLiteral(".txt"))
+        || lower.endsWith(QStringLiteral(".properties"))
+        || lower.endsWith(QStringLiteral(".ini"));
+}
+
+} // namespace
 
 namespace HiBerGUI {
 
@@ -62,12 +82,36 @@ OutputTreePanel::OutputTreePanel(QWidget* parent)
         });
     connect(refreshButton_, &QPushButton::clicked, this,
         &OutputTreePanel::refreshRequested);
+    connect(tree_, &QTreeWidget::itemClicked, this,
+        [this](QTreeWidgetItem* item, int) {
+            if (!item) return;
+            emit objectActivated(infoFromItem(item));
+        });
+    // 折叠三角点击 / 双击目录: 动画深折叠(子层一并折叠) / 级联展开
+    new DeepTreeBehavior(tree_, tree_);
 
     applyStyle();
 }
 
-void OutputTreePanel::loadEntries(const nlohmann::json& entries)
+void OutputTreePanel::loadEntries(const nlohmann::json& entries,
+    const QSet<QString>& pointerRels)
 {
+    // 保存当前展开路径 (UserRole = 完整相对路径), 重建后恢复 (避免刷新白展开)
+    QSet<QString> expanded;
+    std::function<void(QTreeWidgetItem*)> collect = [&](QTreeWidgetItem* item) {
+        if (!item) return;
+        const QString rel = item->data(0, Qt::UserRole).toString();
+        if (item->isExpanded() && !rel.isEmpty()) {
+            expanded.insert(rel);
+        }
+        for (int i = 0; i < item->childCount(); ++i) {
+            collect(item->child(i));
+        }
+    };
+    for (int i = 0; i < tree_->topLevelItemCount(); ++i) {
+        collect(tree_->topLevelItem(i));
+    }
+
     tree_->clear();
     if (!entries.is_array()) {
         setStatusText(QString::fromUtf8("\u65e0\u6cd5\u83b7\u53d6\u9884\u89c8\u7ed3\u6784\u3002"));
@@ -96,6 +140,33 @@ void OutputTreePanel::loadEntries(const nlohmann::json& entries)
     int fileCount = 0, uCount = 0, mCount = 0, dCount = 0;
 
     auto addPath = [&](const QString& entry, bool isDir, const QString& umd) {
+        auto dirItem = [](QTreeWidgetItem* it) {
+            return it && it->data(0, Qt::UserRole + 2).toBool();
+        };
+        auto insert = [&](QTreeWidgetItem* parent, QTreeWidgetItem* item,
+                          bool isDirNode) {
+            // 目录恒在文件之上: 目录插入到最后一个目录之后, 文件追加到末尾
+            if (!parent) {
+                if (isDirNode) {
+                    const int count = tree_->topLevelItemCount();
+                    int pos = 0;
+                    while (pos < count && dirItem(tree_->topLevelItem(pos))) ++pos;
+                    tree_->insertTopLevelItem(pos, item);
+                } else {
+                    tree_->addTopLevelItem(item);
+                }
+                return;
+            }
+            if (isDirNode) {
+                const int count = parent->childCount();
+                int pos = 0;
+                while (pos < count && dirItem(parent->child(pos))) ++pos;
+                parent->insertChild(pos, item);
+            } else {
+                parent->addChild(item);
+            }
+        };
+
         const QStringList parts = entry.split(QLatin1Char('/'), Qt::SkipEmptyParts);
         QTreeWidgetItem* parent = nullptr;
         QString running;
@@ -116,15 +187,30 @@ void OutputTreePanel::loadEntries(const nlohmann::json& entries)
                 }
             }
             if (!match) {
-                match = parent ? new QTreeWidgetItem(parent)
-                               : new QTreeWidgetItem(tree_);
-                match->setText(0, name);
-                match->setData(0, Qt::UserRole, running);
-                match->setData(0, Qt::UserRole + 2, isLast ? isDir : true);
+                auto* item = new QTreeWidgetItem;
+                item->setText(0, name);
+                item->setData(0, Qt::UserRole, running);
+                item->setData(0, Qt::UserRole + 2, isLast ? isDir : true);
+                insert(parent, item, isLast ? isDir : true);
+                match = item;
             }
+            // 悬浮显示完整相对路径
+            match->setToolTip(0, running);
             match->setText(1, (isLast && !isDir)
                 ? QString::fromUtf8("\u6587\u4ef6")
                 : QString::fromUtf8("\u76ee\u5f55"));
+            // [save] 为通配目录 (匹配任意存档目录名), 特殊标记并指出通配路径
+            if (name == QStringLiteral("[save]")) {
+                match->setToolTip(0, QString::fromUtf8(
+                    "\u901a\u914d\u76ee\u5f55 [save]\uff1a\u5339\u914d\u4efb\u610f\u5b58\u6863\u76ee\u5f55\u540d\uff0c"
+                    "\u5c06\u540c\u6b65\u5230\u6bcf\u4e2a\u5b58\u6863\u7684 serverconfig/\u76ee\u5f55\u3002"));
+                match->setData(0, Qt::UserRole + 3, true);
+                const QColor c = darkMode
+                    ? QColor(QStringLiteral("#80deea"))
+                    : QColor(QStringLiteral("#00838f"));
+                match->setForeground(0, QBrush(c));
+                match->setForeground(1, QBrush(c));
+            }
             if (isLast && !isDir && !umd.isEmpty()) {
                 match->setText(0, umd + QLatin1Char(' ') + name);
                 match->setData(0, Qt::UserRole + 1, umd);
@@ -133,6 +219,18 @@ void OutputTreePanel::loadEntries(const nlohmann::json& entries)
                     match->setForeground(0, QBrush(c));
                     match->setForeground(1, QBrush(c));
                 }
+            }
+            // 指针文件: 放置于最终输出位置, 青色标记 (与仓库树一致)
+            if (isLast && pointerRels.contains(running)) {
+                match->setText(1, QString::fromUtf8("\u6307\u9488"));
+                const QColor c = darkMode
+                    ? QColor(QStringLiteral("#4dd0e1"))
+                    : QColor(QStringLiteral("#0097a7"));
+                match->setForeground(0, QBrush(c));
+                match->setForeground(1, QBrush(c));
+                match->setData(0, Qt::UserRole + 4, true);
+                match->setToolTip(0, QString::fromUtf8("%1\n\u6307\u9488\u6587\u4ef6")
+                    .arg(running));
             }
             parent = match;
         }
@@ -153,7 +251,26 @@ void OutputTreePanel::loadEntries(const nlohmann::json& entries)
         }
     }
 
-    tree_->expandToDepth(1);
+    // 恢复重建前的展开路径 (完整深度, 不限层数)
+    if (!expanded.isEmpty()) {
+        std::function<void(QTreeWidgetItem*)> restore =
+            [&](QTreeWidgetItem* item) {
+                if (!item) return;
+                const QString rel = item->data(0, Qt::UserRole).toString();
+                if (expanded.contains(rel)) {
+                    item->setExpanded(true);
+                }
+                for (int i = 0; i < item->childCount(); ++i) {
+                    restore(item->child(i));
+                }
+            };
+        for (int i = 0; i < tree_->topLevelItemCount(); ++i) {
+            restore(tree_->topLevelItem(i));
+        }
+    } else {
+        // 默认不展开: 全部折叠, 仅显示顶层项
+        tree_->expandToDepth(-1);
+    }
 
     QString stat = QString::fromUtf8("\u5305\u5185\u7ed3\u6784\u9884\u89c8\uff0c\u5171 %1 \u4e2a\u6587\u4ef6\u3002")
         .arg(fileCount);
@@ -213,9 +330,22 @@ RepoObjectInfo OutputTreePanel::infoFromItem(QTreeWidgetItem* item) const
     info.path = rel;
     info.displayName = item->text(0);
     const bool isDir = item->data(0, Qt::UserRole + 2).toBool();
-    info.type = isDir ? RepoObjectType::Folder : RepoObjectType::PlainFile;
+    if (item->data(0, Qt::UserRole + 4).toBool()) {
+        info.type = RepoObjectType::Pointer;
+        info.marker = item->data(0, Qt::UserRole + 1).toString();
+        return info;
+    }
+    info.type = isDir ? RepoObjectType::Folder
+        : ((isConfigPath(rel) || extraConfigFiles_.contains(rel))
+            ? RepoObjectType::ConfigFile
+            : RepoObjectType::PlainFile);
     info.marker = item->data(0, Qt::UserRole + 1).toString();
     return info;
+}
+
+void OutputTreePanel::setExtraConfigFiles(const QSet<QString>& rels)
+{
+    extraConfigFiles_ = rels;
 }
 
 void OutputTreePanel::contextMenuEvent(QContextMenuEvent* event)
@@ -271,6 +401,11 @@ void OutputTreePanel::contextMenuEvent(QContextMenuEvent* event)
         connect(newFolderAction, &QAction::triggered, this, [this]() {
             emit newFolderRequested(QString());
         });
+        QAction* scAction = menu.addAction(
+            QString::fromUtf8("\u521b\u5efa serverconfig \u540c\u6b65\u6587\u4ef6\u5939"));
+        connect(scAction, &QAction::triggered, this, [this]() {
+            emit createServerConfigRequested();
+        });
         if (!clipPaths_.isEmpty()) {
             menu.addSeparator();
             QAction* pasteAction = menu.addAction(
@@ -302,6 +437,20 @@ void OutputTreePanel::contextMenuEvent(QContextMenuEvent* event)
                 emit newFolderRequested(path);
             });
         menu.addSeparator();
+    }
+    if (clicked.type == RepoObjectType::PlainFile) {
+        QAction* markAction = menu.addAction(
+            QString::fromUtf8("\u6807\u8bb0\u4e3a\u914d\u7f6e\u6587\u4ef6"));
+        connect(markAction, &QAction::triggered, this, [this, clicked]() {
+            emit markAsConfigFileRequested(clicked);
+        });
+    } else if (clicked.type == RepoObjectType::ConfigFile
+        && extraConfigFiles_.contains(clicked.path)) {
+        QAction* unmarkAction = menu.addAction(
+            QString::fromUtf8("\u53d6\u6d88\u914d\u7f6e\u6587\u4ef6\u6807\u8bb0"));
+        connect(unmarkAction, &QAction::triggered, this, [this, clicked]() {
+            emit unmarkConfigFileRequested(clicked);
+        });
     }
     QAction* copyAction = menu.addAction(QString::fromUtf8("\u590d\u5236"));
     connect(copyAction, &QAction::triggered, this,
@@ -422,7 +571,26 @@ bool OutputTreePanel::eventFilter(QObject* obj, QEvent* event)
         }
         return true;
     }
+    if (obj == tree_ && event->type() == QEvent::DragMove) {
+        auto* dm = static_cast<QDragMoveEvent*>(event);
+        if (dm->mimeData()->hasUrls()) {
+            // 事件坐标相对 tree_ (含表头), itemAt 需要 viewport 坐标, 统一换算
+            const QPoint vp = tree_->viewport()->mapFrom(tree_,
+                dm->position().toPoint());
+            setDropHighlight(tree_->itemAt(vp));
+            emit dropTargetChanged(relPathAt(vp), true);
+            dm->acceptProposedAction();
+        }
+        return true;
+    }
+    if (obj == tree_ && event->type() == QEvent::DragLeave) {
+        clearDropHighlight();
+        emit dropTargetChanged(QString(), false);
+        return QWidget::eventFilter(obj, event);
+    }
     if (obj == tree_ && event->type() == QEvent::Drop) {
+        clearDropHighlight();
+        emit dropTargetChanged(QString(), false);
         auto* drop = static_cast<QDropEvent*>(event);
         const QList<QUrl> urls = drop->mimeData()->urls();
         QStringList paths;
@@ -432,13 +600,42 @@ bool OutputTreePanel::eventFilter(QObject* obj, QEvent* event)
             }
         }
         if (!paths.isEmpty()) {
-            const QString relDir = relPathAt(drop->position().toPoint());
+            const QPoint vp = tree_->viewport()->mapFrom(tree_,
+                drop->position().toPoint());
+            const QString relDir = relPathAt(vp);
             drop->acceptProposedAction();
             emit filesDropped(paths, relDir);
         }
         return true;
     }
     return QWidget::eventFilter(obj, event);
+}
+
+void OutputTreePanel::setDropHighlight(QTreeWidgetItem* item)
+{
+    if (item == dropHighlightItem_) return;
+    clearDropHighlight();
+    if (!item) return;
+    dropHighlightItem_ = item;
+    const QVariant orig = item->data(0, Qt::BackgroundRole);
+    dropHighlightHadBrush_ = orig.canConvert<QBrush>();
+    if (dropHighlightHadBrush_) {
+        dropHighlightOldBrush_ = orig.value<QBrush>();
+    }
+    // 拖放目标高亮: 琥珀色, 与选中高亮(蓝)区分
+    item->setBackground(0, QBrush(QColor(0xE8, 0x9C, 0x2B)));
+}
+
+void OutputTreePanel::clearDropHighlight()
+{
+    if (!dropHighlightItem_) return;
+    if (dropHighlightHadBrush_) {
+        dropHighlightItem_->setBackground(0, dropHighlightOldBrush_);
+    } else {
+        dropHighlightItem_->setData(0, Qt::BackgroundRole, QVariant());
+    }
+    dropHighlightItem_ = nullptr;
+    dropHighlightHadBrush_ = false;
 }
 
 QString OutputTreePanel::relPathAt(const QPoint& pos) const

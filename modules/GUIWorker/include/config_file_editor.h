@@ -15,6 +15,7 @@
 namespace NeoCore {
 class PluginLoader;
 class IConfigParser;
+class IConfigEditorExtension;
 }
 
 namespace GUIWorker {
@@ -34,6 +35,9 @@ public:
         const std::vector<int>& effectiveLines,
         bool branchOverrides);
 
+    // 注入对应格式的编辑插件 (merge 预览追踪键行列表由插件执行)
+    void setEditorExtension(NeoCore::IConfigEditorExtension* ext);
+
 public slots:
     void setScopeTop();
 
@@ -48,6 +52,7 @@ private:
     QLabel* stateLabel_;
     QLabel* parserLabel_;
     QRadioButton* fullRb_;
+    QRadioButton* forceRb_;
     QRadioButton* partialRb_;
     QRadioButton* ignoreRb_;
     QListWidget* keysList_;
@@ -64,6 +69,7 @@ private:
 
     std::unique_ptr<NeoCore::PluginLoader> loader_;
     NeoCore::IConfigParser* parser_ = nullptr;
+    NeoCore::IConfigEditorExtension* editorExt_ = nullptr;
 
     void reloadKeys();
     void updateEnabled();

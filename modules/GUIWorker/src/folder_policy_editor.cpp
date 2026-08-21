@@ -42,6 +42,11 @@ FolderPolicyEditor::FolderPolicyEditor(QWidget* parent)
 
     stateLabel_ = new QLabel(this);
     stateLabel_->setStyleSheet(QStringLiteral("color: #ffd54f; font-size: 11px;"));
+    // 固定高度防文本切换时布局跳动 (不闪烁)
+    stateLabel_->setMinimumHeight(stateLabel_->fontMetrics().height() + 4);
+    stateLabel_->setToolTip(QString::fromUtf8(
+        "\u9876\u5c42 = workspace.json \u6839\u7ea7 sync_policies\uff0c\u5168\u5206\u652f\u751f\u6548\uff1b"
+        "\u5f53\u524d\u5206\u652f\u8986\u76d6\u4ec5\u4f5c\u7528\u4e8e\u5f53\u524d\u5206\u652f\u3002"));
 
     lay->addWidget(title);
     lay->addWidget(pathLabel_);
@@ -80,23 +85,41 @@ FolderPolicyEditor::FolderPolicyEditor(QWidget* parent)
     scopeLay->addWidget(branchRb_);
     lay->addWidget(scopeBox);
 
+    // 保存范围切换时状态文字动态刷新 (仅 setText, 不重建控件)
+    connect(topRb_, &QRadioButton::toggled, this,
+        [this](bool) { updateStateLabel(); });
+    connect(branchRb_, &QRadioButton::toggled, this,
+        [this](bool) { updateStateLabel(); });
+
     auto* btnRow = new QHBoxLayout;
+    applySubButton_ = new QPushButton(
+        QString::fromUtf8("\u5e94\u7528\u5230\u5b50\u6587\u4ef6\u5939"), this);
     saveButton_ = new QPushButton(QString::fromUtf8("\u4fdd\u5b58"), this);
     saveButton_->setFixedWidth(88);
     btnRow->addStretch(1);
+    btnRow->addWidget(applySubButton_);
     btnRow->addWidget(saveButton_);
     lay->addLayout(btnRow);
     lay->addStretch(1);
 
-    connect(saveButton_, &QPushButton::clicked, this, [this]() {
-        QString policy;
-        if (skipRb_->isChecked()) policy = QStringLiteral("skip");
-        else if (mirrorRb_->isChecked()) policy = QStringLiteral("mirror");
-        else if (overwriteRb_->isChecked()) policy = QStringLiteral("incremental_overwrite");
-        else if (addRb_->isChecked()) policy = QStringLiteral("incremental_add");
-        emit saveRequested(folderPath_, policy, branchRb_->isChecked());
+    auto currentPolicy = [this]() {
+        if (skipRb_->isChecked()) return QStringLiteral("skip");
+        if (mirrorRb_->isChecked()) return QStringLiteral("mirror");
+        if (overwriteRb_->isChecked()) return QStringLiteral("incremental_overwrite");
+        if (addRb_->isChecked()) return QStringLiteral("incremental_add");
+        return QString();
+    };
+
+    connect(saveButton_, &QPushButton::clicked, this, [this, currentPolicy]() {
+        emit saveRequested(folderPath_, currentPolicy(), branchRb_->isChecked());
         emit contentModified();
     });
+
+    connect(applySubButton_, &QPushButton::clicked, this,
+        [this, currentPolicy]() {
+            emit applyToSubfoldersRequested(folderPath_, currentPolicy(),
+                branchRb_->isChecked());
+        });
 
     applyStyle();
 }
@@ -107,11 +130,11 @@ void FolderPolicyEditor::load(const QString& folderPath,
 {
     folderPath_ = folderPath;
     branchName_ = branchName;
+    branchOverrides_ = branchOverrides;
 
-    pathLabel_->setText(folderPath);
-    stateLabel_->setText(branchOverrides
-        ? QString::fromUtf8("\u2714 \u5f53\u524d\u5206\u652f\u5df2\u8986\u76d6\u9876\u5c42\u8bbe\u7f6e")
-        : QString::fromUtf8("\u2718 \u7ee7\u627f\u9876\u5c42\u8bbe\u7f6e\uff08\u672a\u5728\u672c\u5206\u652f\u8986\u76d6\uff09"));
+    pathLabel_->setText(folderPath_.isEmpty()
+        ? QString::fromUtf8("\u6839\u76ee\u5f55\uff08\u5206\u652f\u6839\uff09")
+        : folderPath_);
 
     if (effectivePolicy == QLatin1String("skip")) skipRb_->setChecked(true);
     else if (effectivePolicy == QLatin1String("mirror")) mirrorRb_->setChecked(true);
@@ -119,7 +142,35 @@ void FolderPolicyEditor::load(const QString& folderPath,
     else if (effectivePolicy == QLatin1String("incremental_add")) addRb_->setChecked(true);
     else inheritRb_->setChecked(true);
 
+    updateStateLabel();
     Q_UNUSED(branchName);
+}
+
+void FolderPolicyEditor::updateStateLabel()
+{
+    const bool branchScope = branchRb_->isChecked();
+    QString text;
+    QString color;
+    if (branchOverrides_ && branchScope) {
+        text = QString::fromUtf8(
+            "\u2714 \u5f53\u524d\u5206\u652f\u5df2\u8986\u76d6\u9876\u5c42\u540c\u6b65\u7b56\u7565");
+        color = QStringLiteral("#7ecf8a");
+    } else if (!branchOverrides_ && !branchScope) {
+        text = QString::fromUtf8(
+            "\u2718 \u5f53\u524d\u5206\u652f\u7ee7\u627f\u9876\u5c42\u540c\u6b65\u7b56\u7565");
+        color = QStringLiteral("#ffd54f");
+    } else if (branchScope) {
+        text = QString::fromUtf8(
+            "\u5c06\u5199\u5165\u5f53\u524d\u5206\u652f\u7684\u540c\u6b65\u7b56\u7565\uff0c\u8986\u76d6\u9876\u5c42");
+        color = QStringLiteral("#6ab7ff");
+    } else {
+        text = QString::fromUtf8(
+            "\u5c06\u5199\u5165\u9876\u5c42\u7684\u540c\u6b65\u7b56\u7565\uff0c\u5168\u5206\u652f\u751f\u6548");
+        color = QStringLiteral("#6ab7ff");
+    }
+    stateLabel_->setText(text);
+    stateLabel_->setStyleSheet(
+        QStringLiteral("color: %1; font-size: 11px;").arg(color));
 }
 
 void FolderPolicyEditor::setScopeTop()

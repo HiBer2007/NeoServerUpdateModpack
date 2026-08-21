@@ -17,17 +17,18 @@ void collectLayers(const std::vector<BranchLayer>& layers,
 {
     for (const auto& layer : layers) {
         std::error_code ec;
-        if (!fs::is_directory(layer.baseDir, ec)) continue;
+        const fs::path basePath = fs::u8path(layer.baseDir);
+        if (!fs::is_directory(basePath, ec)) continue;
 
         for (auto it = fs::recursive_directory_iterator(
-                 layer.baseDir, fs::directory_options::skip_permission_denied, ec);
+                 basePath, fs::directory_options::skip_permission_denied, ec);
              it != fs::recursive_directory_iterator(); it.increment(ec)) {
             if (ec) {
                 ec.clear();
                 continue;
             }
             const fs::directory_entry& entry = *it;
-            std::string rel = fs::relative(entry.path(), layer.baseDir, ec).generic_string();
+            std::string rel = fs::relative(entry.path(), basePath, ec).generic_u8string();
             if (ec) {
                 ec.clear();
                 continue;
@@ -40,7 +41,8 @@ void collectLayers(const std::vector<BranchLayer>& layers,
                 continue;
             }
             if (entry.is_directory(ec)) {
-                if (rel == ".NSUM" || rel == ".hmcl") {
+                if (rel == ".NSUM" || rel == ".hmcl"
+                    || rel == ".rule" || rel.rfind(".rule/", 0) == 0) {
                     it.disable_recursion_pending();
                     continue;
                 }
@@ -54,11 +56,11 @@ void collectLayers(const std::vector<BranchLayer>& layers,
                 buildSet.erase(rel);
                 continue;
             }
-            std::string src = entry.path().string();
+            std::string src = entry.path().u8string();
             if (mi != layer.manifest.markers.end()
                 && mi->second == NeoWorkspace::FileMarker::Override) {
                 std::string ov = layer.overridesDir + "/" + rel;
-                if (fs::exists(ov)) src = ov;
+                if (fs::exists(fs::u8path(ov))) src = ov;
             }
             buildSet[rel] = { false, src };
         }
@@ -79,14 +81,14 @@ void scanDir(const fs::path& root, std::map<std::string, bool>& out)
             continue;
         }
         if (it->is_directory(ec)) {
-            const std::string name = it->path().filename().string();
-            if (name == ".NSUM" || name == ".hmcl") {
+            const std::string name = it->path().filename().u8string();
+            if (name == ".NSUM" || name == ".hmcl" || name == ".rule") {
                 it.disable_recursion_pending();
                 continue;
             }
         }
         ec.clear();
-        std::string rel = fs::relative(it->path(), root, ec).generic_string();
+        std::string rel = fs::relative(it->path(), root, ec).generic_u8string();
         if (ec) {
             ec.clear();
             continue;
@@ -99,7 +101,7 @@ void scanDir(const fs::path& root, std::map<std::string, bool>& out)
 
 std::string sha256File(const fs::path& path)
 {
-    QFile f(QString::fromStdString(path.string()));
+    QFile f(QString::fromUtf8(path.u8string().c_str()));
     if (!f.open(QIODevice::ReadOnly)) return {};
 
     QCryptographicHash hash(QCryptographicHash::Sha256);
@@ -136,12 +138,12 @@ nlohmann::json generateUmdStructure(const std::string& buildDir,
     }
 
     std::map<std::string, bool> buildSet;
-    scanDir(buildDir, buildSet);
+    scanDir(fs::u8path(buildDir), buildSet);
 
     std::map<std::string, bool> targetSet;
     const bool compare = !targetDir.empty();
     if (compare) {
-        scanDir(targetDir, targetSet);
+        scanDir(fs::u8path(targetDir), targetSet);
     }
 
     std::set<std::string> deleted;
@@ -170,7 +172,8 @@ nlohmann::json generateUmdStructure(const std::string& buildDir,
                 umd = "U";
             } else if (it->second) {
                 umd = "M";
-            } else if (!filesEqual(fs::path(buildDir) / rel, fs::path(targetDir) / rel)) {
+            } else if (!filesEqual(fs::u8path(buildDir) / rel,
+                fs::u8path(targetDir) / rel)) {
                 umd = "M";
             }
         }
@@ -269,8 +272,8 @@ nlohmann::json generateUmdStructureFromLayers(const std::vector<BranchLayer>& la
             } else if (it->second) {
                 umd = "M";
             } else if (!kv.second.second.empty()
-                && !filesEqual(fs::path(kv.second.second),
-                    fs::path(targetDir) / rel)) {
+                && !filesEqual(fs::u8path(kv.second.second),
+                    fs::u8path(targetDir) / rel)) {
                 umd = "M";
             }
         }

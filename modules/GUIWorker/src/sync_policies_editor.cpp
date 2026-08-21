@@ -25,7 +25,8 @@ QList<QPair<QString, QString>> folderPolicyDisplayItems()
 QList<QPair<QString, QString>> fileModeDisplayItems()
 {
     return {
-        { QString::fromUtf8("\u5168\u91cf\u8986\u76d6 (full)\uff1a\u76f4\u63a5\u5199\u5165\u76ee\u6807"), QStringLiteral("full") },
+        { QString::fromUtf8("\u8ddf\u968f\u6587\u4ef6\u5939 (full)\uff1a\u5c0a\u5b88\u6587\u4ef6\u5939\u540c\u6b65\u7b56\u7565"), QStringLiteral("full") },
+        { QString::fromUtf8("\u5f3a\u5236\u8986\u76d6 (force)\uff1a\u76f4\u63a5\u5168\u91cf\u5199\u5165\u76ee\u6807"), QStringLiteral("force") },
         { QString::fromUtf8("\u90e8\u5206\u540c\u6b65 (partial)\uff1a\u53ea\u66f4\u65b0\u8ffd\u8e2a\u7684\u952e/\u884c\uff0c\u4fdd\u7559\u76ee\u6807\u672c\u5730\u5185\u5bb9"), QStringLiteral("partial") },
         { QString::fromUtf8("\u5ffd\u7565 (ignore)\uff1a\u4e0d\u5199\u76ee\u6807"), QStringLiteral("ignore") },
     };
@@ -33,8 +34,11 @@ QList<QPair<QString, QString>> fileModeDisplayItems()
 
 QList<QPair<QString, QString>> serverConfigModeDisplayItems()
 {
+    // 与 config 文件同步逻辑统一: full/force/partial/ignore
+    // full = 应用本层设置 (遵守 [save]/serverconfig 文件夹同步模式 folder_mode)
     return {
-        { QString::fromUtf8("\u8986\u76d6 (overwrite)\uff1a\u6574\u6587\u4ef6\u8986\u76d6"), QStringLiteral("overwrite") },
+        { QString::fromUtf8("\u5e94\u7528\u672c\u5c42\u8bbe\u7f6e (full)\uff1a\u9075\u5b88\u672c\u5c42\u6587\u4ef6\u5939\u540c\u6b65\u6a21\u5f0f"), QStringLiteral("full") },
+        { QString::fromUtf8("\u5f3a\u5236\u8986\u76d6 (force)\uff1a\u76f4\u63a5\u5168\u91cf\u5199\u5165\u76ee\u6807"), QStringLiteral("force") },
         { QString::fromUtf8("\u90e8\u5206\u540c\u6b65 (partial)\uff1a\u53ea\u66f4\u65b0\u8ffd\u8e2a\u7684\u952e/\u884c"), QStringLiteral("partial") },
         { QString::fromUtf8("\u5ffd\u7565 (ignore)\uff1a\u4e0d\u5199\u76ee\u6807"), QStringLiteral("ignore") },
     };
@@ -168,6 +172,8 @@ void SyncPoliciesEditor::buildUI()
 
 void SyncPoliciesEditor::load(const nlohmann::json& policies)
 {
+    // 填充过程会触发 cellChanged/activated, 整体屏蔽避免误报修改
+    blockSignals(true);
     original_ = policies.is_object() ? policies : nlohmann::json::object();
     folderTable_->setRowCount(0);
     fileTable_->setRowCount(0);
@@ -186,8 +192,11 @@ void SyncPoliciesEditor::load(const nlohmann::json& policies)
                 if (!it.value().is_string()) continue;
                 const int row = folderTable_->rowCount();
                 folderTable_->insertRow(row);
-                folderTable_->setItem(row, 0,
-                    new QTableWidgetItem(QString::fromStdString(it.key())));
+                const std::string k = it.key();
+                // 空路径 = 根目录策略, 显示为 (根目录)
+                folderTable_->setItem(row, 0, new QTableWidgetItem(
+                    k.empty() ? QString::fromUtf8("(\u6839\u76ee\u5f55)")
+                              : QString::fromStdString(k)));
                 auto* combo = new QComboBox(folderTable_);
                 for (const auto& item : folderPolicyDisplayItems()) {
                     combo->addItem(item.first, item.second);
@@ -225,6 +234,7 @@ void SyncPoliciesEditor::load(const nlohmann::json& policies)
             }
         }
     }
+    blockSignals(false);
 }
 
 nlohmann::json SyncPoliciesEditor::save() const
@@ -239,7 +249,10 @@ nlohmann::json SyncPoliciesEditor::save() const
         const std::string policy = combo
             ? combo->currentData().toString().toStdString()
             : std::string("incremental_add");
-        folders[path.toStdString()] = policy;
+        // (根目录) 文本映射回空路径 = 根目录策略
+        const std::string key = (path == QString::fromUtf8("(\u6839\u76ee\u5f55)"))
+            ? std::string() : path.toStdString();
+        folders[key] = policy;
     }
 
     nlohmann::json files = nlohmann::json::object();
@@ -296,6 +309,7 @@ void SyncPoliciesEditor::onAddFolderRow()
         lay->addWidget(new QLabel(
             QString::fromUtf8("\u9009\u62e9\u5206\u652f\u6839\u76ee\u5f55 (\u53cc\u51fb\u786e\u5b9a)\uff0c\u6216\u81ea\u5b9a\u4e49:"), &dlg));
         auto* list = new QListWidget(&dlg);
+        list->addItem(QString::fromUtf8("(\u6839\u76ee\u5f55)"));
         list->addItems(candidates);
         lay->addWidget(list, 1);
         auto* edit = new QLineEdit(&dlg);

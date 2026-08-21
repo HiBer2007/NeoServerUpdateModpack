@@ -5,6 +5,8 @@
 #include <QFileInfo>
 #include <QBrush>
 #include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDragLeaveEvent>
 #include <QDropEvent>
 #include <QContextMenuEvent>
 #include <QKeyEvent>
@@ -22,6 +24,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "deep_tree_behavior.h"
+
 namespace HiBerGUI {
 
 namespace {
@@ -35,7 +39,8 @@ bool isConfigFile(const QString& name)
         || lower.endsWith(QStringLiteral(".toml"))
         || lower.endsWith(QStringLiteral(".snbt"))
         || lower.endsWith(QStringLiteral(".txt"))
-        || lower.endsWith(QStringLiteral(".properties"));
+        || lower.endsWith(QStringLiteral(".properties"))
+        || lower.endsWith(QStringLiteral(".ini"));
 }
 
 bool isTextEditable(const QString& name)
@@ -47,6 +52,8 @@ bool isTextEditable(const QString& name)
         QStringLiteral("properties"), QStringLiteral("cfg"), QStringLiteral("conf"),
         QStringLiteral("ini"), QStringLiteral("md"), QStringLiteral("log"),
         QStringLiteral("xml"), QStringLiteral("mcmeta"), QStringLiteral("lang"),
+        QStringLiteral("css"), QStringLiteral("html"), QStringLiteral("htm"),
+        QStringLiteral("js"), QStringLiteral("svg"),
     };
     for (const QString& e : exts) {
         if (lower.endsWith(QLatin1Char('.') + e)) return true;
@@ -107,6 +114,8 @@ RepoTreePanel::RepoTreePanel(QWidget* parent)
             emit objectActivated(infoFromItem(item));
             Q_UNUSED(column);
         });
+    // 折叠三角点击 / 双击目录: 动画深折叠(子层一并折叠) / 级联展开
+    new DeepTreeBehavior(tree_, tree_);
 
     applyStyle();
 }
@@ -123,16 +132,21 @@ void RepoTreePanel::setPointerDir(const QString& branchConfigDir)
     refresh();
 }
 
-void RepoTreePanel::setInheritedFiles(const QStringList& rels)
+void RepoTreePanel::setInheritedFiles(const QStringList& rels, bool rebuild)
 {
     inheritedFiles_ = rels;
-    refresh();
+    if (rebuild) refresh();
 }
 
-void RepoTreePanel::setBranchManifest(const QMap<QString, QString>& markers)
+void RepoTreePanel::setBranchManifest(const QMap<QString, QString>& markers, bool rebuild)
 {
     branchMarkers_ = markers;
-    refresh();
+    if (rebuild) refresh();
+}
+
+void RepoTreePanel::setExtraConfigFiles(const QSet<QString>& rels)
+{
+    extraConfigFiles_ = rels;
 }
 
 void RepoTreePanel::refresh()
@@ -178,6 +192,12 @@ RepoObjectInfo RepoTreePanel::infoFromItem(QTreeWidgetItem* item) const
     }
     const QString marker = item->data(0, Qt::UserRole).toString();
     if (marker == QLatin1String("pointer")) {
+        // 含指针的虚拟目录 (无 sha) 按文件夹路由
+        if (item->childCount() > 0
+            && item->data(0, Qt::UserRole + 1).toString().isEmpty()) {
+            info.type = RepoObjectType::Folder;
+            return info;
+        }
         info.type = RepoObjectType::Pointer;
         info.pointerSha = item->data(0, Qt::UserRole + 1).toString();
         return info;
@@ -195,7 +215,8 @@ RepoObjectInfo RepoTreePanel::infoFromItem(QTreeWidgetItem* item) const
     info.marker = selfMarker;
     if (item->childCount() > 0) {
         info.type = RepoObjectType::Folder;
-    } else if (isConfigFile(item->text(0))) {
+    } else if (isConfigFile(item->text(0))
+        || extraConfigFiles_.contains(info.path)) {
         info.type = RepoObjectType::ConfigFile;
     } else {
         info.type = RepoObjectType::PlainFile;
@@ -205,6 +226,17 @@ RepoObjectInfo RepoTreePanel::infoFromItem(QTreeWidgetItem* item) const
 
 void RepoTreePanel::rebuildTree()
 {
+    // 先保存当前展开路径, 重建后恢复 (避免刷新白展开)
+    expandedPaths_.clear();
+    if (tree_->topLevelItemCount() > 0) {
+        collectExpandedPaths(tree_->topLevelItem(0), QString());
+    }
+    const QString selectedPath = [this]() {
+        auto* cur = tree_->currentItem();
+        if (!cur) return QString();
+        return buildObjectPath(cur);
+    }();
+
     tree_->clear();
     const QColor windowBg = palette().color(QPalette::Window);
     const bool darkMode = windowBg.lightness() < 128;
@@ -225,7 +257,7 @@ void RepoTreePanel::rebuildTree()
         ? QStringLiteral(".") : dir.dirName());
     rootItem->setText(1, QString::fromUtf8("\u6570\u636e\u76ee\u5f55"));
     addDirectoryTree(rootItem, dir, QString());
-    addVirtualChildren(rootItem, QString());
+    addPointerChildren(rootItem, QString());
 
     int fileCount = 0;
     std::function<void(QTreeWidgetItem*)> countFiles = [&](QTreeWidgetItem* item) {
@@ -240,13 +272,62 @@ void RepoTreePanel::rebuildTree()
     };
     countFiles(rootItem);
 
-    const int pointerCount = addPointerGroup();
+    const int pointerCount = pointerFiles_.size();
     rootItem->setExpanded(true);
+
+    // 恢复重建前的展开路径
+    restoreExpandedPaths(rootItem, QString());
+
+    // 恢复重建前的选中项
+    if (!selectedPath.isEmpty()) {
+        std::function<void(QTreeWidgetItem*)> findSelect =
+            [&](QTreeWidgetItem* item) {
+                if (item->childCount() == 0) return;
+                if (buildObjectPath(item) == selectedPath) {
+                    tree_->setCurrentItem(item);
+                    return;
+                }
+                for (int i = 0; i < item->childCount(); ++i) {
+                    findSelect(item->child(i));
+                }
+            };
+        findSelect(rootItem);
+    }
 
     QString stat = QString::fromUtf8("%1 \u4e2a\u6587\u4ef6\uff0c%2 \u4e2a\u6307\u9488\u3002")
         .arg(fileCount).arg(pointerCount);
     statusLabel_->setText(stat);
     Q_UNUSED(darkMode);
+}
+
+void RepoTreePanel::collectExpandedPaths(QTreeWidgetItem* item,
+    const QString& prefix)
+{
+    if (!item) return;
+    for (int i = 0; i < item->childCount(); ++i) {
+        QTreeWidgetItem* child = item->child(i);
+        if (child->childCount() == 0) continue;
+        const QString rel = buildObjectPath(child);
+        if (child->isExpanded()) {
+            expandedPaths_.insert(rel);
+            collectExpandedPaths(child, rel);
+        }
+    }
+}
+
+void RepoTreePanel::restoreExpandedPaths(QTreeWidgetItem* item,
+    const QString& prefix)
+{
+    if (!item) return;
+    for (int i = 0; i < item->childCount(); ++i) {
+        QTreeWidgetItem* child = item->child(i);
+        if (child->childCount() == 0) continue;
+        const QString rel = buildObjectPath(child);
+        if (expandedPaths_.contains(rel)) {
+            child->setExpanded(true);
+            restoreExpandedPaths(child, rel);
+        }
+    }
 }
 
 void RepoTreePanel::addDirectoryTree(QTreeWidgetItem* parent, const QDir& dir,
@@ -258,33 +339,40 @@ void RepoTreePanel::addDirectoryTree(QTreeWidgetItem* parent, const QDir& dir,
         QStringLiteral(".overrides"),
     };
 
-    const auto entries = dir.entryInfoList(QDir::Dirs | QDir::Files
-        | QDir::NoDotAndDotDot, QDir::Name | QDir::DirsFirst);
-    for (const auto& fi : entries) {
+    // 目录恒在文件之上: 真实目录 → 继承/删除虚拟项 → 真实文件
+    const auto dirs = dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    const auto files = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::Name);
+
+    for (const auto& fi : dirs) {
         const QString name = fi.fileName();
-        if (fi.isDir()) {
-            if (skipDirs.contains(name)) continue;
-            auto* item = new QTreeWidgetItem(parent);
-            item->setText(0, name);
-            item->setText(1, QString::fromUtf8("\u76ee\u5f55"));
-            const QString rel = dirRel.isEmpty()
-                ? name : dirRel + QLatin1Char('/') + name;
-            addDirectoryTree(item, QDir(fi.absoluteFilePath()), rel);
-            addVirtualChildren(item, rel);
-        } else {
-            auto* item = new QTreeWidgetItem(parent);
-            item->setText(0, name);
-            item->setText(1, isConfigFile(name)
-                ? QString::fromUtf8("\u914d\u7f6e")
-                : QString::fromUtf8("\u6587\u4ef6"));
-            const QString rel = dirRel.isEmpty()
-                ? name : dirRel + QLatin1Char('/') + name;
-            const QString m = branchMarkers_.value(rel);
-            if (!m.isEmpty()) {
-                item->setData(0, Qt::UserRole + 2, m);
-                if (m == QLatin1String("override")) {
-                    item->setText(1, QString::fromUtf8("\u8986\u76d6"));
-                }
+        if (skipDirs.contains(name)) continue;
+        auto* item = new QTreeWidgetItem(parent);
+        item->setText(0, name);
+        item->setText(1, QString::fromUtf8("\u76ee\u5f55"));
+        const QString rel = dirRel.isEmpty()
+            ? name : dirRel + QLatin1Char('/') + name;
+        item->setToolTip(0, rel);
+        addDirectoryTree(item, QDir(fi.absoluteFilePath()), rel);
+        // 真实目录内注入指针文件 (显示于真实位置)
+        addPointerChildren(item, rel);
+    }
+    addVirtualChildren(parent, dirRel);
+    for (const auto& fi : files) {
+        const QString name = fi.fileName();
+        const QString rel = dirRel.isEmpty()
+            ? name : dirRel + QLatin1Char('/') + name;
+        auto* item = new QTreeWidgetItem(parent);
+        item->setText(0, name);
+        item->setText(1, (isConfigFile(name)
+                || extraConfigFiles_.contains(rel))
+            ? QString::fromUtf8("\u914d\u7f6e")
+            : QString::fromUtf8("\u6587\u4ef6"));
+        item->setToolTip(0, rel);
+        const QString m = branchMarkers_.value(rel);
+        if (!m.isEmpty()) {
+            item->setData(0, Qt::UserRole + 2, m);
+            if (m == QLatin1String("override")) {
+                item->setText(1, QString::fromUtf8("\u8986\u76d6"));
             }
         }
     }
@@ -338,6 +426,8 @@ void RepoTreePanel::addVirtualChildren(QTreeWidgetItem* parent,
         item->setForeground(0, QBrush(inhColor));
         item->setForeground(1, QBrush(inhColor));
         item->setData(0, Qt::UserRole, QStringLiteral("inherited"));
+        const QString fullRel = prefix + name;
+        item->setToolTip(0, fullRel);
         addVirtualChildren(item,
             dirRel.isEmpty() ? name : dirRel + QLatin1Char('/') + name);
     }
@@ -349,6 +439,7 @@ void RepoTreePanel::addVirtualChildren(QTreeWidgetItem* parent,
         item->setForeground(0, QBrush(inhColor));
         item->setForeground(1, QBrush(inhColor));
         item->setData(0, Qt::UserRole, QStringLiteral("inherited"));
+        item->setToolTip(0, prefix + name);
     }
     for (const QString& name : dels) {
         if (QFileInfo::exists(dirAbs + QLatin1Char('/') + name)) continue;
@@ -358,6 +449,78 @@ void RepoTreePanel::addVirtualChildren(QTreeWidgetItem* parent,
         item->setForeground(0, QBrush(delColor));
         item->setForeground(1, QBrush(delColor));
         item->setData(0, Qt::UserRole, QStringLiteral("deleted"));
+        item->setToolTip(0, prefix + name);
+    }
+}
+
+void RepoTreePanel::setPointerFiles(const QMap<QString, QString>& relToSha,
+    const QMap<QString, QString>& relToResolver, bool rebuild)
+{
+    pointerFiles_ = relToSha;
+    pointerResolvers_ = relToResolver;
+    if (rebuild) {
+        refresh();
+    }
+}
+
+void RepoTreePanel::addPointerChildren(QTreeWidgetItem* parent,
+    const QString& dirRel)
+{
+    if (pointerFiles_.isEmpty()) return;
+
+    const QColor windowBg = palette().color(QPalette::Window);
+    const bool dark = windowBg.lightness() < 128;
+    const QColor ptrColor = dark
+        ? QColor(QStringLiteral("#4dd0e1")) : QColor(QStringLiteral("#0097a7"));
+
+    const QString prefix = dirRel.isEmpty() ? QString() : dirRel + QLatin1Char('/');
+    const QString dirAbs = rootPath_ + (dirRel.isEmpty()
+        ? QString() : QLatin1Char('/') + dirRel);
+
+    QSet<QString> dirs;
+    QMap<QString, QString> files;
+    for (auto it = pointerFiles_.begin(); it != pointerFiles_.end(); ++it) {
+        const QString& rel = it.key();
+        if (!rel.startsWith(prefix)) continue;
+        const QString rest = prefix.isEmpty() ? rel : rel.mid(prefix.size());
+        if (rest.isEmpty()) continue;
+        const int slash = rest.indexOf(QLatin1Char('/'));
+        if (slash >= 0) {
+            dirs.insert(rest.left(slash));
+        } else {
+            files.insert(rest, it.value());
+        }
+    }
+
+    for (const QString& name : dirs) {
+        if (QFileInfo::exists(dirAbs + QLatin1Char('/') + name)) continue;
+        auto* item = new QTreeWidgetItem(parent);
+        item->setText(0, name);
+        item->setText(1, QString::fromUtf8("\u76ee\u5f55"));
+        item->setForeground(0, QBrush(ptrColor));
+        item->setForeground(1, QBrush(ptrColor));
+        item->setData(0, Qt::UserRole, QStringLiteral("pointer"));
+        const QString fullRel = prefix + name;
+        item->setToolTip(0, fullRel);
+        addPointerChildren(item,
+            dirRel.isEmpty() ? name : dirRel + QLatin1Char('/') + name);
+    }
+    for (auto it = files.begin(); it != files.end(); ++it) {
+        if (QFileInfo::exists(dirAbs + QLatin1Char('/') + it.key())) continue;
+        auto* item = new QTreeWidgetItem(parent);
+        item->setText(0, it.key());
+        item->setText(1, QString::fromUtf8("\u6307\u9488"));
+        item->setForeground(0, QBrush(ptrColor));
+        item->setForeground(1, QBrush(ptrColor));
+        item->setData(0, Qt::UserRole, QStringLiteral("pointer"));
+        item->setData(0, Qt::UserRole + 1, it.value());
+        const QString fullRel = prefix + it.key();
+        const QString resolver = pointerResolvers_.value(fullRel);
+        item->setToolTip(0, resolver.isEmpty()
+            ? QString::fromUtf8("%1\n\u6307\u9488\u6587\u4ef6")
+                  .arg(fullRel)
+            : QString::fromUtf8("%1\n\u6307\u9488\u6587\u4ef6 (resolver: %2)")
+                  .arg(fullRel, resolver));
     }
 }
 
@@ -433,15 +596,79 @@ void RepoTreePanel::dragEnterEvent(QDragEnterEvent* event)
     QWidget::dragEnterEvent(event);
 }
 
+void RepoTreePanel::dragMoveEvent(QDragMoveEvent* event)
+{
+    // URL 拖放被 QTreeWidget 默认处理拒绝后冒泡到面板, 事件坐标相对面板;
+    // itemAt 需要 viewport 坐标, 统一从接收者映射到 viewport
+    const QPoint vp = tree_->viewport()->mapFrom(this,
+        event->position().toPoint());
+    setDropHighlight(tree_->itemAt(vp));
+    emit dropTargetChanged(targetRelAt(vp), true);
+    event->acceptProposedAction();
+}
+
+void RepoTreePanel::dragLeaveEvent(QDragLeaveEvent* event)
+{
+    clearDropHighlight();
+    emit dropTargetChanged(QString(), false);
+    QWidget::dragLeaveEvent(event);
+}
+
+void RepoTreePanel::setDropHighlight(QTreeWidgetItem* item)
+{
+    if (item == dropHighlightItem_) return;
+    clearDropHighlight();
+    if (!item) return;
+    dropHighlightItem_ = item;
+    const QVariant orig = item->data(0, Qt::BackgroundRole);
+    dropHighlightHadBrush_ = orig.canConvert<QBrush>();
+    if (dropHighlightHadBrush_) {
+        dropHighlightOldBrush_ = orig.value<QBrush>();
+    }
+    // 拖放目标高亮: 琥珀色, 与选中高亮(蓝)区分
+    item->setBackground(0, QBrush(QColor(0xE8, 0x9C, 0x2B)));
+}
+
+void RepoTreePanel::clearDropHighlight()
+{
+    if (!dropHighlightItem_) return;
+    if (dropHighlightHadBrush_) {
+        dropHighlightItem_->setBackground(0, dropHighlightOldBrush_);
+    } else {
+        dropHighlightItem_->setData(0, Qt::BackgroundRole, QVariant());
+    }
+    dropHighlightItem_ = nullptr;
+    dropHighlightHadBrush_ = false;
+}
+
+QString RepoTreePanel::targetRelAt(const QPoint& pos) const
+{
+    QTreeWidgetItem* item = tree_->itemAt(pos);
+    if (!item) return QString();
+    const QString marker = item->data(0, Qt::UserRole).toString();
+    if (marker == QLatin1String("pointer")) return QString();
+    const QString p = buildObjectPath(item);
+    if (p == QStringLiteral(".")) return QString();
+    return (item->childCount() > 0) ? p
+        : QFileInfo(p).path().replace(QLatin1Char('\\'), QLatin1Char('/'));
+}
+
 void RepoTreePanel::dropEvent(QDropEvent* event)
 {
+    clearDropHighlight();
+    emit dropTargetChanged(QString(), false);
+
+    // 事件坐标相对面板 (接收者), itemAt 需要 viewport 坐标, 统一映射
+    const QPoint vp = tree_->viewport()->mapFrom(this,
+        event->position().toPoint());
+
     if (event->mimeData()->hasFormat(
             QStringLiteral("application/x-nsum-repo-items"))) {
         QByteArray data = event->mimeData()->data(
             QStringLiteral("application/x-nsum-repo-items"));
         QStringList rels = QString::fromUtf8(data).split(
             QLatin1Char('\n'), Qt::SkipEmptyParts);
-        QTreeWidgetItem* item = tree_->itemAt(event->position().toPoint());
+        QTreeWidgetItem* item = tree_->itemAt(vp);
         QString targetRel;
         if (item) {
             const QString marker = item->data(0, Qt::UserRole).toString();
@@ -488,7 +715,7 @@ void RepoTreePanel::dropEvent(QDropEvent* event)
     }
     event->acceptProposedAction();
 
-    QTreeWidgetItem* item = tree_->itemAt(event->position().toPoint());
+    QTreeWidgetItem* item = tree_->itemAt(vp);
     QString targetRel;
     if (item) {
         const QString marker = item->data(0, Qt::UserRole).toString();
@@ -598,6 +825,11 @@ void RepoTreePanel::contextMenuEvent(QContextMenuEvent* event)
         connect(newFolderAction, &QAction::triggered, this, [this]() {
             createNewFolder(QString());
         });
+        QAction* scAction = menu.addAction(
+            QString::fromUtf8("\u521b\u5efa serverconfig \u540c\u6b65\u6587\u4ef6\u5939"));
+        connect(scAction, &QAction::triggered, this, [this]() {
+            emit createServerConfigRequested();
+        });
         if (!clipPaths_.isEmpty()) {
             menu.addSeparator();
             QAction* pasteAction = menu.addAction(
@@ -691,6 +923,20 @@ void RepoTreePanel::contextMenuEvent(QContextMenuEvent* event)
         });
     }
     if (!info.isInherited && info.marker != QLatin1String("override")) {
+        if (info.type == RepoObjectType::PlainFile) {
+            QAction* markAction = menu.addAction(
+                QString::fromUtf8("\u6807\u8bb0\u4e3a\u914d\u7f6e\u6587\u4ef6"));
+            connect(markAction, &QAction::triggered, this, [this, info]() {
+                emit markAsConfigFileRequested(info);
+            });
+        } else if (info.type == RepoObjectType::ConfigFile
+            && extraConfigFiles_.contains(info.path)) {
+            QAction* unmarkAction = menu.addAction(
+                QString::fromUtf8("\u53d6\u6d88\u914d\u7f6e\u6587\u4ef6\u6807\u8bb0"));
+            connect(unmarkAction, &QAction::triggered, this, [this, info]() {
+                emit unmarkConfigFileRequested(info);
+            });
+        }
         QAction* convertAction = menu.addAction(
             QString::fromUtf8("\u8f6c\u6307\u9488\u5316"));
         connect(convertAction, &QAction::triggered, this, [this, info]() {

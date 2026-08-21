@@ -32,6 +32,8 @@ struct SyncPolicy {
     std::string defaultFolderPolicy = "incremental_add";
     std::vector<SyncPolicyFolder> folders;
     std::vector<SyncPolicyFile> files;
+    // 用户标记为配置文件的额外相对路径 (无扩展名解析器时按 full 回落)
+    std::vector<std::string> configFiles;
 };
 
 } // namespace NeoWorkspace

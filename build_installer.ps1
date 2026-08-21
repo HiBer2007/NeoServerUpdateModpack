@@ -30,13 +30,13 @@ $deployDir = Join-Path $ScriptDir "build\deploy"
 if (-not $SkipMainBuild -or -not (Test-Path $deployDir)) {
     Write-Host "[1/3] Building main project to get deploy files..." -ForegroundColor Cyan
 
-    $cmakeExe = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
-    $vcvars = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Auxiliary/Build/vcvars64.bat"
+    $cmakeExe = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
+    $vcvars = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Auxiliary/Build/vcvars64.bat"
 
     $batch = @"
 @echo off
 call "$vcvars" >nul 2>&1
-"$cmakeExe" "$ScriptDir" -B "$ScriptDir\build" -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_PREFIX_PATH=C:/Qt/6.11.1/msvc2022_64 -DCMAKE_BUILD_TYPE=Debug -G Ninja >nul 2>&1
+"$cmakeExe" "$ScriptDir" -B "$ScriptDir\build" -DCMAKE_TOOLCHAIN_FILE=H:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_PREFIX_PATH=H:/Qt/6.11.1/msvc2022_64 -DCMAKE_BUILD_TYPE=Debug -G Ninja >nul 2>&1
 "$cmakeExe" --build "$ScriptDir\build" >nul 2>&1
 "@
     $batchFile = Join-Path $env:TEMP "build_main.bat"
@@ -59,7 +59,7 @@ Write-Host "  Deploy files found: $fileCount" -ForegroundColor Gray
 # Step 2: Static Qt available?
 Write-Host "[2/3] Checking static Qt..." -ForegroundColor Cyan
 
-$vcpkgStaticDir = "C:/vcpkg/installed/x64-windows-static"
+$vcpkgStaticDir = "H:/vcpkg/installed/x64-windows-static"
 $qtConfig = Join-Path $vcpkgStaticDir "share/qt6/Qt6Config.cmake"
 
 if (Test-Path $qtConfig) {
@@ -93,14 +93,14 @@ $cmakeArgs = @(
     "-B", $buildDir,
     "-G", "Ninja",
     "-DCMAKE_BUILD_TYPE=$BuildType",
-    "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+    "-DCMAKE_TOOLCHAIN_FILE=H:/vcpkg/scripts/buildsystems/vcpkg.cmake",
     "-DVCPKG_TARGET_TRIPLET=x64-windows-static",
     "-DVCPKG_HOST_TRIPLET=x64-windows-static",
     "-DBUILD_DEPLOY_DIR=$deployDir"
 )
 
-$cmakeExe = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
-$vcvars = "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Auxiliary/Build/vcvars64.bat"
+$cmakeExe = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
+$vcvars = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Auxiliary/Build/vcvars64.bat"
 
 $batch = @"
 @echo off

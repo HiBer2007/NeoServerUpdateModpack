@@ -58,15 +58,16 @@ bool ServerConfigSync::hasRules() const
 
 void ServerConfigSync::loadRules()
 {
-    defaultMode_ = ServerConfigMode::Overwrite;
+    defaultMode_ = ServerConfigMode::Full;
     fileModes_.clear();
+    fileTrackedKeys_.clear();
 
     if (ruleDir_.empty() || !fs::exists(ruleDir_)) {
         return;
     }
 
     auto parseMode = [](const std::string& m, ServerConfigMode fallback) -> ServerConfigMode {
-        if (m == "overwrite" || m == "full") return ServerConfigMode::Overwrite;
+        if (m == "full" || m == "overwrite" || m == "force") return ServerConfigMode::Full;
         if (m == "partial" || m == "merge") return ServerConfigMode::Partial;
         if (m == "ignore") return ServerConfigMode::Ignore;
         return fallback;
@@ -79,7 +80,16 @@ void ServerConfigSync::loadRules()
             nlohmann::json j = nlohmann::json::parse(f, nullptr, false);
             if (j.is_object() && j.contains("default_mode") && j["default_mode"].is_string()) {
                 defaultMode_ = parseMode(j["default_mode"].get<std::string>(),
-                    ServerConfigMode::Overwrite);
+                    ServerConfigMode::Full);
+            }
+            // 本层文件夹同步模式 (full 模式应用): skip/mirror/incremental_add/
+            // incremental_overwrite, 默认 mirror (与原覆盖语义一致)
+            if (j.is_object() && j.contains("folder_mode") && j["folder_mode"].is_string()) {
+                const std::string fm = j["folder_mode"].get<std::string>();
+                if (fm == "skip") folderMode_ = ServerConfigFolderMode::Skip;
+                else if (fm == "incremental_add") folderMode_ = ServerConfigFolderMode::IncrementalAdd;
+                else if (fm == "incremental_overwrite") folderMode_ = ServerConfigFolderMode::IncrementalOverwrite;
+                else folderMode_ = ServerConfigFolderMode::Mirror;
             }
         }
 
@@ -88,12 +98,30 @@ void ServerConfigSync::loadRules()
             std::ifstream f(listPath);
             nlohmann::json j = nlohmann::json::parse(f, nullptr, false);
             if (j.is_object() && j.contains("files") && j["files"].is_object()) {
-                for (const auto& [path, modeVal] : j["files"].items()) {
-                    if (!modeVal.is_string()) continue;
+                for (const auto& [path, val] : j["files"].items()) {
                     std::string rel = path;
                     std::replace(rel.begin(), rel.end(), '\\', '/');
-                    fileModes_[rel] = parseMode(modeVal.get<std::string>(),
-                        ServerConfigMode::Overwrite);
+                    if (val.is_string()) {
+                        // 旧格式: { <rel>: "mode" }
+                        fileModes_[rel] = parseMode(val.get<std::string>(),
+                            ServerConfigMode::Full);
+                        continue;
+                    }
+                    if (!val.is_object()) continue;
+                    // 新格式: { <rel>: {mode, tracked_keys} } (与 sync_policies.files 一致)
+                    const std::string mode = val.value("mode", "full");
+                    fileModes_[rel] = parseMode(mode, ServerConfigMode::Full);
+                    if (val.contains("tracked_keys") && val["tracked_keys"].is_array()) {
+                        std::vector<std::string> keys;
+                        for (const auto& k : val["tracked_keys"]) {
+                            if (k.is_string()) {
+                                keys.push_back(k.get<std::string>());
+                            }
+                        }
+                        if (!keys.empty()) {
+                            fileTrackedKeys_[rel] = std::move(keys);
+                        }
+                    }
                 }
             }
         }
@@ -110,6 +138,14 @@ ServerConfigMode ServerConfigSync::modeFor(const std::string& relPath) const
     auto it = fileModes_.find(relPath);
     if (it != fileModes_.end()) return it->second;
     return defaultMode_;
+}
+
+std::vector<std::string> ServerConfigSync::trackedKeysFor(
+    const std::string& relPath) const
+{
+    auto it = fileTrackedKeys_.find(relPath);
+    if (it != fileTrackedKeys_.end()) return it->second;
+    return {};
 }
 
 std::string ServerConfigSync::sourcePathFor(const std::string& relPath) const
@@ -209,7 +245,11 @@ bool ServerConfigSync::syncConfig(const ServerConfigEntry& entry,
         bool ok = false;
         if (mode == ServerConfigMode::Partial) {
             ok = syncPartial(entry, remoteContent);
+        } else if (mode == ServerConfigMode::Full) {
+            // full = 应用本层设置: 遵守 [save]/serverconfig 文件夹同步模式
+            ok = syncByFolderMode(entry, remoteContent);
         } else {
+            // force: 强制覆盖 (与 config 同步逻辑 force 一致)
             ok = syncOverwrite(entry, remoteContent);
         }
 
@@ -227,6 +267,34 @@ bool ServerConfigSync::syncConfig(const ServerConfigEntry& entry,
     } catch (const std::exception& e) {
         CLogger::Error("ServerConfigSync::syncConfig exception: {}", e.what());
         return false;
+    }
+}
+
+bool ServerConfigSync::syncByFolderMode(const ServerConfigEntry& entry,
+    const std::string& remoteContent)
+{
+    // full 模式遵守本层文件夹同步模式 (skip/mirror/incremental_add/
+    // incremental_overwrite), 语义与 SyncPolicyExecutor 文件夹策略一致
+    switch (folderMode_) {
+    case ServerConfigFolderMode::Skip:
+        ++skipped_;
+        CLogger::Debug("ServerConfigSync: folder skip: {}", entry.relativePath);
+        return true;
+    case ServerConfigFolderMode::IncrementalAdd:
+        // 只补缺失: 目标已存在则不动 (无论内容差异)
+        if (fs::exists(entry.configPath)) {
+            ++skipped_;
+            CLogger::Debug("ServerConfigSync: incremental_add exists: {}",
+                entry.relativePath);
+            return true;
+        }
+        return syncOverwrite(entry, remoteContent);
+    case ServerConfigFolderMode::IncrementalOverwrite:
+    case ServerConfigFolderMode::Mirror:
+    default:
+        // 增量覆盖/镜像: 全量写入 (镜像的"清空重写+删多余"由 L3 场景
+        // 逐目标文件覆盖天然实现, 源中无对应文件的目标文件不在此循环内)
+        return syncOverwrite(entry, remoteContent);
     }
 }
 
@@ -285,7 +353,11 @@ bool ServerConfigSync::syncPartial(const ServerConfigEntry& entry,
         return syncOverwrite(entry, remoteContent);
     }
 
-    std::vector<std::string> trackedKeys = parser->list_keys(sourcePath);
+    // 与 config 同步逻辑一致: 规则指定 tracked_keys 则按其合并, 否则取全部键
+    std::vector<std::string> trackedKeys = trackedKeysFor(entry.relativePath);
+    if (trackedKeys.empty()) {
+        trackedKeys = parser->list_keys(sourcePath);
+    }
     std::string merged = parser->merge_entries(
         sourcePath, trackedKeys, remoteContent, localContent);
 

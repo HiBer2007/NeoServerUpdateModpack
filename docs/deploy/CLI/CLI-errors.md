@@ -11,7 +11,7 @@
 | `1` | 运行期错误（仓库/配置/构建/解析/取消等） | 通常是 |
 | `2` | 用法/参数错误（未知命令、缺必配项、非法值） | 是（调用方问题） |
 | `0xC0000005` | `exec crash-test` 故意崩溃 | 否（预期） |
-| 预期非零特例 | `exec git-update` 系统 Git 模式 exit 1；`info status` 未克隆 exit 0（非错误）；`verify-repo` 无效仓库 exit 1（校验结果） | — |
+| 预期非零特例 | `exec git-update` 系统 Git 模式 exit 1；`info status` 未克隆 exit 0（非错误）；`verify-repo` 无效仓库 exit 1（校验结果）；`repo-trust-check` 陌生仓库且未信任 exit 1（检查结果） | — |
 
 ## 2. 解析/用法错误（exit 2）——完整清单
 
@@ -21,7 +21,7 @@
 | 只给类别不给动词（如 `info`） | `Unknown command: 'info'. Use --help for usage.` | 类别后必须有动词 |
 | 类别内动词不存在（如 `info foo`） | `Unknown command: 'foo'. Use --help for usage.` | 用 `info --help` 查动词列表 |
 | 动词后出现类别名（如 `flow console info`） | `Unknown command: 'info'. Use --help for usage.` | 选项值不能是 info/flow/exec；如需传值给其他选项用 `--key=值` 形式 |
-| 缺 `--repo`（info git-branches/modpacks/status/workspace/preview/pointers、exec build/verify-repo） | `[-] No repository URL specified. Use --repo <url>.` | 补 `--repo` |
+| 缺 `--repo`（info git-branches/modpacks/status/workspace/preview/pointers、exec build/verify-repo/repo-trust/repo-trust-check） | `[-] No repository URL specified. Use --repo <url>.` | 补 `--repo` |
 | 缺 `--modpack`（info preview、exec build） | `[-] No modpack branch specified. Use --modpack <branch>.` | 补 `--modpack` |
 | 缺 `--export`（exec export） | `[-] No export path specified. Use --export <path>.` | 补 `--export` |
 | 缺 `--format`（exec export） | `[-] No export format specified. Use --format <mcbbs\|modrinth\|hmcl>.` | 补 `--format` |
@@ -40,6 +40,7 @@
 | 输出 | 场景 | 解决 |
 |------|------|------|
 | `[-] Failed to clone repository: <stderr>` | clone 失败（网络/权限/URL 错/本地路径不存在） | 检查 URL 可访问性、git 凭据；本地路径必须存在且可 clone；网络代理 |
+| `[!] Repository ownership is dubious (untrusted repository).` + `[-] Run 'exec repo-trust --repo <path>' to trust it, then retry.` / exit 1 | 陌生仓库（dubious ownership）：目录所有权与当前用户不符，git 拒绝所有命令 | 执行 `exec repo-trust --repo <path>` 信任后重试；或 `exec repo-trust-check --repo <path>` 确认状态 |
 | `[-] Repository not found: <repo>` | flow console：repo 既非 URL 也非存在的路径 | 检查路径/URL 拼写；`file://` 路径会先转本地路径 |
 | `[-] workspace.json not found in repository root.` | 缓存仓库根没有 workspace.json | 确认该仓库确实是整合包工作区仓库；或缓存是旧克隆（见第 5 节强刷） |
 | `[-] Failed to parse workspace.json.` | workspace.json JSON 语法错误或 schema 不兼容 | 见第 6 节（典型：`parent: null`） |

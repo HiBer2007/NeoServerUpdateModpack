@@ -11,6 +11,8 @@ endif()
 # 便于从 cmd 启动时输出日志到终端调试
 add_executable(NeoWorkspaceEditor
     src/main.cpp
+    src/editor_tui.cpp
+    src/editor_tui.h
     src/editor_window.cpp
     src/editor_window.h
     src/branch_meta_dialog.cpp

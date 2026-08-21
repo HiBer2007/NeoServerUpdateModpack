@@ -310,6 +310,8 @@ int CliDispatcher::dispatchExec(const CliCommand& cmd)
     if (cmd.verb == "resolve-pointer")     return cmdResolvePointer(cmd);
     if (cmd.verb == "crash-test")         return cmdCrashTest(cmd);
     if (cmd.verb == "git-update")         return cmdGitUpdate(cmd);
+    if (cmd.verb == "repo-trust")         return cmdRepoTrust(cmd);
+    if (cmd.verb == "repo-trust-check")   return cmdRepoTrustCheck(cmd);
     return notImplemented(cmd);
 }
 
@@ -546,6 +548,110 @@ int CliDispatcher::cmdVerifyRepo(const CliCommand& cmd)
     }
 
     return (isRepo && hasWs) ? 0 : 1;
+}
+
+int CliDispatcher::cmdRepoTrust(const CliCommand& cmd)
+{
+    const std::string repoUrl = cmd.get("repo");
+    if (repoUrl.empty()) {
+        CliOutput::error("No repository specified. Use --repo <path>.");
+        return 2;
+    }
+
+    const std::string workDir = resolveRepoPath(repoUrl);
+    NeoWorkspace::GitOperations gitOps;
+    const bool alreadyTrusted = gitOps.isTrustedRepository(workDir);
+
+    if (alreadyTrusted) {
+        if (cmd.json) {
+            CliOutput::jsonBlock({
+                {"category", "exec"},
+                {"command", "repo-trust"},
+                {"data", {
+                    {"path", workDir},
+                    {"trusted", true},
+                    {"already_trusted", true}
+                }}
+            });
+        } else {
+            CliOutput::info("Repository is already trusted: " + workDir);
+            CliOutput::success("No change needed.");
+        }
+        return 0;
+    }
+
+    auto result = gitOps.trustRepository(workDir);
+    if (result.exitCode != 0) {
+        CliOutput::error("Failed to trust repository: " + result.stderrOutput);
+        if (cmd.json) {
+            CliOutput::jsonBlock({
+                {"category", "exec"},
+                {"command", "repo-trust"},
+                {"data", {
+                    {"path", workDir},
+                    {"trusted", false},
+                    {"already_trusted", false},
+                    {"error", result.stderrOutput}
+                }}
+            });
+        }
+        return 1;
+    }
+
+    if (cmd.json) {
+        CliOutput::jsonBlock({
+            {"category", "exec"},
+            {"command", "repo-trust"},
+            {"data", {
+                {"path", workDir},
+                {"trusted", true},
+                {"already_trusted", false}
+            }}
+        });
+    } else {
+        CliOutput::success("Repository trusted: " + workDir);
+    }
+    return 0;
+}
+
+int CliDispatcher::cmdRepoTrustCheck(const CliCommand& cmd)
+{
+    const std::string repoUrl = cmd.get("repo");
+    if (repoUrl.empty()) {
+        CliOutput::error("No repository specified. Use --repo <path>.");
+        return 2;
+    }
+
+    const std::string workDir = resolveRepoPath(repoUrl);
+    NeoWorkspace::GitOperations gitOps;
+    const bool trusted = gitOps.isTrustedRepository(workDir);
+    const bool dubious = gitOps.isDubiousOwnership(workDir);
+    const bool isRepo = gitOps.isGitRepository(workDir);
+    const bool usable = !dubious || trusted;
+
+    if (cmd.json) {
+        CliOutput::jsonBlock({
+            {"category", "exec"},
+            {"command", "repo-trust-check"},
+            {"data", {
+                {"path", workDir},
+                {"trusted", trusted},
+                {"is_git_repository", isRepo},
+                {"dubious_ownership", dubious}
+            }}
+        });
+    } else {
+        CliOutput::info("Repository: " + workDir);
+        CliOutput::info(std::string("Trusted: ") + (trusted ? "yes" : "no"));
+        CliOutput::info(std::string("Dubious ownership: ") + (dubious ? "yes" : "no"));
+        if (usable) {
+            CliOutput::success("Repository is usable.");
+        } else {
+            CliOutput::error("Repository is not trusted. Run: exec repo-trust --repo <path>");
+        }
+    }
+
+    return usable ? 0 : 1;
 }
 
 int CliDispatcher::cmdResolvePointer(const CliCommand& cmd)
@@ -1506,11 +1612,37 @@ std::string CliDispatcher::resolveWorkDir(const std::string& repoUrl) const
     return dir.string();
 }
 
+// 本地存在的路径 (含 file:// 前缀) → 直接用该路径; 否则视为远程 URL → 缓存目录
+std::string CliDispatcher::resolveRepoPath(const std::string& repoUrl) const
+{
+    std::string path = repoUrl;
+    const std::string filePrefix = "file://";
+    if (path.rfind(filePrefix, 0) == 0) {
+        path = path.substr(filePrefix.size());
+        if (path.size() >= 3 && path[0] == '/' && path[2] == ':') {
+            path = path.substr(1);
+        }
+    }
+    std::error_code ec;
+    if (fs::is_directory(fs::u8path(path), ec)) {
+        return fs::path(path).lexically_normal().string();
+    }
+    return resolveWorkDir(repoUrl);
+}
+
 std::string CliDispatcher::ensureRepoCloned(const std::string& repoUrl,
     const std::string& gitBranch)
 {
     std::string workDir = resolveWorkDir(repoUrl);
     NeoWorkspace::GitOperations gitOps;
+
+    // 陌生仓库 (dubious ownership): git 拒绝访问, CLI 发出警告并退出
+    if (gitOps.isDubiousOwnership(workDir)) {
+        CliOutput::warning("Repository ownership is dubious (untrusted repository).");
+        CliOutput::error("Run 'exec repo-trust --repo <path>' to trust it, then retry.");
+        CLogger::Error("Dubious ownership detected for {}", workDir);
+        return {};
+    }
 
     bool isRepo = gitOps.isGitRepository(workDir);
 
@@ -1519,6 +1651,13 @@ std::string CliDispatcher::ensureRepoCloned(const std::string& repoUrl,
         if (cancelToken_.is_cancelled()) return {};
         auto result = gitOps.clone(repoUrl, workDir, 300000);
         if (result.exitCode != 0) {
+            // 本地路径源仓库为陌生仓库时 clone 同样失败, 给出明确提示
+            if (result.stderrOutput.find("detected dubious ownership") != std::string::npos) {
+                CliOutput::warning("Source repository ownership is dubious (untrusted repository).");
+                CliOutput::error("Run 'exec repo-trust --repo <path>' to trust it, then retry.");
+                CLogger::Error("Dubious ownership detected for source of {}", repoUrl);
+                return {};
+            }
             CliOutput::error("Failed to clone repository: " + result.stderrOutput);
             CLogger::Error("Clone failed for {}: {}", repoUrl, result.stderrOutput);
             return {};

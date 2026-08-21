@@ -54,8 +54,35 @@ public:
     }
 
     std::string mergePreview(QWidget*) const override { return ""; }
+
+    // 追踪键行列表: 行内 "key": value (嵌套路径键取末段匹配, 1-based)
+    std::vector<int> trackedLines(const std::string& content,
+        const std::vector<std::string>& trackedKeys) const override
+    {
+        std::vector<int> lines;
+        int lineNo = 0;
+        for (auto& raw : QString::fromStdString(content).split('\n')) {
+            ++lineNo;
+            const QString line = raw;
+            QRegularExpression keyRe("^\\s*\"([^\"]+)\"\\s*:");
+            auto m = keyRe.match(line);
+            if (!m.hasMatch()) continue;
+            const QString localKey = m.captured(1);
+            for (const auto& k : trackedKeys) {
+                const QString key = QString::fromStdString(k);
+                const QString last = key.contains(QLatin1Char('.'))
+                    ? key.section(QLatin1Char('.'), -1)
+                    : key;
+                if (localKey == key || localKey == last) {
+                    lines.push_back(lineNo);
+                    break;
+                }
+            }
+        }
+        return lines;
+    }
 };
 
-extern "C" NeoCore::IConfigEditorExtension* CreateConfigEditor() {
+extern "C" __declspec(dllexport) NeoCore::IConfigEditorExtension* CreateConfigEditor() {
     return new JSONConfigEditorExtension();
 }

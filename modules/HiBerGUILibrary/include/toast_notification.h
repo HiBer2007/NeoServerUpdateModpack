@@ -18,6 +18,8 @@ public:
     void showError(const QString& title, const QString& detail,
                    int timeoutMs = 3000);
     void dismiss();
+    // 顶部偏移: 使 toast 显示在卡片堆下方/上方 (宿主按卡片堆高度设置)
+    void setTopOffset(int y) { topOffset_ = y; }
 
 protected:
     void enterEvent(QEnterEvent* event) override;
@@ -43,6 +45,7 @@ private:
     int remainingMs_;
     bool hovered_;
     bool sliding_ = false;
+    int topOffset_ = 0;
 };
 
 } // namespace HiBerGUI

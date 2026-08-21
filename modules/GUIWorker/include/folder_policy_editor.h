@@ -19,12 +19,16 @@ public:
     void load(const QString& folderPath, const QString& effectivePolicy,
         bool branchOverrides, const QString& branchName);
 
+    QString currentFolderPath() const { return folderPath_; }
+
 public slots:
     void setScopeTop();
 
 signals:
     void saveRequested(const QString& folderPath, const QString& policy,
         bool toBranch);
+    void applyToSubfoldersRequested(const QString& folderPath,
+        const QString& policy, bool toBranch);
     void contentModified();
 
 private:
@@ -38,11 +42,14 @@ private:
     QRadioButton* topRb_;
     QRadioButton* branchRb_;
     QPushButton* saveButton_;
+    QPushButton* applySubButton_;
 
     QString folderPath_;
     QString branchName_;
+    bool branchOverrides_ = false;
 
     void applyStyle();
+    void updateStateLabel();
 };
 
 } // namespace GUIWorker

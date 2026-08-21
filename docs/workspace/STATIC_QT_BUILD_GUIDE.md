@@ -14,7 +14,7 @@ NeoInstaller 是安装程序，必须作为**单个自包含可执行文件**分
 Qt 官方静态链接方法：
 ```
 cd C:\path\to\Qt
-configure -static -release -prefix C:/Qt-static/6.11.1/msvc2022_64 -nomake examples -nomake tests
+configure -static -release -prefix H:/Qt-static/6.11.1/msvc2022_64 -nomake examples -nomake tests
 cmake --build . --parallel
 cmake --install .
 ```
@@ -34,18 +34,18 @@ qt_add_executable(NeoInstaller WIN32 ...)
 
 ### 1. 构建静态 Qt
 
-本项目已安装 Qt 6.11.1 动态版本于 `C:\Qt\6.11.1\msvc2022_64`，源码位于 `C:\Qt\6.11.1\Src`。
+本项目已安装 Qt 6.11.1 动态版本于 `H:\Qt\6.11.1\msvc2022_64`，源码位于 `H:\Qt\6.11.1\Src`。
 
 ```powershell
 # 初始化 MSVC 环境
-cmd /c '"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"'
+cmd /c '"C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat"'
 
 # 进入构建目录
-mkdir C:\Qt\6.11.1\Src\build_static
-cd C:\Qt\6.11.1\Src\build_static
+mkdir H:\Qt\6.11.1\Src\build_static
+cd H:\Qt\6.11.1\Src\build_static
 
 # 配置静态构建（约 5 分钟）
-..\configure -static -release -prefix C:/Qt-static/6.11.1/msvc2022_64 -nomake examples -nomake tests -submodules qtbase
+..\configure -static -release -prefix H:/Qt-static/6.11.1/msvc2022_64 -nomake examples -nomake tests -submodules qtbase
 
 # 编译（约 30 分钟，取决于 CPU 核心数）
 cmake --build . --parallel
@@ -54,7 +54,7 @@ cmake --build . --parallel
 cmake --install .
 ```
 
-构建产物位于 `C:\Qt-static\6.11.1\msvc2022_64`：
+构建产物位于 `H:\Qt-static\6.11.1\msvc2022_64`：
 - `lib/Qt6Core.lib`（~37MB）
 - `lib/Qt6Widgets.lib`（~36MB）
 - `lib/Qt6Gui.lib`
@@ -71,18 +71,18 @@ cmake --install .
     "generator": "Ninja",
     "binaryDir": "${sourceDir}/build_installer",
     "cacheVariables": {
-        "CMAKE_C_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
-        "CMAKE_CXX_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe",
+        "CMAKE_C_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "CMAKE_CXX_COMPILER": "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_RC_COMPILER": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe",
         "CMAKE_MT": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe",
-        "CMAKE_PREFIX_PATH": "C:/Qt-static/6.11.1/msvc2022_64",
+        "CMAKE_PREFIX_PATH": "H:/Qt-static/6.11.1/msvc2022_64",
         "INSTALLER_ONLY_BUILD": "ON",
         "DEPLOY_SOURCE": "${sourceDir}/build/deploy"
     },
     "environment": {
-        "INCLUDE": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/include;...",
-        "LIB": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;..."
+        "INCLUDE": "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/include;...",
+        "LIB": "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/lib/x64;..."
     }
 }
 ```
@@ -90,7 +90,7 @@ cmake --install .
 关键配置项：
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `CMAKE_PREFIX_PATH` | `C:/Qt-static/6.11.1/msvc2022_64` | 指向静态 Qt 安装 |
+| `CMAKE_PREFIX_PATH` | `H:/Qt-static/6.11.1/msvc2022_64` | 指向静态 Qt 安装 |
 | `INSTALLER_ONLY_BUILD` | `ON` | 跳过主程序依赖（vcpkg 包等） |
 | `DEPLOY_SOURCE` | `${sourceDir}/build/deploy` | 嵌入文件的来源目录 |
 

@@ -102,6 +102,7 @@ add_subdirectory(modules/NeoParser_YAML)
 add_subdirectory(modules/NeoParser_TOML)
 add_subdirectory(modules/NeoParser_SNBT)
 add_subdirectory(modules/NeoParser_TXT)
+add_subdirectory(modules/NeoParser_Properties)
 
 # ============================================================
 # Plugin DLLs — Pointer Resolvers (运行时加载)
@@ -126,11 +127,14 @@ add_subdirectory(modules/NeoEditorExtension_Parser_YAML)
 add_subdirectory(modules/NeoEditorExtension_Parser_TOML)
 add_subdirectory(modules/NeoEditorExtension_Parser_SNBT)
 add_subdirectory(modules/NeoEditorExtension_Parser_TXT)
+add_subdirectory(modules/NeoEditorExtension_Parser_Properties)
 
 # ============================================================
 # GUI / CLI (静态链接共享库)
 # ============================================================
 add_subdirectory(modules/HiBerGUILibrary)
+add_subdirectory(modules/HiBerGUIWebEditor)
+add_subdirectory(modules/EditorDemo)
 add_subdirectory(modules/GUIWorker)
 add_subdirectory(modules/NeoCLI)
 add_subdirectory(modules/PowerHelper)
@@ -171,7 +175,8 @@ nsum_add_version_info(${PROJECT_NAME}
 # 插件目标列表
 # ============================================================
 set(PARSER_TARGETS
-    NeoParser_JSON NeoParser_YAML NeoParser_TOML NeoParser_SNBT NeoParser_TXT)
+    NeoParser_JSON NeoParser_YAML NeoParser_TOML NeoParser_SNBT NeoParser_TXT
+    NeoParser_Properties)
 set(POINTER_TARGETS
     NeoPointer_Modrinth NeoPointer_DirectURL)
 set(EXPORTER_TARGETS
@@ -317,7 +322,7 @@ endforeach()
 set(PARSER_EDITOR_TARGETS
     NeoEditorExtension_Parser_JSON NeoEditorExtension_Parser_YAML
     NeoEditorExtension_Parser_TOML NeoEditorExtension_Parser_SNBT
-    NeoEditorExtension_Parser_TXT)
+    NeoEditorExtension_Parser_TXT NeoEditorExtension_Parser_Properties)
 
 add_custom_command(TARGET neo_deploy POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPLOY_DIR}/editor/extension/parsers"
@@ -353,7 +358,7 @@ endif()
 # ============================================================
 # 版本资源: 插件 DLL (VERSIONINFO)
 # ============================================================
-foreach(_t NeoParser_JSON NeoParser_YAML NeoParser_TOML NeoParser_SNBT NeoParser_TXT)
+foreach(_t NeoParser_JSON NeoParser_YAML NeoParser_TOML NeoParser_SNBT NeoParser_TXT NeoParser_Properties)
     nsum_add_version_info(${_t} "NSUM 配置解析器插件 (${_t})" "NSUM构建工具")
 endforeach()
 foreach(_t NeoPointer_Modrinth NeoPointer_DirectURL)
@@ -367,7 +372,7 @@ foreach(_t NeoEditorExtension_Pointer_Modrinth NeoEditorExtension_Pointer_Direct
 endforeach()
 foreach(_t NeoEditorExtension_Parser_JSON NeoEditorExtension_Parser_YAML
        NeoEditorExtension_Parser_TOML NeoEditorExtension_Parser_SNBT
-       NeoEditorExtension_Parser_TXT)
+       NeoEditorExtension_Parser_TXT NeoEditorExtension_Parser_Properties)
     nsum_add_version_info(${_t} "NSUM 配置编辑器扩展 (${_t})" "NSUM构建工具")
 endforeach()
 

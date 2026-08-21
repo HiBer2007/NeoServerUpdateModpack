@@ -6,6 +6,8 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QFile>
+#include <QShortcut>
+#include <QKeySequence>
 
 namespace HiBerGUI {
 
@@ -45,6 +47,10 @@ FileContentEditor::FileContentEditor(QWidget* parent)
     lay->addLayout(row);
 
     connect(saveBtn_, &QPushButton::clicked, this, [this]() {
+        emit contentSaveRequested(relPath_, view_->toPlainText(), inherited_);
+    });
+    auto* saveShortcut = new QShortcut(QKeySequence::Save, view_);
+    connect(saveShortcut, &QShortcut::activated, this, [this]() {
         emit contentSaveRequested(relPath_, view_->toPlainText(), inherited_);
     });
 }

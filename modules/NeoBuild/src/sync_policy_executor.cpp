@@ -633,6 +633,14 @@ struct ExecutorImpl {
                     mergeFile(rel, *filePolicy);
                     continue;
                 }
+                if (filePolicy->mode == "force") {
+                    copyIfNeeded(rel, true);
+                    continue;
+                }
+                // mode == "full": 遵守文件夹策略 (回落, 与无文件策略一致)
+            } else if (std::find(policy.configFiles.begin(),
+                policy.configFiles.end(), rel) != policy.configFiles.end()) {
+                // 用户标记为配置文件的路径: 无解析器时按全量覆盖处理 (full 语义)
                 copyIfNeeded(rel, true);
                 continue;
             }

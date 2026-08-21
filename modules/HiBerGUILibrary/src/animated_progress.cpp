@@ -2,6 +2,8 @@
 
 #include <QVBoxLayout>
 #include <QEasingCurve>
+#include <QEvent>
+#include <QPalette>
 
 namespace HiBerGUI {
 
@@ -11,6 +13,7 @@ AnimatedProgress::AnimatedProgress(QWidget* parent)
     , targetValue_(0)
     , indeterminate_(false)
     , pulseDirection_(1)
+    , compact_(false)
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -42,6 +45,16 @@ AnimatedProgress::AnimatedProgress(QWidget* parent)
 
     connect(animTimer_, &QTimer::timeout,
         this, &AnimatedProgress::onAnimationTick);
+    // 不确定进度动画: range(0,100) 循环滚动模拟忙碌 (样式不驱动 range(0,0) 时的兜底)
+    connect(pulseTimer_, &QTimer::timeout, this, [this]() {
+        if (!indeterminate_) return;
+        bar_->setRange(0, 100);
+        animatedValue_ += 4;
+        if (animatedValue_ > 100) {
+            animatedValue_ = 0;
+        }
+        bar_->setValue(animatedValue_);
+    });
     connect(smoothAnim_, &QPropertyAnimation::valueChanged, this, [this]() {
         bar_->setValue(animatedValue_);
     });
@@ -86,6 +99,23 @@ void AnimatedProgress::setIndeterminate(bool on)
 void AnimatedProgress::setText(const QString& text)
 {
     textLabel_->setText(text);
+}
+
+void AnimatedProgress::setCompact(bool on)
+{
+    compact_ = on;
+    textLabel_->setVisible(!on);
+    bar_->setMinimumHeight(on ? 4 : 22);
+    bar_->setMaximumHeight(on ? 4 : 22);
+    applyStyle();
+}
+
+bool AnimatedProgress::event(QEvent* e)
+{
+    if (e->type() == QEvent::PaletteChange || e->type() == QEvent::ThemeChange) {
+        applyStyle();
+    }
+    return QWidget::event(e);
 }
 
 int AnimatedProgress::value() const
@@ -146,13 +176,25 @@ void AnimatedProgress::smoothToValue(int value)
 
 void AnimatedProgress::applyStyle()
 {
-    bar_->setStyleSheet(
+    const QColor windowColor = palette().color(QPalette::Window);
+    const bool dark = windowColor.lightness() < 128;
+    const QColor trackBg = dark ? QColor(QStringLiteral("#2d2d30"))
+                                : QColor(QStringLiteral("#e0e0e0"));
+    const QColor border = dark ? QColor(QStringLiteral("#555555"))
+                               : QColor(QStringLiteral("#bbbbbb"));
+    const QString textColor = palette().color(QPalette::WindowText).name();
+
+    textLabel_->setStyleSheet(QString(
+        "QLabel { color: %1; font-size: 12px; padding: 2px 4px; }")
+        .arg(textColor));
+
+    bar_->setStyleSheet(QString(
         "QProgressBar {"
-        "  border: 1px solid #bbb;"
+        "  border: 1px solid %1;"
         "  border-radius: 4px;"
-        "  background-color: #e0e0e0;"
+        "  background-color: %2;"
         "  text-align: center;"
-        "  color: #333;"
+        "  color: %3;"
         "}"
         "QProgressBar::chunk {"
         "  background-color: qlineargradient("
@@ -163,7 +205,10 @@ void AnimatedProgress::applyStyle()
         "  );"
         "  border-radius: 3px;"
         "  margin: 1px;"
-        "}");
+        "}")
+        .arg(border.name())
+        .arg(trackBg.name())
+        .arg(textColor));
 }
 
 } // namespace HiBerGUI

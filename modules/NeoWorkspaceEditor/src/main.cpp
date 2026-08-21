@@ -1,7 +1,12 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QFileInfo>
+#include <QTimer>
 #include <iostream>
+#include <memory>
+#include <thread>
+#include <chrono>
+#include <cstdlib>
 #include <crtdbg.h>
 
 #ifdef _WIN32
@@ -9,6 +14,7 @@
 #endif
 
 #include "editor_window.h"
+#include "editor_tui.h"
 
 #include <logger.h>
 #include <crash_reporter.h>
@@ -29,15 +35,17 @@ static void heapCheckPoint(const char* where)
 // 控制台子系统 EXE 的终端持有策略 (与主程序 holdOrReleaseConsole 同款):
 //  - 从终端启动: 已继承父控制台 (cmd 共享) -> GetConsoleProcessList >1 -> 保持连接,
 //    并设 UTF-8 代码页 + VT (否则 spdlog UTF-8 日志按 GBK 乱码)
-//  - 从 Explorer 双击启动: OS 新建独占控制台 -> 进程数 ==1 -> FreeConsole 释放
-static void holdOrReleaseConsole()
+//  - 从 Explorer 双击启动: OS 新建独占控制台 -> 进程数 ==1 -> 不提前释放,
+//    延迟到主窗口真正 show 之后 (main 中 QTimer::singleShot(0, FreeConsole))
+static bool shouldKeepConsole()
 {
     DWORD pids[8];
     const DWORD n = GetConsoleProcessList(pids, 8);
-    if (n <= 1) {
-        FreeConsole();
-        return;
-    }
+    return n > 1;
+}
+
+static void setupConsoleUtf8()
+{
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -52,7 +60,12 @@ static void holdOrReleaseConsole()
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
-    holdOrReleaseConsole();
+    // TUI 需要 UTF-8 代码页 + VT, 两种启动方式都设置 (双击的独占控制台随后释放)
+    setupConsoleUtf8();
+#endif
+
+#ifdef _WIN32
+    const bool keepConsole = shouldKeepConsole();
 #endif
 
     auto* app = new QApplication(argc, argv);
@@ -84,9 +97,25 @@ int main(int argc, char* argv[])
         "Common causes: malformed JSON in workspace.json, Git operation failure,\n"
         "or missing plugin DLLs in the deploy directory.");
     CLogger::Init("workspace_editor.log", "editor");
+
 #ifdef _WIN32
-    std::cout << "[EDITOR] Log output to this terminal" << std::endl;
+    // 窗口加载期间渲染叠层 TUI (居中拼接字卡片 + 顶部日志滚动 + 底部进度条):
+    // 两种启动方式都渲染 —— 终端启动加载完后 stop() 重放缓冲日志并恢复正常输出;
+    // 双击启动加载完后 stop() 再释放独占控制台 (黑窗加载动画即 OS 新建的终端)
+    // 仅 stdout 连接真实控制台时渲染 (cmd 重定向到文件时直接输出日志, 不渲染)
+    // 必须在第一条 CLogger 日志之前 start(): 否则 TUI 前的日志直接走 stdout
+    // 会被首帧清屏抹掉且不在缓冲中, 停止后重放丢失 (2026-08-09 用户实测窗口加载日志缺失)
+    std::unique_ptr<nsum_tui::EditorTui> tui;
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    const bool stdoutIsConsole = (hOut != nullptr && hOut != INVALID_HANDLE_VALUE
+        && GetFileType(hOut) == FILE_TYPE_CHAR);
+    if (stdoutIsConsole) {
+        tui = std::make_unique<nsum_tui::EditorTui>();
+        tui->setStatus("Loading editor UI...");
+        tui->start();
+    }
 #endif
+
     CLogger::Info("=== Editor Mode Started ===");
     CLogger::Info("Working directory: {}", QCoreApplication::applicationDirPath().toStdString());
 
@@ -107,9 +136,54 @@ int main(int argc, char* argv[])
 
     parser.process(*app);
 
+#ifdef _WIN32
+    if (tui) {
+        // 窗口创建前的停留: TUI 加载动画展示期 (进度条 0→90 按时间推进),
+        // 窗口弹出即 TUI 结束。NSUM_TUI_HOLD_MS=0 关闭 (2026-08-09 用户要求:
+        // 等待应插入于窗口创建之前, 而非窗口弹出之后)
+        int holdMs = 1200;
+        if (const char* env = std::getenv("NSUM_TUI_HOLD_MS")) {
+            holdMs = std::atoi(env);
+        }
+        if (holdMs > 0) {
+            const int steps = (std::max)(1, holdMs / 100);
+            for (int i = 1; i <= steps; ++i) {
+                tui->setProgress(90 * i / steps);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+    }
+#endif
+
+    CLogger::Info("EditorMain: creating EditorWindow ...");
+    if (tui) {
+        tui->setProgress(95);   // hold 已达 90, 保持单调递增
+    }
     auto* window = new EditorWindow();
+    CLogger::Info("EditorMain: EditorWindow created");
+    if (tui) {
+        tui->setProgress(98);
+    }
     window->show();
+    CLogger::Info("EditorMain: window shown");
+
+#ifdef _WIN32
+    if (tui) {
+        // 窗口展示后: 进度条推到 100% 并立即结束 TUI (不再停留)
+        tui->setProgress(100);
+        tui->setStatus("Editor window ready");
+        tui->stop();
+    }
     heapCheckPoint("after show");
+    if (keepConsole) {
+        std::cout << "[EDITOR] Log output to this terminal" << std::endl;
+    } else {
+        // 双击启动 (OS 新建独占控制台): TUI 已渲染加载动画, 主窗口展示后释放
+        QTimer::singleShot(0, []() {
+            FreeConsole();
+        });
+    }
+#endif
 
     QStringList args = parser.positionalArguments();
     if (!args.isEmpty()) {

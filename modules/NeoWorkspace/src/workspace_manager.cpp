@@ -335,6 +335,14 @@ SyncPolicy parsePolicyObject(const nlohmann::json& obj)
         }
     }
 
+    if (obj.contains("config_files") && obj["config_files"].is_array()) {
+        for (const auto& p : obj["config_files"]) {
+            if (p.is_string()) {
+                policy.configFiles.push_back(p.get<std::string>());
+            }
+        }
+    }
+
     return policy;
 }
 
@@ -396,6 +404,14 @@ SyncPolicy WorkspaceManager::syncPolicy(const std::string& branch) const
                 [&f](const SyncPolicyFile& x) { return x.path == f.path; }),
             effective.files.end());
         effective.files.push_back(f);
+    }
+
+    for (const auto& p : override.configFiles) {
+        effective.configFiles.erase(
+            std::remove(effective.configFiles.begin(),
+                effective.configFiles.end(), p),
+            effective.configFiles.end());
+        effective.configFiles.push_back(p);
     }
 
     return effective;

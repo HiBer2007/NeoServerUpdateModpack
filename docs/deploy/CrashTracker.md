@@ -389,8 +389,8 @@ HiBerCTM::AddCrashTypeInfo("DATABASE_ERROR",
     "binaryDir": "${sourceDir}/build_CrashTracker",
     "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_PREFIX_PATH": "C:/Qt-static/6.11.1/msvc2022_64",
+        "CMAKE_TOOLCHAIN_FILE": "H:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_PREFIX_PATH": "H:/Qt-static/6.11.1/msvc2022_64",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
         "CrashTracker_ONLY_BUILD": "ON"
     }

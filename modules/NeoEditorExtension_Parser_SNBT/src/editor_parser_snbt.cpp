@@ -55,8 +55,42 @@ public:
         return rule;
     }
     std::string mergePreview(QWidget*) const override { return ""; }
+
+    // 追踪键行列表: 引号键 "key": 或裸键 key: (嵌套路径取末段, 1-based)
+    std::vector<int> trackedLines(const std::string& content,
+        const std::vector<std::string>& trackedKeys) const override
+    {
+        std::vector<int> lines;
+        int lineNo = 0;
+        for (auto& raw : QString::fromStdString(content).split('\n')) {
+            ++lineNo;
+            const QString line = raw;
+            QRegularExpression qRe("^\\s*\"([^\"]+)\"\\s*:");
+            QRegularExpression bRe("^\\s*([a-zA-Z_][a-zA-Z0-9_-]*)\\s*:");
+            QString localKey;
+            auto qm = qRe.match(line);
+            if (qm.hasMatch()) {
+                localKey = qm.captured(1);
+            } else {
+                auto bm = bRe.match(line);
+                if (bm.hasMatch()) localKey = bm.captured(1);
+            }
+            if (localKey.isEmpty()) continue;
+            for (const auto& k : trackedKeys) {
+                const QString key = QString::fromStdString(k);
+                const QString last = key.contains(QLatin1Char('.'))
+                    ? key.section(QLatin1Char('.'), -1)
+                    : key;
+                if (localKey == key || localKey == last) {
+                    lines.push_back(lineNo);
+                    break;
+                }
+            }
+        }
+        return lines;
+    }
 };
 
-extern "C" NeoCore::IConfigEditorExtension* CreateConfigEditor() {
+extern "C" __declspec(dllexport) NeoCore::IConfigEditorExtension* CreateConfigEditor() {
     return new SNBTConfigEditorExtension();
 }
