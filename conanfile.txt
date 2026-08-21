@@ -1,0 +1,12 @@
+[requires]
+qt/5.15.14
+nlohmann_json/3.11.3
+
+[generators]
+CMakeToolchain
+CMakeDeps
+
+[options]
+qt:shared=True
+qt:with_network=True
+qt:with_widgets=True
