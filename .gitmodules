@@ -7,3 +7,6 @@
 [submodule "modules/HiBerGUILibCPP"]
 	path = modules/HiBerGUILibCPP
 	url = git@github.com:HiBer2007/HiBerGUILibCPP.git
+[submodule "modules/CommonLoggerCPP"]
+	path = modules/CommonLoggerCPP
+	url = git@github.com:HiBer2007/CommonLoggerCPP.git
