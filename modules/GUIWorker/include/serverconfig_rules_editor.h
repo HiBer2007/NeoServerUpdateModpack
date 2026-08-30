@@ -20,7 +20,8 @@ class PluginLoader;
 namespace GUIWorker {
 
 // serverconfig 规则编辑（P4）：
-// 仓库 branches/<branch>/[save]/serverconfig/（[save] 字面目录名）
+// 仓库 branches/<branch>/save/[save]/serverconfig/（save 存档文件夹,
+// [save] 单个存档目录占位, 字面目录名）
 //   .rule/globle.json -> { default_mode, version, description }
 //   .rule/list.json   -> { files: { <rel>: {mode, tracked_keys} } } (兼容旧字符串格式)
 //   .rule/<其他文件>    -> 规则文件组（只读展示）

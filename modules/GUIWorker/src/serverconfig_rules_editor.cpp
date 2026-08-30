@@ -80,7 +80,7 @@ ServerConfigRulesEditor::ServerConfigRulesEditor(QWidget* parent)
     lay->addWidget(stateLabel_);
     lay->addWidget(hintLabel_);
 
-    auto* srcGroup = new QGroupBox(QString::fromUtf8("\u6e90\u6587\u4ef6\u5217\u8868 ([save]/serverconfig/)"), this);
+    auto* srcGroup = new QGroupBox(QString::fromUtf8("\u6e90\u6587\u4ef6\u5217\u8868 (save/[save]/serverconfig/)"), this);
     auto* srcLay = new QVBoxLayout(srcGroup);
     sourceList_ = new QListWidget(srcGroup);
     addSourceBtn_ = new QPushButton(QString::fromUtf8("\u6dfb\u52a0\u6e90\u6587\u4ef6..."), srcGroup);
@@ -171,7 +171,7 @@ ServerConfigRulesEditor::~ServerConfigRulesEditor() = default;
 QString ServerConfigRulesEditor::scDir() const
 {
     return repoDir_ + QStringLiteral("/branches/") + branch_
-        + QStringLiteral("/[save]/serverconfig");
+        + QStringLiteral("/save/[save]/serverconfig");
 }
 
 QString ServerConfigRulesEditor::ruleDir() const

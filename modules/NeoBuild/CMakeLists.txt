@@ -21,7 +21,6 @@ target_link_libraries(NeoBuild
         NeoWorkspace
         Qt6::Core
         Qt6::Network
-        cpr::cpr
         libzippp::libzippp
     PRIVATE
         tomlplusplus::tomlplusplus

@@ -35,7 +35,7 @@ QList<QPair<QString, QString>> fileModeDisplayItems()
 QList<QPair<QString, QString>> serverConfigModeDisplayItems()
 {
     // 与 config 文件同步逻辑统一: full/force/partial/ignore
-    // full = 应用本层设置 (遵守 [save]/serverconfig 文件夹同步模式 folder_mode)
+    // full = 应用本层设置 (遵守 save/[save]/serverconfig 文件夹同步模式 folder_mode)
     return {
         { QString::fromUtf8("\u5e94\u7528\u672c\u5c42\u8bbe\u7f6e (full)\uff1a\u9075\u5b88\u672c\u5c42\u6587\u4ef6\u5939\u540c\u6b65\u6a21\u5f0f"), QStringLiteral("full") },
         { QString::fromUtf8("\u5f3a\u5236\u8986\u76d6 (force)\uff1a\u76f4\u63a5\u5168\u91cf\u5199\u5165\u76ee\u6807"), QStringLiteral("force") },

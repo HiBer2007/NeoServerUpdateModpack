@@ -218,7 +218,8 @@ void ExportPage::onBrowseOutput()
 
     int idx = formatCombo_->currentIndex();
     QString filter;
-    if (idx >= 0 && idx < static_cast<int>(formatExtensions_.size())) {
+    if (idx >= 0 && idx < static_cast<int>(formatExtensions_.size())
+        && !formatExtensions_[idx].empty()) {
         filter = QString::fromUtf8("\u6574\u5408\u5305\u6587\u4ef6 (*%1)").arg(
             QString::fromStdString(formatExtensions_[idx]));
     } else {
@@ -238,7 +239,8 @@ void ExportPage::onBrowseOutput()
     if (!path.isEmpty()) {
         if (idx >= 0 && idx < static_cast<int>(formatExtensions_.size())) {
             QString ext = QString::fromStdString(formatExtensions_[idx]);
-            if (!path.endsWith(ext, Qt::CaseInsensitive)) {
+            // 空扩展名 = 目录型导出 (HMCL 工作区同步), 不追加后缀
+            if (!ext.isEmpty() && !path.endsWith(ext, Qt::CaseInsensitive)) {
                 path += ext;
             }
         }
@@ -261,6 +263,8 @@ void ExportPage::onFormatChanged(int index)
         QFileInfo fi(current);
         QString suffix = fi.suffix().toLower();
         QString ext = QString::fromStdString(formatExtensions_[index]);
+        // 空扩展名 = 目录型导出 (HMCL 工作区同步), 不改写路径
+        if (ext.isEmpty()) return;
         QString expectedSuffix = ext.mid(1);
 
         if (suffix != expectedSuffix) {

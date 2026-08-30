@@ -3,16 +3,20 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QFile>
+#include <QFileInfo>
 #include <QShortcut>
 #include <QKeySequence>
+
+#include "code_editor.h"
+#include "gitignore_highlighter.h"
 
 namespace HiBerGUI {
 
 FileContentEditor::FileContentEditor(QWidget* parent)
     : QWidget(parent)
+    , gitIgnoreHl_(new GitIgnoreHighlighter)
 {
     auto* lay = new QVBoxLayout(this);
     lay->setContentsMargins(16, 12, 16, 12);
@@ -33,11 +37,11 @@ FileContentEditor::FileContentEditor(QWidget* parent)
     stateLabel_->setWordWrap(true);
     lay->addWidget(stateLabel_);
 
-    view_ = new QPlainTextEdit(this);
-    view_->setStyleSheet(QStringLiteral(
-        "QPlainTextEdit { background-color: #262a30; color: #d8dce2; "
-        "border: 1px solid #3a4048; font-family: Consolas; font-size: 12px; }"));
-    lay->addWidget(view_, 1);
+    editor_ = createCodeEditor(CodeEditorKind::Qt, this);
+    if (editor_) {
+        editor_->setDarkMode(palette().color(QPalette::Window).lightness() < 128);
+        lay->addWidget(editor_->widget(), 1);
+    }
 
     auto* row = new QHBoxLayout();
     saveBtn_ = new QPushButton(QString::fromUtf8("\u4fdd\u5b58\u5185\u5bb9"), this);
@@ -47,12 +51,14 @@ FileContentEditor::FileContentEditor(QWidget* parent)
     lay->addLayout(row);
 
     connect(saveBtn_, &QPushButton::clicked, this, [this]() {
-        emit contentSaveRequested(relPath_, view_->toPlainText(), inherited_);
+        emit contentSaveRequested(relPath_, editor_->toPlainText(), inherited_);
     });
-    auto* saveShortcut = new QShortcut(QKeySequence::Save, view_);
-    connect(saveShortcut, &QShortcut::activated, this, [this]() {
-        emit contentSaveRequested(relPath_, view_->toPlainText(), inherited_);
-    });
+    if (editor_) {
+        auto* saveShortcut = new QShortcut(QKeySequence::Save, editor_->widget());
+        connect(saveShortcut, &QShortcut::activated, this, [this]() {
+            emit contentSaveRequested(relPath_, editor_->toPlainText(), inherited_);
+        });
+    }
 }
 
 void FileContentEditor::loadContent(const QString& relPath,
@@ -77,13 +83,54 @@ void FileContentEditor::loadContent(const QString& relPath,
                 "\u2718 \u7ee7\u627f\u81ea\u7236\u5206\u652f\uff0c\u672c\u5206\u652f\u65e0\u5b9e\u4f53\u3002"
                 "\u4fdd\u5b58\u5c06\u5728\u672c\u5206\u652f\u521b\u5efa\u8986\u76d6\u5b9e\u4f53"
                 "(override \u6807\u8bb0)\u3002"));
-        view_->setReadOnly(false);
     } else {
         stateLabel_->setText(
             QString::fromUtf8("\u2705 \u672c\u5206\u652f\u5b9e\u4f53\uff0c\u4fdd\u5b58\u76f4\u63a5\u5199\u56de\u3002"));
-        view_->setReadOnly(false);
     }
-    view_->setPlainText(content);
+
+    if (editor_) {
+        // 按扩展名选择高亮语言 (.gitignore 无扩展名, 按文件名识别 + 专用高亮)
+        const QString fileName = QFileInfo(relPath).fileName();
+        const QString suffix = QFileInfo(relPath).suffix().toLower();
+        QString lang = QStringLiteral("txt");
+        if (fileName == QLatin1String(".gitignore")) {
+            lang = QStringLiteral("gitignore");
+            editor_->registerHighlighter(gitIgnoreHl_);
+        } else if (suffix == QLatin1String("json")) {
+            lang = QStringLiteral("json");
+            editor_->registerHighlighter(nullptr);
+        } else if (suffix == QLatin1String("yaml")
+            || suffix == QLatin1String("yml")) {
+            lang = QStringLiteral("yaml");
+            editor_->registerHighlighter(nullptr);
+        } else if (suffix == QLatin1String("toml")) {
+            lang = QStringLiteral("toml");
+            editor_->registerHighlighter(nullptr);
+        } else if (suffix == QLatin1String("snbt")) {
+            lang = QStringLiteral("snbt");
+            editor_->registerHighlighter(nullptr);
+        } else if (suffix == QLatin1String("properties")
+            || suffix == QLatin1String("ini")
+            || suffix == QLatin1String("cfg")) {
+            lang = QStringLiteral("properties");
+            editor_->registerHighlighter(nullptr);
+        } else if (suffix == QLatin1String("txt")
+            || suffix == QLatin1String("log")) {
+            lang = QStringLiteral("txt");
+            editor_->registerHighlighter(nullptr);
+        } else {
+            editor_->registerHighlighter(nullptr);
+        }
+        editor_->setLanguage(lang);
+        editor_->setPlainText(content);
+        editor_->setReadOnly(false);
+        editor_->scrollToTop();
+    }
+}
+
+FileContentEditor::~FileContentEditor()
+{
+    delete gitIgnoreHl_;
 }
 
 } // namespace HiBerGUI

@@ -120,11 +120,11 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--anchor" && i + 1 < argc) {
-            anchor = QString::fromLocal8Bit(argv[++i]);
+            anchor = QString::fromUtf8(argv[++i]);
             continue;
         }
         if (target.isEmpty() && !a.empty() && a[0] != '-')
-            target = QString::fromLocal8Bit(argv[i]);
+            target = QString::fromUtf8(argv[i]);
     }
     if (!target.isEmpty()) {
         const QFileInfo fi(target);

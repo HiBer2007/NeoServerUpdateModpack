@@ -97,6 +97,7 @@ void EditorExtensionRegistry::scan(const QString& baseDir)
         info.version = QString::fromStdString(meta.value("version", ""));
         info.description = QString::fromStdString(meta.value("description", ""));
         info.dllName = QString::fromStdString(meta.value("dll", ""));
+        info.priority = meta.value("priority", 0);
         const QString kindStr = QString::fromStdString(
             meta.value("editor_type", ""));
 
@@ -159,7 +160,26 @@ void EditorExtensionRegistry::scan(const QString& baseDir)
             entry.info = info;
             entry.instance = inst;
             for (const QString& ext : info.fileTypes) {
-                configMap_[ext.toLower()] = inst;
+                const QString key = ext.toLower();
+                auto it = configMap_.find(key);
+                if (it != configMap_.end() && it->second) {
+                    // 后缀冲突: priority 高者注册 (与解析器插件仲裁一致)
+                    int curPriority = 0;
+                    for (const auto& e : entries_) {
+                        if (e.info.kind == EditorExtensionKind::Parser
+                            && e.instance == it->second) {
+                            curPriority = e.info.priority;
+                            break;
+                        }
+                    }
+                    if (curPriority > info.priority) {
+                        CLogger::Info("EditorExtensionRegistry: keep {} for {} "
+                            "(priority {} > {})", entry.info.name.toStdString(),
+                            key.toStdString(), curPriority, info.priority);
+                        continue;
+                    }
+                }
+                configMap_[key] = inst;
             }
         } else {
             auto factory = reinterpret_cast<NeoCore::CreateEditorExtensionFunc>(

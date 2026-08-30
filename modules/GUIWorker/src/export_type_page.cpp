@@ -126,11 +126,15 @@ void ExportTypePage::scanExporters()
             ExportFormat fmt;
             fmt.id = obj.value(QStringLiteral("format")).toString().toStdString();
             fmt.extension = obj.value(QStringLiteral("extension")).toString().toStdString();
-            fmt.name = obj.value(QStringLiteral("format")).toString().toStdString()
-                + QStringLiteral(" (%1)").arg(
-                    QString::fromStdString(fmt.extension)).toStdString();
+            const QString dispName = fmt.extension.empty()
+                ? QString::fromStdString(fmt.id)
+                : QString::fromStdString(fmt.id)
+                    + QStringLiteral(" (%1)").arg(
+                        QString::fromStdString(fmt.extension));
+            fmt.name = dispName.toStdString();
             fmt.description = obj.value(QStringLiteral("description")).toString().toStdString();
-            if (!fmt.id.empty() && !fmt.extension.empty()) {
+            // 空扩展名 = 目录型导出 (HMCL 工作区同步), 合法格式
+            if (!fmt.id.empty()) {
                 formats_.push_back(fmt);
             }
         }

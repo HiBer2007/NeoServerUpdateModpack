@@ -77,7 +77,8 @@ private:
     void sendToJs(const QString& json);
 };
 
-// 工厂: 由 HiBerGUIWebEditor 库调用注册
+// 工厂: 宿主经 registerCodeEditorFactory(CodeEditorKind::Web, ...) 注册后,
+// createCodeEditor(CodeEditorKind::Web) 分发到此; 也可直接调用本函数创建
 ICodeEditor* createWebCodeEditor(QWidget* parent);
 
 } // namespace HiBerGUI

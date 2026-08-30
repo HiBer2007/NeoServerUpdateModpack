@@ -12,7 +12,7 @@ class HmclExporter : public NeoCore::IModpackExporter {
 public:
     std::string format_name() const override { return "hmcl"; }
 
-    std::string file_extension() const override { return "工作目录"; }
+    std::string file_extension() const override { return ""; }
 
     std::string format_description() const override {
         return "HMCL 工作区同步（同步到游戏工作目录）";

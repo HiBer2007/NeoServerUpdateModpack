@@ -16,7 +16,7 @@ struct ServerConfigEntry {
 };
 
 enum class ServerConfigMode {
-    Full,      // full: 应用本层设置 (遵守 [save]/serverconfig 文件夹同步模式 folder_mode)
+    Full,      // full: 应用本层设置 (遵守 save/[save]/serverconfig 文件夹同步模式 folder_mode)
     Force,     // force: 强制覆盖 (与 config 同步逻辑统一)
     Partial,   // partial: 半同步 merge (IConfigParser 追踪键, tracked_keys)
     Ignore     // ignore: 不碰
@@ -30,7 +30,8 @@ enum class ServerConfigFolderMode {
 };
 
 // serverconfig 特殊同步（L3）：
-// 规则存储于仓库 branches/<branch>/[save]/serverconfig/（[save] 为字面目录名）
+// 规则存储于仓库 branches/<branch>/save/[save]/serverconfig/
+//   （save = 存档文件夹, [save] = 单个存档目录占位, 均为字面目录名）
 //   <源文件本体>          -> 镜像内容，同步到目标每个存档的 serverconfig/
 //   .rule/globle.json    -> { default_mode, folder_mode, version, description }
 //                           folder_mode: 本层文件夹同步模式 (full 模式应用,

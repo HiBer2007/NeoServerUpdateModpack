@@ -7,7 +7,6 @@
   "features": [
     "resolve_url",
     "validate",
-    "batch_search",
     "reverse_lookup"
   ]
 }

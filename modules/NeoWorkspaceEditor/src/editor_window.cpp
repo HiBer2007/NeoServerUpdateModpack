@@ -62,6 +62,7 @@
 
 #include "git_panel.h"
 #include "branch_meta_dialog.h"
+#include <gitignore_dialog.h>
 
 namespace {
 
@@ -471,6 +472,20 @@ void EditorWindow::buildMenus()
     connect(softResetAction, &QAction::triggered, this, [this]() {
         if (!gitPanel_ || gitPanel_->repoPath().empty()) return;
         gitPanel_->squashDialog();
+    });
+
+    // 编辑/查看仓库根 .gitignore: 图形化编辑 (规则勾选列表) + 直接编辑 (HiBerGUI 编辑器)
+    gitIgnoreAction_ = gitMenu->addAction("\u5ffd\u7565\u6587\u4ef6 (.gitignore)(&I)");
+    gitIgnoreAction_->setEnabled(false);
+    auto* ignoreMenu = new QMenu(gitMenu);
+    gitIgnoreAction_->setMenu(ignoreMenu);
+    auto* guiEditAct = ignoreMenu->addAction("\u56fe\u5f62\u5316\u7f16\u8f91(&G)...");
+    connect(guiEditAct, &QAction::triggered, this, [this]() {
+        openGitIgnoreDialog(0);
+    });
+    auto* textEditAct = ignoreMenu->addAction("\u76f4\u63a5\u7f16\u8f91(&T)...");
+    connect(textEditAct, &QAction::triggered, this, [this]() {
+        openGitIgnoreDialog(1);
     });
 
     auto* editMenu = menuBar()->addMenu("编辑(&E)");
@@ -1362,6 +1377,7 @@ bool EditorWindow::loadWorkspace(const std::string& dirPath, RepoSource source)
     switchBranchAction_->setEnabled(true);
     forkRepoAction_->setEnabled(true);
     branchMetaAction_->setEnabled(true);
+    gitIgnoreAction_->setEnabled(true);
     // 完整性检查 = 加载流程的最后一个阶段 (98% → 完成回调 100%)
     setStage(98, QString::fromUtf8("\u68c0\u67e5\u4ed3\u5e93\u5b8c\u6574\u6027\u2026"));
     guard.keepOpen = true;
@@ -1604,7 +1620,7 @@ void EditorWindow::runIntegrityCheck(bool manual)
                 loadProgressCard_->hideCard();
             }
         });
-    proc->start("git", { "status", "--porcelain", "-b" });
+    proc->start("git", { "status", "--porcelain", "-b", "-z" });
 }
 
 void EditorWindow::finishIntegrityCheck(const QString& statusOut,
@@ -1620,7 +1636,10 @@ void EditorWindow::finishIntegrityCheck(const QString& statusOut,
     std::vector<Item> items;
     QString syncNote;
 
-    for (auto& line : statusOut.split('\n', Qt::SkipEmptyParts)) {
+    // -z 输出: 每条记录以 NUL 结尾 (含 ## 分支头), 路径原样 UTF-8 无转义
+    const QStringList records = statusOut.split(QChar('\0'), Qt::SkipEmptyParts);
+    for (auto& line : records) {
+        if (line.isEmpty()) continue;
         if (line.startsWith("## ")) {
             QRegularExpression re(R"(\[ahead (\d+)(?:, behind (\d+))?\])");
             QRegularExpression re2(R"(\[behind (\d+)\])");
@@ -2751,6 +2770,25 @@ void EditorWindow::onSshKeys()
     }
 }
 
+void EditorWindow::openGitIgnoreDialog(int initialTab)
+{
+    if (currentFilePath_.empty()) return;
+    QFileInfo fi(QString::fromStdString(currentFilePath_));
+    const QString repoDir = fi.absolutePath();
+    if (gitPanel_ && !gitPanel_->repoPath().empty()) {
+        GitIgnoreMarkup::GitIgnoreDialog dlg(repoDir, initialTab, this);
+        connect(&dlg, &GitIgnoreMarkup::GitIgnoreDialog::saved, this,
+            [this](const QString& absPath) {
+                gitAddPaths({ absPath });
+                if (gitPanel_) gitPanel_->refresh();
+                statusBar()->showMessage(QString::fromUtf8(
+                    "\u5df2\u4fdd\u5b58\u5e76\u8ddf\u8e2a: %1")
+                    .arg(absPath), 5000);
+            });
+        dlg.exec();
+    }
+}
+
 void EditorWindow::onGitInfo()
 {
     if (currentFilePath_.empty()) return;
@@ -2771,8 +2809,13 @@ void EditorWindow::onGitInfo()
     if (remote.isEmpty()) remote = "(\u65e0\u8fdc\u7a0b)";
 
     auto st = git.status(repoDir.toStdString());
-    QString status = QString::fromStdString(st.stdoutOutput).trimmed();
-    QString dirty = status.isEmpty() ? "\u5e72\u51c0" : QString("\u672a\u63d0\u4ea4\u6539\u52a8 (%1 \u9879)").arg(status.count('\n') + 1);
+    const std::string raw = st.stdoutOutput;
+    int dirtyCount = 0;
+    for (char c : raw) if (c == '\0') ++dirtyCount;
+    QString dirty = dirtyCount == 0
+        ? QString::fromUtf8("\u5e72\u51c0")
+        : QString::fromUtf8("\u672a\u63d0\u4ea4\u6539\u52a8 (%1 \u9879)")
+            .arg(dirtyCount);
 
     QMessageBox::information(this, "Git 信息",
         QString("仓库路径: %1\n\n"

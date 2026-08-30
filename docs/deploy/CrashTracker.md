@@ -118,13 +118,13 @@ int main() {
 ### `InstallCrashHandler`
 
 ```cpp
-void InstallCrashHandler(const std::string& dumpDir = ".");
+void InstallCrashHandler(const std::string& dumpDir = "");
 ```
 
 安装未处理异常过滤器。内部操作：
 - `SetThreadStackGuarantee(65536)` — 保留 64KB 栈空间
 - `SetUnhandledExceptionFilter` — 挂载 SEH 钩子
-- 崩溃输出至 `crash-report/<时间戳>/`
+- 崩溃输出至 `crash-report/<时间戳>/`（`dumpDir` 为空串时 = 宿主 exe 目录）
 
 ### `InstallCrtReportHook`
 
@@ -241,6 +241,8 @@ CrashTracker.exe --cli --latest
 - `--list`：扫描 `<exe目录>/crash-report/` 下全部报告目录（按时间倒序），打印时间戳与 .dmp 路径
 - `--latest`：输出最新一份报告的完整内容（含 `.meta` 中的 CRT 断言原文）
 - 两者也可组合：`--cli --list` 获取编号后，用 `--cli <路径>` 定向分析
+- `--cli` 后无参数时打印 usage 到 stderr 并返回 1
+- 分析结果同时存档 `crash_<ts>_report.txt` 到文件同目录（`writeReportArchive`）
 - CLI 模式自动挂载父进程控制台（`AttachConsole`），无控制台时分配新控制台，管道/重定向场景下直接使用继承句柄
 
 ### 5.2 无 Qt DLL 环境
@@ -252,7 +254,7 @@ CrashTracker.exe --cli --latest
 | 码 | 含义 |
 |----|------|
 | 0 | 成功输出报告 |
-| 1 | 无法加载 dump/trace 文件 |
+| 1 | 无法加载 dump/trace 文件，或 `--cli` 缺参数（usage 错误） |
 
 ---
 
@@ -268,7 +270,7 @@ CrashTracker.exe crash_20260728_133521.dmp
 CrashTracker.exe
 ```
 
-崩溃处理器通过 `ShellExecuteExW` 自动启动 GUI 模式。
+崩溃处理器通过 `CreateProcessA` 自动启动 GUI 模式（堆损坏进程中 `ShellExecuteExW` 会死锁，必须用 `CreateProcessA`）。
 
 ### 6.2 界面
 

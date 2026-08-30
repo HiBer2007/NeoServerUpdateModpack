@@ -226,6 +226,23 @@ bool PluginLoader::LoadPlugin(const std::string& dllPath,
 void PluginLoader::RegisterParser(LoadedParser&& parser)
 {
     for (const auto& ext : parser.capability.extensions) {
+        auto it = registry_.find(ext);
+        if (it != registry_.end() && it->second) {
+            // 扩展名已被注册: 按 priority 仲裁, 保留更高者 (避免目录迭代顺序决定归属)
+            int curPriority = -1;
+            for (const auto& p : owned_parsers_) {
+                if (p.instance.get() == it->second) {
+                    curPriority = p.capability.priority;
+                    break;
+                }
+            }
+            if (curPriority > parser.capability.priority) {
+                CLogger::Info("Keep parser {} for extension {} "
+                    "(priority {} > {})", it->second->capability().name,
+                    ext, curPriority, parser.capability.priority);
+                continue;
+            }
+        }
         registry_[ext] = parser.instance.get();
     }
     owned_parsers_.push_back(std::move(parser));

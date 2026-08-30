@@ -5,6 +5,7 @@ add_library(HiBerGUILibrary STATIC
     src/work_card.cpp
     src/work_card_stack.cpp
     src/code_editor.cpp
+    src/gitignore_highlighter.cpp
     src/merge_preview_dialog.cpp
     src/deep_tree_behavior.cpp
     src/output_tree_panel.cpp
@@ -18,6 +19,7 @@ add_library(HiBerGUILibrary STATIC
         include/work_card_stack.h
         include/code_editor_interface.h
         include/code_editor.h
+        include/gitignore_highlighter.h
         include/merge_preview_dialog.h
         include/deep_tree_behavior.h
         include/output_tree_panel.h

@@ -26,6 +26,8 @@ struct EditorExtensionInfo {
     QString dllName;
     EditorExtensionKind kind = EditorExtensionKind::Parser;
     QStringList fileTypes;
+    // 扩展名冲突仲裁: 多个扩展声明同一后缀时, priority 高者注册 (默认 0)
+    int priority = 0;
 };
 
 // 统一扩展注册表: 扫描 editor/extension 下所有 *.meta.json,

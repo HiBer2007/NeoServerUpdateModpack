@@ -292,9 +292,9 @@ void BranchEditor::onBranchSelected()
 
     spInfoLabel_->setText(
         QString("分支级 sync_policies 覆盖 (留空继承顶层默认)。"
-            "serverconfig 规则: branches/%1/[save]/serverconfig/.rule/ "
+            "serverconfig 规则: branches/%1/save/[save]/serverconfig/.rule/ "
             "(globle.json 默认模式 / list.json 文件清单)，在仓库树选中 "
-            "[save]/serverconfig 文件夹可编辑。")
+            "save/[save]/serverconfig 文件夹可编辑。")
             .arg(QString::fromStdString(branches_[currentIndex_].name)));
 }
 

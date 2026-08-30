@@ -2379,13 +2379,38 @@ void ModpackContentIde::createServerConfigFolder()
         emit logMessage(QString::fromUtf8("\u8bf7\u5148\u6253\u5f00\u4ed3\u5e93\u5e76\u9009\u62e9\u5206\u652f\u3002"));
         return;
     }
-    const QString dir = branchDir() + QStringLiteral("/[save]/serverconfig");
+    // save = 存档文件夹; [save] = 单个存档目录占位 (名称任意); serverconfig = 同步目标
+    const QString dir = branchDir() + QStringLiteral("/save/[save]/serverconfig");
     if (QDir(dir).exists()) {
         emit logMessage(QString::fromUtf8(
             "\u5df2\u5b58\u5728: %1").arg(dir));
         return;
     }
     if (QDir().mkpath(dir)) {
+        // 立刻缓存配置: 写入默认规则配置 (globle.json 默认模式 / list.json 文件清单)
+        const QString ruleDir = dir + QStringLiteral("/.rule");
+        QDir().mkpath(ruleDir);
+        {
+            nlohmann::json globle;
+            globle["default_mode"] = "full";
+            globle["folder_mode"] = "mirror";
+            std::ofstream f((ruleDir + QStringLiteral("/globle.json")).toStdString());
+            if (f.is_open()) {
+                f << globle.dump(2) << std::endl;
+                f.close();
+            }
+        }
+        {
+            nlohmann::json list;
+            list["files"] = nlohmann::json::object();
+            std::ofstream f((ruleDir + QStringLiteral("/list.json")).toStdString());
+            if (f.is_open()) {
+                f << list.dump(2) << std::endl;
+                f.close();
+            }
+        }
+        // 立刻增加 Git 追踪
+        emit gitAddRequested({ dir });
         emit logMessage(QString::fromUtf8(
             "\u2705 \u5df2\u521b\u5efa serverconfig \u540c\u6b65\u6587\u4ef6\u5939: %1").arg(dir));
         refreshBranchMeta();
@@ -3010,7 +3035,7 @@ void ModpackContentIde::routeObject(const RepoObjectInfo& info)
         break;
     }
     case RepoObjectType::Folder: {
-        if (info.path == QStringLiteral("[save]/serverconfig")) {
+        if (info.path == QStringLiteral("save/[save]/serverconfig")) {
             serverConfigEditor_->setContext(repoDir_, branch_);
             serverConfigEditor_->load();
             switchEditor(4);

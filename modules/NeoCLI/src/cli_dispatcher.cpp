@@ -2140,7 +2140,12 @@ int CliDispatcher::cmdStatus(const CliCommand& cmd)
 
     auto statusResult = gitOps.status(workDir);
     if (statusResult.exitCode == 0) {
-        data["git_status"] = statusResult.stdoutOutput;
+        std::string statusText;
+        statusText.reserve(statusResult.stdoutOutput.size());
+        for (char c : statusResult.stdoutOutput) {
+            statusText.push_back(c == '\0' ? '\n' : c);
+        }
+        data["git_status"] = statusText;
     }
 
     auto revResult = gitOps.revParse(workDir, "HEAD");

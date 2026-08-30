@@ -202,7 +202,7 @@ void OutputTreePanel::loadEntries(const nlohmann::json& entries,
             // [save] 为通配目录 (匹配任意存档目录名), 特殊标记并指出通配路径
             if (name == QStringLiteral("[save]")) {
                 match->setToolTip(0, QString::fromUtf8(
-                    "\u901a\u914d\u76ee\u5f55 [save]\uff1a\u5339\u914d\u4efb\u610f\u5b58\u6863\u76ee\u5f55\u540d\uff0c"
+                    "\u901a\u914d\u76ee\u5f55 save/[save]\uff1a\u5339\u914d\u4efb\u610f\u5b58\u6863\u76ee\u5f55\u540d\uff0c"
                     "\u5c06\u540c\u6b65\u5230\u6bcf\u4e2a\u5b58\u6863\u7684 serverconfig/\u76ee\u5f55\u3002"));
                 match->setData(0, Qt::UserRole + 3, true);
                 const QColor c = darkMode

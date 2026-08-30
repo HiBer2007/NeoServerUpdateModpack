@@ -14,6 +14,7 @@ target_link_libraries(NeoWorkspace
     PUBLIC
         NeoCore
         Qt6::Core
+        nlohmann_json::nlohmann_json
 )
 
 

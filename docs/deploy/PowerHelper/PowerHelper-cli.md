@@ -62,9 +62,10 @@ PowerHelper group <dir> [--toc] [--json]
 | 1 | 运行期错误（文件不存在 / 目录无 .md 文档） |
 | 2 | 用法错误（未知命令、缺参数、GUI 目标不存在） |
 
-> **捕获建议**：PowerHelper 为 GUI 子系统(WIN32)程序，在 PowerShell 中用
-> `$var = & PowerHelper render x.md` 捕获 stdout 常显示为空（console 脱离）。
-> 请直接于控制台运行，或用重定向（`> file`、Start-Process -RedirectStandardOutput）。
+> **捕获建议**：PowerHelper 为**控制台子系统**程序（2026-08-07 定案，CMake 已去
+> `WIN32` 标志——stdout 原生连接控制台），在 PowerShell 中捕获 stdout 时控制台
+> 上下文可能与预期不同；请直接于控制台运行，或用重定向（`> file`、
+> Start-Process -RedirectStandardOutput）。
 > CLI 崩溃（render/toc/group）走 `CrashTracker --cli` 控制台报告，不弹 GUI。
 
 ## 示例

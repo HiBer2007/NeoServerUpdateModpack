@@ -74,6 +74,7 @@ private:
     void clampGitPanelWidth();
     void buildMenus();
     void rebuildExtensionsMenu();
+    void openGitIgnoreDialog(int initialTab);
     void buildToolBar();
     void connectSignals();
     void updateTitle();
@@ -118,6 +119,7 @@ private:
     QAction* switchBranchAction_;
     QAction* forkRepoAction_;
     QAction* branchMetaAction_;
+    QAction* gitIgnoreAction_ = nullptr;
     QComboBox* branchCombo_;
     QMenu* extMenu_ = nullptr;
 

@@ -120,7 +120,8 @@ GitResult GitOperations::listRemoteBranches(const std::string& repoDir)
 
 GitResult GitOperations::status(const std::string& repoDir)
 {
-    return execute({"status", "--porcelain"}, repoDir, 15000);
+    // -z: NUL 分隔 + 路径原样 UTF-8 (中文路径不八进制转义, 空格路径不带引号)
+    return execute({"status", "--porcelain", "-z"}, repoDir, 15000);
 }
 
 GitResult GitOperations::revParse(const std::string& repoDir, const std::string& ref)
@@ -195,6 +196,13 @@ GitResult GitOperations::trustRepository(const std::string& dir)
 GitResult GitOperations::execute(const std::vector<std::string>& args,
     const std::string& workingDir, int timeoutMs)
 {
+    return executeProgram(gitPath_, args, workingDir, timeoutMs);
+}
+
+GitResult GitOperations::executeProgram(const std::string& program,
+    const std::vector<std::string>& args,
+    const std::string& workingDir, int timeoutMs)
+{
     GitResult result;
     result.exitCode = -1;
     result.errorCode = NeoCore::ErrorCode::Success;
@@ -208,7 +216,7 @@ GitResult GitOperations::execute(const std::vector<std::string>& args,
         process.setWorkingDirectory(QDir::currentPath());
     }
 
-    process.setProgram(QString::fromStdString(gitPath_));
+    process.setProgram(QString::fromStdString(program));
 
     QStringList qArgs;
     for (const auto& arg : args) {
@@ -223,25 +231,26 @@ GitResult GitOperations::execute(const std::vector<std::string>& args,
 
         if (!process.waitForStarted(5000)) {
             result.errorCode = NeoCore::ErrorCode::GitNotFound;
-            result.stderrOutput = "Failed to start git process: " +
+            result.stderrOutput = "Failed to start process: " +
                 process.errorString().toStdString();
             result.stdoutOutput = "";
             result.exitCode = -1;
-            CLogger::Error("GitOperations: Failed to start git: {}",
-                process.errorString().toStdString());
+            CLogger::Error("GitOperations: Failed to start {}: {}",
+                program, process.errorString().toStdString());
             lastError_ = result.stderrOutput;
             return result;
         }
 
         if (!process.waitForFinished(timeoutMs)) {
-            CLogger::Warn("GitOperations: Git process timed out after {} ms, killing", timeoutMs);
+            CLogger::Warn("GitOperations: {} timed out after {} ms, killing",
+                program, timeoutMs);
             process.kill();
             if (!process.waitForFinished(5000)) {
                 process.terminate();
                 process.waitForFinished(3000);
             }
             result.errorCode = NeoCore::ErrorCode::GitTimeout;
-            result.stderrOutput = "Git process timed out";
+            result.stderrOutput = "Process timed out";
             result.stdoutOutput = QString::fromUtf8(process.readAllStandardOutput()).toStdString();
             result.exitCode = -1;
             lastError_ = result.stderrOutput;
@@ -252,7 +261,7 @@ GitResult GitOperations::execute(const std::vector<std::string>& args,
         result.stdoutOutput = QString::fromUtf8(process.readAllStandardOutput()).toStdString();
         result.stderrOutput = QString::fromUtf8(process.readAllStandardError()).toStdString();
 
-        // git 输出实时挂日志/终端 (不再静默)
+        // git/ssh 输出实时挂日志/终端 (不再静默)
         if (!result.stdoutOutput.empty()) {
             CLogger::Info("Git out: {}", result.stdoutOutput);
         }
@@ -263,7 +272,7 @@ GitResult GitOperations::execute(const std::vector<std::string>& args,
         if (process.exitStatus() == QProcess::CrashExit) {
             result.errorCode = NeoCore::ErrorCode::GitCrash;
             result.stderrOutput += " (process crashed)";
-            CLogger::Error("GitOperations: Git process crashed, exitCode={}", result.exitCode);
+            CLogger::Error("GitOperations: {} crashed, exitCode={}", program, result.exitCode);
             lastError_ = result.stderrOutput;
         }
         else if (result.exitCode != 0) {
@@ -273,11 +282,11 @@ GitResult GitOperations::execute(const std::vector<std::string>& args,
             }
         }
 
-        CLogger::Debug("GitOperations: git {} -> exitCode={}", args[0], result.exitCode);
+        CLogger::Debug("GitOperations: {} {} -> exitCode={}", program, args[0], result.exitCode);
     }
     catch (const std::exception& e) {
         result.errorCode = NeoCore::ErrorCode::GitCrash;
-        result.stderrOutput = std::string("Exception during git execution: ") + e.what();
+        result.stderrOutput = std::string("Exception during process execution: ") + e.what();
         result.exitCode = -1;
         CLogger::Error("GitOperations: Exception: {}", e.what());
         lastError_ = result.stderrOutput;
@@ -317,13 +326,28 @@ GitResult GitOperations::generateSshKey(const std::string& keyPath, const std::s
 
     std::vector<std::string> args = {"-t", type, "-f", keyPath, "-N", "", "-q"};
     if (!comment.empty()) args.insert(args.end(), {"-C", comment});
-    return execute(args, "", 10000);
+    return executeProgram(siblingToolPath("ssh-keygen"), args, "", 10000);
 }
 
 GitResult GitOperations::testSshConnection(const std::string& host)
 {
-    return execute({"-T", "git@" + host, "-o", "StrictHostKeyChecking=accept-new",
+    // ssh -T 探测: 认证成功时 github 仍返回 exit 1 (无 shell), 判定以 stderr 为准
+    return executeProgram(siblingToolPath("ssh"), {"-T", "git@" + host,
+        "-o", "StrictHostKeyChecking=accept-new",
         "-o", "BatchMode=yes"}, "", 15000);
+}
+
+std::string GitOperations::siblingToolPath(const std::string& name) const
+{
+    QFileInfo gi(QString::fromStdString(gitPath_));
+    if (!gi.isAbsolute() || gi.absolutePath().isEmpty()) {
+        return name;  // PATH 查找
+    }
+    const QString candidate = gi.absolutePath() + "/" + QString::fromStdString(name);
+    if (QFile::exists(candidate)) {
+        return candidate.toStdString();
+    }
+    return name;  // 同目录缺失时回退 PATH
 }
 
 std::string GitOperations::defaultSshKeyPath()

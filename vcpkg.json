@@ -5,7 +5,6 @@
   "description": "NeoServer 更新整合包管理工具",
   "dependencies": [
     "cmark-gfm",
-    "cpr",
     "libzippp",
     "nlohmann-json",
     "spdlog",

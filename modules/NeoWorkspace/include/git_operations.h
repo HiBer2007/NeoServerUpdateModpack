@@ -63,6 +63,11 @@ private:
 
     GitResult execute(const std::vector<std::string>& args,
         const std::string& workingDir = "", int timeoutMs = 30000);
+    GitResult executeProgram(const std::string& program,
+        const std::vector<std::string>& args,
+        const std::string& workingDir = "", int timeoutMs = 30000);
+    // ssh-keygen/ssh 等伴随工具: 优先 git 同目录 (MinGit 布局), 否则 PATH
+    std::string siblingToolPath(const std::string& name) const;
 };
 
 } // namespace NeoWorkspace

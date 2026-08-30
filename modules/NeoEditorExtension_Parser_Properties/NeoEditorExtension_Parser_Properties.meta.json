@@ -1,1 +1,1 @@
-{"name":"Properties Config Editor Extension","version":"1.0.0","dll":"NeoEditorExtension_Parser_Properties.dll","editor_type":"parser","extensions":[".properties"],"description":"properties 配置文件编辑器，支持键追踪"}
+{"name":"Properties Config Editor Extension","version":"1.0.0","dll":"NeoEditorExtension_Parser_Properties.dll","editor_type":"parser","extensions":[".properties"],"priority":20,"description":"properties 配置文件编辑器，支持键追踪"}

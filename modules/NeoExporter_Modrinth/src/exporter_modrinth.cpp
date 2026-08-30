@@ -14,6 +14,7 @@
 #include <QDateTime>
 
 #include <filesystem>
+#include <set>
 
 using json = nlohmann::json;
 
@@ -110,7 +111,8 @@ std::string mapModloaderId(const std::string& modloader) {
 }
 
 json scanBuildDirForIndex(const std::string& buildDir,
-                           const std::string& overridePrefix) {
+                           const std::string& overridePrefix,
+                           std::set<std::string>& validRels) {
     std::string normBuildDir = buildDir;
     while (!normBuildDir.empty() &&
            (normBuildDir.back() == '/' || normBuildDir.back() == '\\')) {
@@ -118,6 +120,7 @@ json scanBuildDirForIndex(const std::string& buildDir,
     }
 
     json filesArray = json::array();
+    validRels.clear();
 
     QDirIterator it(
         QString::fromStdString(normBuildDir),
@@ -146,6 +149,8 @@ json scanBuildDirForIndex(const std::string& buildDir,
             continue;
         }
 
+        validRels.insert(rel);
+
         json fileEntry;
         fileEntry["path"] = rel;
 
@@ -154,7 +159,7 @@ json scanBuildDirForIndex(const std::string& buildDir,
         hashObj["sha512"] = hashes.sha512;
         fileEntry["hashes"] = hashObj;
 
-        fileEntry["downloads"] = json::array();
+        // downloads 仅在发布方回填上传 URL 后写出 (mrpack 规范可选字段)
         fileEntry["fileSize"] = hashes.fileSize;
 
         filesArray.push_back(fileEntry);
@@ -165,14 +170,13 @@ json scanBuildDirForIndex(const std::string& buildDir,
 
 void packOverridesToZip(libzippp::ZipArchive& zf,
                          const std::string& buildDir,
-                         const std::string& overridePrefix) {
+                         const std::string& overridePrefix,
+                         const std::set<std::string>& validRels) {
     std::string normBuildDir = buildDir;
     while (!normBuildDir.empty() &&
            (normBuildDir.back() == '/' || normBuildDir.back() == '\\')) {
         normBuildDir.pop_back();
     }
-
-    QStringList dirsWithFiles;
 
     QDirIterator it(
         QString::fromStdString(normBuildDir),
@@ -189,6 +193,13 @@ void packOverridesToZip(libzippp::ZipArchive& zf,
 
         if (fi.isDir()) continue;
         if (fi.isFile()) {
+            // 只打包已成功进入 index 的文件, 保证包内与 index 一致
+            if (validRels.count(rel) == 0) {
+                CLogger::Warn(
+                    "Modrinth export: skipping file not in index '{}'",
+                    fullPath.c_str());
+                continue;
+            }
             std::string entryName = overridePrefix + "/" + rel;
             addFileToZip(zf, fullPath, entryName);
         }
@@ -295,7 +306,9 @@ public:
                 }
             }
 
-            json filesArray = scanBuildDirForIndex(build_dir, "overrides");
+            std::set<std::string> validRels;
+            json filesArray = scanBuildDirForIndex(build_dir, "overrides",
+                validRels);
 
             libzippp::ZipArchive zf(output_path);
             if (!zf.open(libzippp::ZipArchive::New)) {
@@ -310,7 +323,7 @@ public:
                 std::string indexStr = index.dump(2);
                 zf.addData("modrinth.index.json", indexStr.data(), indexStr.size());
 
-                packOverridesToZip(zf, build_dir, "overrides");
+                packOverridesToZip(zf, build_dir, "overrides", validRels);
 
                 if (zf.close() != LIBZIPPP_OK) {
                     CLogger::Error(

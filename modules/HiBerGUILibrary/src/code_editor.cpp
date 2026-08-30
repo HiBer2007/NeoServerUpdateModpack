@@ -12,6 +12,8 @@
 #include <QRegularExpression>
 #include <QPalette>
 #include <QTimer>
+#include <map>
+#include <QString>
 
 namespace HiBerGUI {
 
@@ -103,10 +105,17 @@ const QVector<EditorLanguageDef>& defaultLanguageDefs()
     return list;
 }
 
+// 外部语言定义注册表: registerLanguageDef 追加的自定义语言,
+// setLanguage 内置分支未命中时按 langId 精确查找
+static std::map<QString, EditorLanguageDef>& customLanguageDefs()
+{
+    static std::map<QString, EditorLanguageDef> defs;
+    return defs;
+}
+
 void registerLanguageDef(const QString& langId, const EditorLanguageDef& def)
 {
-    Q_UNUSED(langId);
-    Q_UNUSED(def);
+    customLanguageDefs()[langId.toLower()] = def;
 }
 
 CodeEditorFactoryFn g_qtFactory = nullptr;
@@ -327,7 +336,10 @@ void CodeEditor::setLanguage(const QString& langId)
 {
     d_->langId = langId;
     const QString lower = langId.toLower();
-    if (lower.contains(QStringLiteral("json"))) {
+    auto customIt = customLanguageDefs().find(lower);
+    if (customIt != customLanguageDefs().end()) {
+        d_->def = customIt->second;
+    } else if (lower.contains(QStringLiteral("json"))) {
         d_->def = defaultLanguageDefs().value(0);
     } else if (lower.contains(QStringLiteral("properties"))
         || lower.contains(QStringLiteral("cfg"))

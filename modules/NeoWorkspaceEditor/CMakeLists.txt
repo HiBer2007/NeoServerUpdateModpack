@@ -31,6 +31,7 @@ target_include_directories(NeoWorkspaceEditor
 )
 target_link_libraries(NeoWorkspaceEditor
     PRIVATE
+        GitIgnoreMarkup
         NeoCore
         NeoWorkspace
         NeoBuild

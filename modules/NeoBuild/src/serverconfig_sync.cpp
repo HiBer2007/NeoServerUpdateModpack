@@ -36,7 +36,7 @@ bool ServerConfigSync::init(const std::string& savesDir,
     branchName_ = branchName;
 
     fs::path ruleBase = fs::path(repoRoot_) / "branches" / branchName_
-        / "[save]" / "serverconfig" / ".rule";
+        / "save" / "[save]" / "serverconfig" / ".rule";
     ruleDir_ = ruleBase.string();
 
     if (branchName_.empty()) {
@@ -152,7 +152,7 @@ std::string ServerConfigSync::sourcePathFor(const std::string& relPath) const
 {
     if (ruleDir_.empty()) return "";
     fs::path src = fs::path(repoRoot_) / "branches" / branchName_
-        / "[save]" / "serverconfig" / relPath;
+        / "save" / "[save]" / "serverconfig" / relPath;
     return src.string();
 }
 
@@ -246,7 +246,7 @@ bool ServerConfigSync::syncConfig(const ServerConfigEntry& entry,
         if (mode == ServerConfigMode::Partial) {
             ok = syncPartial(entry, remoteContent);
         } else if (mode == ServerConfigMode::Full) {
-            // full = 应用本层设置: 遵守 [save]/serverconfig 文件夹同步模式
+            // full = 应用本层设置: 遵守 save/[save]/serverconfig 文件夹同步模式
             ok = syncByFolderMode(entry, remoteContent);
         } else {
             // force: 强制覆盖 (与 config 同步逻辑 force 一致)
