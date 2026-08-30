@@ -24,7 +24,7 @@ target_include_directories(NeoWorkspaceEditor
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../NeoCore/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../src
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../GUIWorker/include
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../HiBerGUILibrary/include
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../HiBerGUILibCPP/HiBerGUILibrary/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../PowerHelper/bridge/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../NeoWorkspace/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../NeoBuild/include

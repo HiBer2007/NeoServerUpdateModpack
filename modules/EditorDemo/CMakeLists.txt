@@ -4,13 +4,13 @@ add_executable(editor_demo
 )
 target_include_directories(editor_demo
     PRIVATE src
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../HiBerGUILibrary/include
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../HiBerGUIWebEditor/include
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../HiBerGUILibCPP/HiBerGUILibrary/include
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../HiBerGUILibCPP/HiBerGUIWebView2/include
 )
 target_link_libraries(editor_demo
     PRIVATE
         HiBerGUILibrary
-        HiBerGUIWebEditor
+        HiBerGUIWebView2
         Qt6::Core
         Qt6::Widgets
 )

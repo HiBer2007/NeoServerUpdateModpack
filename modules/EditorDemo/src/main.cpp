@@ -282,7 +282,7 @@ private:
 int main(int argc, char** argv)
 {
     QApplication app(argc, argv);
-    // 注册 Web 工厂 (仅链接 HiBerGUIWebEditor 的程序可注册)
+    // 注册 Web 工厂 (仅链接 HiBerGUIWebView2 的程序可注册)
     registerCodeEditorFactory(CodeEditorKind::Web,
         [](QWidget* parent) -> ICodeEditor* {
             return createWebCodeEditor(parent);

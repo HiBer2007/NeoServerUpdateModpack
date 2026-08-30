@@ -4,3 +4,6 @@
 [submodule "modules/CrashTrackerHandleLib"]
 	path = modules/CrashTrackerHandleLib
 	url = git@github.com:HiBer2007/CrashTrackerHandleLibCPP.git
+[submodule "modules/HiBerGUILibCPP"]
+	path = modules/HiBerGUILibCPP
+	url = git@github.com:HiBer2007/HiBerGUILibCPP.git

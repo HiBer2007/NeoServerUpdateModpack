@@ -132,8 +132,7 @@ add_subdirectory(modules/NeoEditorExtension_Parser_Properties)
 # ============================================================
 # GUI / CLI (静态链接共享库)
 # ============================================================
-add_subdirectory(modules/HiBerGUILibrary)
-add_subdirectory(modules/HiBerGUIWebEditor)
+add_subdirectory(modules/HiBerGUILibCPP)
 add_subdirectory(modules/EditorDemo)
 add_subdirectory(modules/GUIWorker)
 add_subdirectory(modules/NeoCLI)
