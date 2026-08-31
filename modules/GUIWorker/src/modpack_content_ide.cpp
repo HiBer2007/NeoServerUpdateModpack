@@ -674,6 +674,10 @@ void ModpackContentIde::buildUI()
     CLogger::Info("BISECT heap after OutputTreePanel: {}",
         _CrtCheckMemory() ? "OK" : "CORRUPT");
     repoPanel_ = new RepoTreePanel(leftTabs);
+    // 通用库默认只隐藏 VCS 元数据；NSUM 工作区内部目录由宿主注入保持隐藏
+    repoPanel_->setSkipDirs({ QStringLiteral(".git"), QStringLiteral(".NSUM"),
+        QStringLiteral(".rule"), QStringLiteral("branch_config"),
+        QStringLiteral(".overrides") });
     CLogger::Info("BISECT heap after RepoTreePanel: {}",
         _CrtCheckMemory() ? "OK" : "CORRUPT");
     optionsPanel_ = new QWidget(leftTabs);
