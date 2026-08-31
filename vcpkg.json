@@ -10,6 +10,7 @@
     "spdlog",
     "tomlplusplus",
     "yaml-cpp",
-    "webview2"
+    "webview2",
+    "zlib"
   ]
 }

@@ -16,3 +16,6 @@
 [submodule "modules/PowerHelper"]
 	path = modules/PowerHelper
 	url = git@github.com:HiBer2007/PowerHelper.git
+[submodule "nbtcpp"]
+	path = nbtcpp
+	url = git@github.com:HiBer2007/nbtcpp.git
