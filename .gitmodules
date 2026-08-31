@@ -10,3 +10,6 @@
 [submodule "modules/CommonLoggerCPP"]
 	path = modules/CommonLoggerCPP
 	url = git@github.com:HiBer2007/CommonLoggerCPP.git
+[submodule "modules/GitIgnoreMarkup"]
+	path = modules/GitIgnoreMarkup
+	url = git@github.com:HiBer2007/GitignoreMarkup.git

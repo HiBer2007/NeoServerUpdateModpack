@@ -89,6 +89,7 @@ if(NOT DEFINED INSTALLER_ONLY_BUILD)
 # Shared Libraries (引擎核心，静态库)
 # ============================================================
 add_subdirectory(modules/CommonLoggerCPP)
+add_subdirectory(modules/HiBerGUILibCPP)
 add_subdirectory(modules/GitIgnoreMarkup)
 add_subdirectory(modules/NeoCore)
 add_subdirectory(modules/NeoWorkspace)
@@ -132,7 +133,6 @@ add_subdirectory(modules/NeoEditorExtension_Parser_Properties)
 # ============================================================
 # GUI / CLI (静态链接共享库)
 # ============================================================
-add_subdirectory(modules/HiBerGUILibCPP)
 add_subdirectory(modules/EditorDemo)
 add_subdirectory(modules/GUIWorker)
 add_subdirectory(modules/NeoCLI)
