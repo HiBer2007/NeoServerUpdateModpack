@@ -46,8 +46,8 @@
         },
         {
             "name": "installer-static",
-            "displayName": "Installer Static (vcpkg static Qt)",
-            "description": "仅构建 NeoInstaller.exe (静态Qt, 内嵌全部文件, ~48MB)。需先安装静态 Qt 到 H:/Qt-static/6.11.1/msvc2022_64（本机尚未安装，2026-08-16）",
+            "displayName": "Installer Static (static Qt + HiBerCommonInstaller)",
+            "description": "仅构建 NSUM 安装器 = hci_gui（静态 Qt，HCI_PRODUCT_FILES 内嵌 product/flows/deploy 全部文件 + NSUM 参数拓展）。静态 Qt: H:/Qt-static/6.11.1/msvc2022_64",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build_installer",
             "cacheVariables": {
@@ -58,8 +58,8 @@
                 "CMAKE_RC_COMPILER": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe",
                 "CMAKE_MT": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe",
                 "CMAKE_PREFIX_PATH": "H:/Qt-static/6.11.1/msvc2022_64",
-                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
                 "INSTALLER_ONLY_BUILD": "ON",
+                "HCI_QT_STATIC": "ON",
                 "DEPLOY_SOURCE": "${sourceDir}/build/deploy"
             },
             "environment": {

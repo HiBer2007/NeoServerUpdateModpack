@@ -76,12 +76,61 @@ if(NOT DEFINED INSTALLER_ONLY_BUILD)
     find_package(libzippp REQUIRED)
 endif()
 
-# NeoInstaller — 仅通过 installer-static 预设独立构建，不参与主配置
+# ============================================================
+# HiBerCommonInstaller 独立构建（installer-static 预设）：
+# 整包安装器 = hci_gui（静态 Qt）+ HCI_PRODUCT_FILES 内嵌
+# product/flows/deploy（单文件分发，替代旧 modules/NeoInstaller）
+# ============================================================
 if(INSTALLER_ONLY_BUILD)
-    add_subdirectory(modules/NeoInstaller)
-    nsum_add_version_info(NeoInstaller
-        "NSUM 构建工具安装程序"
-        "NSUM构建工具")
+    find_package(nlohmann_json CONFIG REQUIRED)
+    find_package(Lua REQUIRED)
+    find_package(ZLIB REQUIRED)
+    find_package(libzippp CONFIG REQUIRED)
+    find_package(cpr CONFIG REQUIRED)
+
+    set(HCI_BUILD_GUI ON)
+    set(HCI_BUILD_CLI OFF)
+    set(HCI_BUILD_TUI OFF)
+    set(HCI_BUILD_EXAMPLES OFF)
+    set(HIBERGUI_BUILD_EXAMPLES OFF)
+
+    if(NOT DEFINED DEPLOY_SOURCE)
+        set(DEPLOY_SOURCE "${CMAKE_SOURCE_DIR}/build/deploy")
+    endif()
+
+    # 内嵌 payload：整个 build/deploy（跳过 .dmp 与 config/custom，沿旧规则）
+    # + nsum_installer/ 的 product.json / flows / LICENSE
+    set(NSI_ROOT "${CMAKE_SOURCE_DIR}/nsum_installer")
+    set(HCI_PRODUCT_FILES "")
+    if(EXISTS "${DEPLOY_SOURCE}")
+        file(GLOB_RECURSE _deploy_files LIST_DIRECTORIES false "${DEPLOY_SOURCE}/*")
+        foreach(_f IN LISTS _deploy_files)
+            file(RELATIVE_PATH _rel "${DEPLOY_SOURCE}" "${_f}")
+            string(REPLACE "\\" "/" _rel "${_rel}")
+            if(_rel MATCHES ".*\\.dmp$" OR _rel MATCHES "^config/custom/")
+                continue()
+            endif()
+            list(APPEND HCI_PRODUCT_FILES "deploy/${_rel}=${_f}")
+        endforeach()
+    endif()
+    foreach(_f product.json install.json uninstall.json LICENSE.txt)
+        if(EXISTS "${NSI_ROOT}/${_f}")
+            list(APPEND HCI_PRODUCT_FILES "${_f}=${NSI_ROOT}/${_f}")
+        endif()
+    endforeach()
+    message(STATUS "NSUM installer: embedding ${HCI_PRODUCT_FILES}")
+
+    add_subdirectory(modules/HiBerCommonInstaller)
+
+    # NSUM 专属参数/步骤拓展（--with-editor 等；DLL 放置到 exe 旁 extensions/）
+    add_subdirectory(modules/NsumArgsExt)
+    add_custom_target(nsum_ext_deploy ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:hci_gui>/extensions
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:nsum_args_ext> $<TARGET_FILE_DIR:hci_gui>/extensions/
+        DEPENDS nsum_args_ext hci_gui
+        COMMENT "Deploy nsum_args_ext into hci_gui extensions/"
+    )
 endif()
 
 if(NOT DEFINED INSTALLER_ONLY_BUILD)

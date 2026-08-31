@@ -1,0 +1,10 @@
+{
+  "id": "uninstall",
+  "steps": [
+    { "id": "confirm", "ui": "confirm", "prompt": "移除 NeoServer 全部文件？", "abortIfNo": true },
+    { "id": "registry", "type": "registry", "key": "Software/HiBer2007/NeoServer",
+      "action": "delete" },
+    { "id": "clean", "type": "clean", "target": "{installDir}" },
+    { "id": "finish", "ui": "finish", "message": "NeoServer 已卸载" }
+  ]
+}

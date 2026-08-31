@@ -19,3 +19,6 @@
 [submodule "nbtcpp"]
 	path = nbtcpp
 	url = git@github.com:HiBer2007/nbtcpp.git
+[submodule "modules/HiBerCommonInstaller"]
+	path = modules/HiBerCommonInstaller
+	url = git@github.com:HiBer2007/HiBerCommonInstaller.git
