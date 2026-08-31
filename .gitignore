@@ -1,9 +1,7 @@
 # 构建输出
 build/
-build_asan/
-build_installer/
-build_installer_static/
 build_release/
+build_nsum_installer/
 cmake-build-*/
 out/
 vcpkg_installed/

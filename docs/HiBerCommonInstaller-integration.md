@@ -37,7 +37,7 @@ NeoServerUpdateModpack/
 
 - `INSTALLER_ONLY_BUILD=ON`、`HCI_QT_STATIC=ON`、`CMAKE_PREFIX_PATH=H:/Qt-static/6.11.1/msvc2022_64`、`DEPLOY_SOURCE=${sourceDir}/build/deploy`
 - **去掉了旧 `VCPKG_TARGET_TRIPLET=x64-windows-static`**（HCI 用动态 vcpkg 包 + 静态 Qt；静态 vcpkg triplet 未装）
-- 工作区迁移后删 `build_installer/` 重配（旧 CMakeCache 绑定旧机器路径会报错）
+- 工作区迁移后删 `build_nsum_installer/` 重配（旧 CMakeCache 绑定旧机器路径会报错）
 
 ## NSUM 产品配置语义（nsum_installer/）
 
@@ -73,9 +73,9 @@ NeoServerUpdateModpack/
 
 ```powershell
 # 1) 构建
-cmd /c "vcvars64.bat && cmake --preset installer-static && cmake --build build_installer"
+cmd /c "vcvars64.bat && cmake --preset installer-static && cmake --build build_nsum_installer"
 # 2) 静默安装（--with-editor 走拓展链路；本机有系统 git 时跳过下载）
-& build_installer/modules/HiBerCommonInstaller/gui/hci_gui.exe --product qrc:/product.json `
+& build_nsum_installer/modules/HiBerCommonInstaller/gui/hci_gui.exe --product qrc:/product.json `
   --flow install --path <out> --silent --with-editor
 # 期望：exit 0、deploy 文件释放、install.conf 四键、快捷方式创建
 # 3) 卸载
