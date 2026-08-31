@@ -57,9 +57,11 @@
                 "CMAKE_TOOLCHAIN_FILE": "H:/vcpkg/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_RC_COMPILER": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe",
                 "CMAKE_MT": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/mt.exe",
-                "CMAKE_PREFIX_PATH": "H:/Qt-static/6.11.1/msvc2022_64",
+                "CMAKE_PREFIX_PATH": "H:/Qt-static-rt/6.11.1/msvc2022_64",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
                 "INSTALLER_ONLY_BUILD": "ON",
                 "HCI_QT_STATIC": "ON",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
                 "DEPLOY_SOURCE": "${sourceDir}/build/deploy"
             },
             "environment": {

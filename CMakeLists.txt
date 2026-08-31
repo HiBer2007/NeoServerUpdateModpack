@@ -88,6 +88,11 @@ if(INSTALLER_ONLY_BUILD)
     find_package(libzippp CONFIG REQUIRED)
     find_package(cpr CONFIG REQUIRED)
 
+    # NSUM 特化安装器版本（单点定义；产物名/版本资源/--version 全部依赖它）
+    set(NSUM_INSTALLER_VERSION "1.0.0")
+    set(HCI_VERSION "${NSUM_INSTALLER_VERSION}")
+    set(HCI_GUI_OUTPUT_NAME "NSUM_Installer_${NSUM_INSTALLER_VERSION}")
+
     set(HCI_BUILD_GUI ON)
     set(HCI_BUILD_CLI OFF)
     set(HCI_BUILD_TUI OFF)
@@ -99,8 +104,12 @@ if(INSTALLER_ONLY_BUILD)
     endif()
 
     # 内嵌 payload：整个 build/deploy（跳过 .dmp 与 config/custom，沿旧规则）
-    # + nsum_installer/ 的 product.json / flows / LICENSE
+    # + nsum_installer/ 的 product.json（版本经 configure_file 注入）/ flows / LICENSE
     set(NSI_ROOT "${CMAKE_SOURCE_DIR}/nsum_installer")
+    set(NSI_GENERATED "${CMAKE_BINARY_DIR}/nsum_generated")
+    file(MAKE_DIRECTORY "${NSI_GENERATED}")
+    configure_file("${NSI_ROOT}/product.json" "${NSI_GENERATED}/product.json" @ONLY)
+
     set(HCI_PRODUCT_FILES "")
     if(EXISTS "${DEPLOY_SOURCE}")
         file(GLOB_RECURSE _deploy_files LIST_DIRECTORIES false "${DEPLOY_SOURCE}/*")
@@ -113,7 +122,8 @@ if(INSTALLER_ONLY_BUILD)
             list(APPEND HCI_PRODUCT_FILES "deploy/${_rel}=${_f}")
         endforeach()
     endif()
-    foreach(_f product.json install.json uninstall.json LICENSE.txt)
+    list(APPEND HCI_PRODUCT_FILES "product.json=${NSI_GENERATED}/product.json")
+    foreach(_f install.json uninstall.json LICENSE.txt)
         if(EXISTS "${NSI_ROOT}/${_f}")
             list(APPEND HCI_PRODUCT_FILES "${_f}=${NSI_ROOT}/${_f}")
         endif()
@@ -126,6 +136,16 @@ if(INSTALLER_ONLY_BUILD)
     # （HCI_REGISTER_EXTENSION 静态注册，不再使用 DLL 放置方式）
     target_sources(hci_gui PRIVATE
         "${NSI_ROOT}/ext/nsum_args_ext.cpp"
+    )
+
+    # 便捷释放：hci_gui.exe（含运行时 DLL，过滤中间产物）复制到构建目录根
+    # （build_nsum_installer/），方便直接查找/运行
+    add_custom_target(hci_gui_release_to_root ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}"
+        COMMAND ${CMAKE_COMMAND} -P "${NSI_ROOT}/release_hci_gui.cmake"
+                "$<TARGET_FILE_DIR:hci_gui>" "${CMAKE_BINARY_DIR}"
+        DEPENDS hci_gui
+        COMMENT "Release hci_gui.exe (+ runtime DLLs) to ${CMAKE_BINARY_DIR} root"
     )
 endif()
 

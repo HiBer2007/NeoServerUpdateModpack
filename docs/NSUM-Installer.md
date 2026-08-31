@@ -1,6 +1,6 @@
 # NSUM 安装器使用文档（NeoServer Installer）
 
-NSUM 安装器 = 单文件可执行 `hci_gui.exe`（HiBerCommonInstaller 的 GUI 壳，静态 Qt 构建）。产品配置、安装/卸载流程、许可、全部部署文件均**内嵌于 EXE**，分发即单文件。本文覆盖全部运行模式与命令行参数。
+NSUM 安装器 = 单文件可执行 `NSUM_Installer_<version>.exe`（当前 1.0.0，版本号定义于根 CMakeLists `NSUM_INSTALLER_VERSION`；HiBerCommonInstaller 的 GUI 壳，**静态 Qt + 全部依赖静态链接——无任何运行时 DLL**）。产品配置、安装/卸载流程、许可、全部部署文件均**内嵌于 EXE**，分发即单文件。本文覆盖全部运行模式与命令行参数。
 
 ## 1. 运行模式总览
 
@@ -11,7 +11,7 @@ NSUM 安装器 = 单文件可执行 `hci_gui.exe`（HiBerCommonInstaller 的 GUI
 | **静默卸载** | `--silent --flow uninstall` | 确认步骤同样自动确认，执行注册表清理 + 清空目标目录 |
 | 终端辅助 | 从命令行启动（非 --silent） | 保留终端输出日志；双击启动无终端时自动释放控制台 |
 
-> 注：分发物只有 `hci_gui.exe`（qrc 内嵌需要 Qt，故 CLI 壳 hci_cli 不在 NSUM 分发内）。
+> 注：分发物只有 `NSUM_Installer_1.0.0.exe`（qrc 内嵌需要 Qt，故 CLI 壳 hci_cli 不在 NSUM 分发内）。
 > 需要 `=====JSON-BEGIN=====` 标记块协议或纯文本 CLI 网关时，请构建 HCI 的 hci_cli
 > （见 HiBerCommonInstaller 仓库 docs/shell-cli.md）。
 
@@ -63,16 +63,16 @@ NSUM 安装器 = 单文件可执行 `hci_gui.exe`（HiBerCommonInstaller 的 GUI
 
 ```powershell
 # 最小静默安装（默认路径 C:\Program Files\NeoServer）
-.\hci_gui.exe --silent
+.\NSUM_Installer_1.0.0.exe --silent
 
 # 指定目录 + 编辑器 + 强制系统 Git（CI/批量部署）
-.\hci_gui.exe --silent --path "D:\NeoServer" --with-editor --use-system-git
+.\NSUM_Installer_1.0.0.exe --silent --path "D:\NeoServer" --with-editor --use-system-git
 
 # 强制内置 Git（无网络外网机不适合；正常网络自动下载）
-.\hci_gui.exe --silent --path "D:\NeoServer" --use-bundled-git
+.\NSUM_Installer_1.0.0.exe --silent --path "D:\NeoServer" --use-bundled-git
 
 # 静默卸载（自动确认 + 清空目标目录）
-.\hci_gui.exe --silent --flow uninstall --path "D:\NeoServer"
+.\NSUM_Installer_1.0.0.exe --silent --flow uninstall --path "D:\NeoServer"
 ```
 
 **静默默认值**（与旧 NeoInstaller --silent 语义一致）：
@@ -106,20 +106,20 @@ NSUM 安装器 = 单文件可执行 `hci_gui.exe`（HiBerCommonInstaller 的 GUI
 
 ```powershell
 # 1) 图形安装（默认路径）
-.\hci_gui.exe
+.\NSUM_Installer_1.0.0.exe
 
 # 2) 图形安装 + 编辑器 + 内置 Git（PortableGit）
-.\hci_gui.exe --with-editor --use-bundled-git
+.\NSUM_Installer_1.0.0.exe --with-editor --use-bundled-git
 
 # 3) 静默安装到指定目录（供 CI/一键脚本）
-.\hci_gui.exe --silent --path "D:\NeoServer" --with-editor
+.\NSUM_Installer_1.0.0.exe --silent --path "D:\NeoServer" --with-editor
 echo $LASTEXITCODE        # 0 = 成功
 
 # 4) 带 JSON 协议的流程控制/审计（需另行构建 hci_cli，见 HCI 仓库 shell-cli.md）
 hci_cli.exe --product product.json --flow install --silent --path "D:\NeoServer" --json
 
 # 5) 外部产品/流程调试（不修改内嵌资产时）
-.\hci_gui.exe --product .\nsum_installer\product.json --flow .\nsum_installer\install.json --path "D:\NeoServer"
+.\NSUM_Installer_1.0.0.exe --product .\nsum_installer\product.json --flow .\nsum_installer\install.json --path "D:\NeoServer"
 ```
 
 ## 6. 已知限制

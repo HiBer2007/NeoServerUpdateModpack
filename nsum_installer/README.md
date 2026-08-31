@@ -1,6 +1,6 @@
 # nsum_installer — NSUM 安装器资产
 
-NSUM 安装器 = HiBerCommonInstaller 的 `hci_gui`（静态 Qt 单文件，qrc 内嵌以下资产）。本目录是**主仓库侧全部安装器专属内容**（框架本身保持产品无关，见 `modules/HiBerCommonInstaller/` 与 HCI 仓库 docs/）。
+NSUM 安装器 = 单文件 `NSUM_Installer_<版本>.exe`（版本定义于根 CMakeLists `NSUM_INSTALLER_VERSION`；HiBerCommonInstaller GUI 壳，**静态 Qt + 静态 vcpkg triplet：无任何运行时 DLL**，qrc 内嵌以下资产）。本目录是**主仓库侧全部安装器专属内容**（框架本身保持产品无关，见 `modules/HiBerCommonInstaller/` 与 HCI 仓库 docs/）。
 
 ## 目录结构
 

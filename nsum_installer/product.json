@@ -2,7 +2,7 @@
   "productName": "NeoServer Tools",
   "company": "HiBer2007",
   "orgName": "HiBer2007",
-  "version": "1.0.0",
+  "version": "@NSUM_INSTALLER_VERSION@",
   "defaultMode": "gui",
   "defaultInstallPath": "C:\\Program Files\\NeoServer",
   "banner": { "font": "slant" },
