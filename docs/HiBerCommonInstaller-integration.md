@@ -14,12 +14,12 @@ NeoServerUpdateModpack/
 ├── CMakeLists.txt                     # INSTALLER_ONLY_BUILD 分支（见下）
 ├── CMakePresets.json                  # installer-static 预设
 ├── vcpkg.json                         # + lua + cpr
-├── nsum_installer/                    # NSUM 产品配置（流程图/配置由主仓库提供）
+├── nsum_installer/                    # NSUM 安装器资产（产品配置 + 静态拓展 + README）
 │   ├── product.json                   # NeoServer Tools 产品定义
 │   ├── install.json / uninstall.json  # 流程脚本
-│   └── LICENSE.txt                    # 内嵌许可（复制自主仓库根 LICENSE）
+│   ├── LICENSE.txt                    # 内嵌许可（复制自主仓库根 LICENSE）
+│   └── ext/nsum_args_ext.cpp          # NSUM 专属参数/步骤拓展（HCI_REGISTER_EXTENSION 静态链接）
 ├── modules/HiBerCommonInstaller/      # submodule（仓库本体；嵌套 HiBerGUILibCPP）
-└── modules/NsumArgsExt/               # NSUM 专属参数/步骤拓展（DLL）
 ```
 
 克隆须知：`git clone --recursive`（三层：主仓库 → HCI → HiBerGUILibCPP）。
@@ -31,7 +31,7 @@ NeoServerUpdateModpack/
 1. `find_package(nlohmann_json / Lua / ZLIB / libzippp / cpr)`（HCI 核心依赖；cpr 曾缺失于清单——NeoBuild 也用它）
 2. `set(HCI_BUILD_GUI ON)`；CLI/TUI/examples OFF
 3. `HCI_PRODUCT_FILES` = `deploy/<rel>=<abs>` 全量（跳过 `*.dmp` 与 `config/custom/*`，沿旧规则）+ `product.json/install.json/uninstall.json/LICENSE.txt`（来自 `nsum_installer/`）
-4. `add_subdirectory(modules/HiBerCommonInstaller)` → `add_subdirectory(modules/NsumArgsExt)` → 自定义目标 `nsum_ext_deploy` 把 DLL 拷到 `hci_gui.exe/extensions/`
+4. `add_subdirectory(modules/HiBerCommonInstaller)` → `target_sources(hci_gui PRIVATE nsum_installer/ext/nsum_args_ext.cpp)`（静态链接并入，无 DLL/extensions）
 
 ## installer-static 预设要点
 
@@ -57,11 +57,11 @@ NeoServerUpdateModpack/
 
 **install.conf 兼容**：`git_path` 固定模板 `{installDir}/tools/git/bin/git.exe`；主程序 `InstallConfig::load()` 跨布局探测（tools/git 下 MinGit 目录结构）——与旧行为一致。
 
-## NsumArgsExt（modules/NsumArgsExt）
+## nsum_args_ext（nsum_installer/ext/，静态链接）
 
 - **参数处理器**：`--with-editor`（预选 editor 组件）、`--use-system-git`（gitMode=system）、`--use-bundled-git`（gitMode=bundled）——核心不感知，全部走拓展模型
 - **自定义步骤** `nsum_git_plan`：探测 PATH/ProgramFiles/ProgramFiles(x86)/LocalAppData 常见路径的 git（`--version` 验证）；auto=有系统 git 用之否则下载；system 模式找不到 → 回退下载（沿旧语义）；写出 `gitUseSystem/gitDownload/gitVariant/gitPlanned` 变量
-- 部署：`nsum_ext_deploy` 目标拷到 `<hci_gui.exe>/extensions/`
+- **加载方式**：`HCI_REGISTER_EXTENSION(NsumArgsExtension)` **静态注册**直接编译进 hci_gui（宿主 `ExtensionLoader::loadStatic()` 装载）——不再部署 DLL，安装器无 `extensions/` 目录
 
 ## 修改须知
 

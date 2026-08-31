@@ -122,14 +122,10 @@ if(INSTALLER_ONLY_BUILD)
 
     add_subdirectory(modules/HiBerCommonInstaller)
 
-    # NSUM 专属参数/步骤拓展（--with-editor 等；DLL 放置到 exe 旁 extensions/）
-    add_subdirectory(modules/NsumArgsExt)
-    add_custom_target(nsum_ext_deploy ALL
-        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:hci_gui>/extensions
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                $<TARGET_FILE:nsum_args_ext> $<TARGET_FILE_DIR:hci_gui>/extensions/
-        DEPENDS nsum_args_ext hci_gui
-        COMMENT "Deploy nsum_args_ext into hci_gui extensions/"
+    # NSUM 专属参数/步骤拓展（--with-editor 等）：静态链接并入 hci_gui
+    # （HCI_REGISTER_EXTENSION 静态注册，不再使用 DLL 放置方式）
+    target_sources(hci_gui PRIVATE
+        "${NSI_ROOT}/ext/nsum_args_ext.cpp"
     )
 endif()
 

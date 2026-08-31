@@ -1,23 +1,18 @@
-// nsum_args_ext - NSUM product-specific extension (drop-in DLL).
+// nsum_args_ext - NSUM product-specific extension (STATIC, linked into hci_gui).
 //
-// Provides:
-//   - CLI args: --with-editor, --use-system-git, --use-bundled-git
-//   - custom step: nsum_git_plan (git decision: detect system git, choose
-//     MinGit/PortableGit variant, set gitUseSystem/gitDownload/gitVariant)
+// Product-specific CLI args (--with-editor / --use-system-git / --use-bundled-git)
+// and the nsum_git_plan custom step. Registered via HCI_REGISTER_EXTENSION
+// (static link-time registration) - no DLL deployment needed; the host's
+// ExtensionLoader::loadStatic() picks it up.
 //
-// Modeled on hci_ext_demo; loaded from <exe>/extensions/.
+// The extension model keeps the core product-agnostic: nothing here lives in
+// HiBerCommonInstaller itself.
 
 #include "hci/exec.h"
 #include "hci/extension.h"
 #include "hci/port.h"
 
 #include <filesystem>
-
-#ifdef _WIN32
-#define NSUM_EXT_EXPORT __declspec(dllexport)
-#else
-#define NSUM_EXT_EXPORT __attribute__((visibility("default")))
-#endif
 
 namespace {
 
@@ -74,7 +69,6 @@ public:
             "--with-editor",
             [](const std::string&, hci::InstallContext& ctx) {
                 ctx.vars().setBool("components.editor", true);
-                ctx.vars().setBool("installEditor", true);
                 return true;
             });
         api.registry().registerCliArg(
@@ -140,7 +134,4 @@ public:
 
 } // namespace
 
-extern "C" NSUM_EXT_EXPORT hci::IHciExtension* HciGetExtension()
-{
-    return new NsumArgsExtension();
-}
+HCI_REGISTER_EXTENSION(NsumArgsExtension);
