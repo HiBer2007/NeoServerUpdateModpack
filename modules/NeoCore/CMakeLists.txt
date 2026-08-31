@@ -11,6 +11,7 @@ target_include_directories(NeoCore
 target_link_libraries(NeoCore
     PUBLIC
         CommonLoggerCPP
+        PowerHelperBridgeLib
         Qt6::Widgets
         nlohmann_json::nlohmann_json
 )

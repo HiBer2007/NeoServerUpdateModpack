@@ -37,7 +37,7 @@ target_link_libraries(NeoWorkspaceEditor
         NeoBuild
         GUIWorker
         HiBerGUILibrary
-        PowerHelperBridge
+        PowerHelperBridgeLib
         CrashTrackerHandleLib
         Qt6::Core
         Qt6::Widgets

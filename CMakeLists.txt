@@ -91,6 +91,8 @@ if(NOT DEFINED INSTALLER_ONLY_BUILD)
 add_subdirectory(modules/CommonLoggerCPP)
 add_subdirectory(modules/HiBerGUILibCPP)
 add_subdirectory(modules/GitIgnoreMarkup)
+add_subdirectory(modules/CrashTrackerHandleLib)
+add_subdirectory(modules/PowerHelper)
 add_subdirectory(modules/NeoCore)
 add_subdirectory(modules/NeoWorkspace)
 add_subdirectory(modules/NeoBuild)
@@ -136,12 +138,10 @@ add_subdirectory(modules/NeoEditorExtension_Parser_Properties)
 add_subdirectory(modules/EditorDemo)
 add_subdirectory(modules/GUIWorker)
 add_subdirectory(modules/NeoCLI)
-add_subdirectory(modules/PowerHelper)
 
 # ============================================================
-# CrashTracker (崩溃捕获 + 分析工具)
+# CrashTracker (崩溃分析工具)
 # ============================================================
-add_subdirectory(modules/CrashTrackerHandleLib)
 add_subdirectory(modules/CrashTracker)
 
 # ============================================================

@@ -64,7 +64,7 @@ target_link_libraries(GUIWorker
         Qt6::Core
         Qt6::Widgets
     PRIVATE
-        PowerHelperBridge
+        PowerHelperBridgeLib
         libzippp::libzippp
         tomlplusplus::tomlplusplus
 )

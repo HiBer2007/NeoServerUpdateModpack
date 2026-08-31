@@ -13,3 +13,6 @@
 [submodule "modules/GitIgnoreMarkup"]
 	path = modules/GitIgnoreMarkup
 	url = git@github.com:HiBer2007/GitignoreMarkup.git
+[submodule "modules/PowerHelper"]
+	path = modules/PowerHelper
+	url = git@github.com:HiBer2007/PowerHelper.git
