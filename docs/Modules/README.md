@@ -36,7 +36,7 @@
 |------|----------|----------|------|
 | NeoWorkspaceEditor | [README](NeoWorkspaceEditor/README.md) | [usage](NeoWorkspaceEditor/usage.md) | 工作区编辑器 EXE（整合包内容 IDE） |
 | EditorDemo | [README](EditorDemo/README.md) | [usage](EditorDemo/usage.md) | 编辑器套件用法演示 EXE |
-| HiBerCommonInstaller | [集成指南](../../docs/HiBerCommonInstaller-integration.md) | [使用文档](../../docs/NSUM-Installer.md) | 通用安装器框架（submodule，NSUM 安装器 = hci_gui 单文件） |
+| HiBerCommonInstaller | [集成指南](../../docs/HiBerCommonInstaller-integration.md) | [使用文档](../../docs/NSUM-Installer.md) | 通用安装器框架（submodule；NSUM 安装器 = 单文件 NSUM_Installer_<版本>.exe，无运行时 DLL） |
 
 ### 四、插件 DLL（运行时加载）
 
