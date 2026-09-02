@@ -3,7 +3,8 @@
 // Product-specific CLI args (--with-editor / --use-system-git / --use-bundled-git)
 // and the nsum_git_plan custom step. Registered via HCI_REGISTER_EXTENSION
 // (static link-time registration) - no DLL deployment needed; the host's
-// ExtensionLoader::loadStatic() picks it up.
+// ExtensionLoader::loadStatic() picks it up. Help texts for each arg surface
+// in the shells' --help output (extension metadata custom interface).
 //
 // The extension model keeps the core product-agnostic: nothing here lives in
 // HiBerCommonInstaller itself.
@@ -70,19 +71,22 @@ public:
             [](const std::string&, hci::InstallContext& ctx) {
                 ctx.vars().setBool("components.editor", true);
                 return true;
-            });
+            },
+            "preselect the NeoWorkspaceEditor component");
         api.registry().registerCliArg(
             "--use-system-git",
             [](const std::string&, hci::InstallContext& ctx) {
                 ctx.vars().set("gitMode", "system");
                 return true;
-            });
+            },
+            "force using a system-installed Git");
         api.registry().registerCliArg(
             "--use-bundled-git",
             [](const std::string&, hci::InstallContext& ctx) {
                 ctx.vars().set("gitMode", "bundled");
                 return true;
-            });
+            },
+            "force downloading and using the bundled Git");
 
         // nsum_git_plan: decide git strategy.
         api.registry().registerStep(
