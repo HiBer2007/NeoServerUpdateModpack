@@ -39,5 +39,8 @@
     "upgrade": "upgrade.json"
   },
   "payload": { "source": "qrc:/deploy", "skip": ["*.dmp", "config/custom/*"] },
+  "extensions": {
+    "hci.git": { "gitDir": "tools/git" }
+  },
   "uninstall": { "registryKey": "Software/HiBer2007/NSUM", "displayName": "NSUM（新 服务器自动更新整合包）" }
 }
