@@ -6,10 +6,16 @@
   "defaultMode": "gui",
   "defaultLanguage": "zh",
   "backEnabled": true,
+  "welcomeTitle": "Neo Server Update Modpack",
   "defaultInstallPath": "%APPDATA%\\NSUM",
-  "banner": { "font": "slant" },
+  "banner": { "font": "neo" },
   "components": [
-    { "id": "editor", "label": "NeoWorkspaceEditor", "exe": "NeoWorkspaceEditor.exe",
+    { "id": "core", "label": "NSUM 核心",
+      "description": "主程序本体（新 服务器自动更新整合包），必装。",
+      "required": true, "defaultChecked": true },
+    { "id": "editor", "label": "NeoWorkspaceEditor",
+      "description": "整合包内容 IDE：编辑配置、转换指针、Git 面板等。",
+      "exe": "NeoWorkspaceEditor.exe",
       "shortcutName": "NeoWorkspaceEditor", "defaultChecked": false }
   ],
   "shortcuts": [
