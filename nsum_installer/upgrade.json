@@ -1,0 +1,27 @@
+{
+  "id": "upgrade",
+  "steps": [
+    { "id": "lang", "ui": "language", "default": "zh" },
+    { "id": "confirm", "ui": "confirm",
+      "prompt": "升级 NSUM？将更新部署文件到最新版本（保留配置与数据）。",
+      "defaultYes": true },
+    { "id": "extractApp", "type": "extract", "source": "qrc:/deploy",
+      "target": "{installDir}", "skip": ["*.dmp", "config/custom/*"] },
+    { "id": "writeconf", "type": "template", "target": "{installDir}",
+      "file": "install.conf", "header": "# NSUM Install Configuration",
+      "template": {
+        "install_path": "{installDir}",
+        "install_editor": "{components.editor}",
+        "use_system_git": "{gitUseSystem}",
+        "git_path": "{gitPath}"
+      } },
+    { "id": "shortcutA", "type": "shortcut", "kind": "desktop",
+      "name": "NSUM.lnk", "target": "{installDir}/NeoServerUpdateModpack.exe",
+      "workDir": "{installDir}" },
+    { "id": "shortcutB", "type": "shortcut", "kind": "startmenu",
+      "name": "NSUM/NSUM.lnk", "target": "{installDir}/NeoServerUpdateModpack.exe",
+      "workDir": "{installDir}" },
+    { "id": "finish", "ui": "finish", "message": "NSUM 已升级到最新版本",
+      "launch": "NeoServerUpdateModpack.exe" }
+  ]
+}

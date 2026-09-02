@@ -17,14 +17,14 @@
     { "id": "extract", "type": "extract", "source": "qrc:/deploy", "target": "{installDir}" },
     { "id": "writeconf", "type": "template", "target": "{installDir}",
       "file": "install.conf",
-      "header": "# NSUM Install Configuration",
+      "header": "# NeoServer Install Configuration",
       "template": {
         "install_path": "{installDir}",
         "install_editor": "{components.editor}",
         "use_system_git": "{gitUseSystem}",
         "git_path": "{gitPath}"
       } },
-    { "id": "shortcutA", "type": "shortcut", "kind": "desktop", "name": "NSUM.lnk",
+    { "id": "shortcutA", "type": "shortcut", "enabled": false, "kind": "desktop", "name": "NSUM.lnk",
       "target": "{installDir}/NeoServerUpdateModpack.exe",
       "workDir": "{installDir}" },
     { "id": "shortcutB", "type": "shortcut", "kind": "startmenu",

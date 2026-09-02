@@ -103,13 +103,16 @@ public:
                         v.setBool("gitUseSystem", true);
                         v.setBool("gitDownload", false);
                         v.set("systemGitPath", path);
+                        v.set("gitPath", path);
                     } else {
                         v.setBool("gitUseSystem", false);
                         v.setBool("gitDownload", true); // fallback to bundled
+                        v.set("gitPath", "{installDir}/tools/git/bin/git.exe");
                     }
                 } else if (mode == "bundled") {
                     v.setBool("gitUseSystem", false);
                     v.setBool("gitDownload", true);
+                    v.set("gitPath", "{installDir}/tools/git/bin/git.exe");
                 } else {
                     // auto: use system git when present, else download bundled.
                     std::string path;
@@ -117,9 +120,11 @@ public:
                         v.setBool("gitUseSystem", true);
                         v.setBool("gitDownload", false);
                         v.set("systemGitPath", path);
+                        v.set("gitPath", path);
                     } else {
                         v.setBool("gitUseSystem", false);
                         v.setBool("gitDownload", true);
+                        v.set("gitPath", "{installDir}/tools/git/bin/git.exe");
                     }
                 }
                 v.set("gitVariant", variant);

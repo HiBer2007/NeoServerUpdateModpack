@@ -48,10 +48,12 @@ struct InstallConfig {
         }
 
         // 2. If using system git, check it actually works
+        //    (Git for Windows first launch can exceed a few seconds;
+        //     give it a generous window before declaring "not found").
         if (cfg.useSystemGit || cfg.gitPath == "git") {
             QProcess test;
             test.start("git", {"--version"});
-            test.waitForFinished(3000);
+            test.waitForFinished(15000);
             if (test.exitCode() == 0) {
                 cfg.valid = true;
                 cfg.useSystemGit = true;
@@ -111,7 +113,7 @@ struct InstallConfig {
             "  - " + portableGit.toStdString() + "\n\n"
             "Solutions:\n"
             "  1. Install Git from https://git-scm.com/download/win\n"
-            "  2. Re-run NeoInstaller.exe to bundle Git automatically\n"
+            "  2. Re-run NSUM_Installer_1.0.0.exe (install/repair) to bundle Git\n"
             "  3. Set use_system_git=false and git_path=<path> in install.conf\n";
         return cfg;
     }
