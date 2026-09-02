@@ -125,6 +125,10 @@ static bool verifyRuntimeEnvironment(bool quiet = false)
 
 static int runCliMode(int argc, char* argv[])
 {
+    // stdout 的唯一持有者初始化：UTF-8 码页 + VT 颜色 + 无缓冲二进制流
+    // （CommonLogger 负责持有 stdout，颜色/编码不因重复初始化丢失）。
+    CLogger::HoldConsole();
+
     bool jsonMode = false;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--json") {
