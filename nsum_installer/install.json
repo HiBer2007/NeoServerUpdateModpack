@@ -6,7 +6,9 @@
     { "id": "license", "ui": "license", "source": "qrc:/LICENSE.txt" },
     { "id": "path", "ui": "path" },
     { "id": "components", "ui": "components" },
-    { "id": "gitPlan", "type": "nsum_git_plan", "editorVariant": "PortableGit",
+    { "id": "gitChoice", "ui": "git" },
+    { "id": "gitPlan", "type": "git_plan", "editorComponent": "editor",
+      "editorVariant": "PortableGit",
       "when": "vars.gitPlanned ~= 'true'" },
     { "id": "gitDownload", "type": "download", "asset": "git-for-windows/git",
       "variant": "{gitVariant}", "dest": "{tempDir}/neo_git.zip",
@@ -36,7 +38,11 @@
       "target": "{installDir}/NeoWorkspaceEditor.exe",
       "workDir": "{installDir}",
       "when": "vars['components.editor'] == 'true'" },
-    { "id": "finish", "ui": "finish", "message": "NeoServer 安装完成",
-      "launch": "NeoServerUpdateModpack.exe" }
+    { "id": "finish", "ui": "finish", "message": "NSUM 安装完成",
+      "launch": "NeoServerUpdateModpack.exe",
+      "launchOptions": [
+        { "name": "Neo Server Update Modpack", "path": "{installDir}/NeoServerUpdateModpack.exe" },
+        { "name": "NeoWorkspaceEditor", "path": "{installDir}/NeoWorkspaceEditor.exe" }
+      ] }
   ]
 }

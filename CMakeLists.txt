@@ -136,6 +136,7 @@ if(INSTALLER_ONLY_BUILD)
     # （HCI_REGISTER_EXTENSION 静态注册，不再使用 DLL 放置方式）
     target_sources(hci_gui PRIVATE
         "${NSI_ROOT}/ext/nsum_args_ext.cpp"
+        "${CMAKE_SOURCE_DIR}/modules/HiBerCommonInstaller/ext/git/src/git_ext.cpp"
     )
 
     # 便捷释放：hci_gui.exe（含运行时 DLL，过滤中间产物）复制到构建目录根
