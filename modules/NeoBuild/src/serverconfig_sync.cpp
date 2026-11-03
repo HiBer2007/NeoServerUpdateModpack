@@ -3,6 +3,7 @@
 #include <logger.h>
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <QFile>
 #include <QDir>
@@ -166,6 +167,31 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
             return result;
         }
 
+        // 仓库侧源文件（ruleDir_ 的父目录 = save/[save]/serverconfig；.rule 为
+        // 规则目录不算内容）。用于给「目标里尚不存在的文件」补齐 —— PLAN 规格
+        // 是「每个存档都同步」，缺失文件也要按规则创建。
+        std::vector<std::string> sourceRels;
+        {
+            const fs::path sourceDir = fs::path(ruleDir_).parent_path();
+            std::error_code dirEc;
+            if (!ruleDir_.empty() && fs::is_directory(sourceDir, dirEc)) {
+                for (auto it = fs::recursive_directory_iterator(
+                         sourceDir, fs::directory_options::skip_permission_denied,
+                         dirEc);
+                     it != fs::recursive_directory_iterator(); it.increment(dirEc)) {
+                    if (dirEc) {
+                        dirEc.clear();
+                        continue;
+                    }
+                    if (!it->is_regular_file()) continue;
+                    std::string rel = fs::relative(it->path(), sourceDir)
+                        .generic_string();
+                    if (rel == ".rule" || rel.rfind(".rule/", 0) == 0) continue;
+                    sourceRels.push_back(rel);
+                }
+            }
+        }
+
         for (const auto& worldEntry : fs::directory_iterator(savesDir_,
             fs::directory_options::skip_permission_denied)) {
 
@@ -174,21 +200,32 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
             std::string worldName = worldEntry.path().filename().string();
             fs::path serverConfigDir = worldEntry.path() / "serverconfig";
 
-            if (!fs::exists(serverConfigDir) || !fs::is_directory(serverConfigDir)) {
-                continue;
+            std::set<std::string> existing;
+            if (fs::exists(serverConfigDir) && fs::is_directory(serverConfigDir)) {
+                for (const auto& configEntry : fs::recursive_directory_iterator(
+                    serverConfigDir, fs::directory_options::skip_permission_denied)) {
+
+                    if (!configEntry.is_regular_file()) continue;
+
+                    ServerConfigEntry entry;
+                    entry.worldName = worldName;
+                    entry.configPath = configEntry.path().string();
+                    entry.relativePath = fs::relative(configEntry.path(), serverConfigDir)
+                        .generic_string();
+
+                    existing.insert(entry.relativePath);
+                    result.push_back(entry);
+                }
             }
 
-            for (const auto& configEntry : fs::recursive_directory_iterator(
-                serverConfigDir, fs::directory_options::skip_permission_denied)) {
-
-                if (!configEntry.is_regular_file()) continue;
-
+            // 仓库有、目标缺失 -> 生成条目（按规则创建；folder_mode=mode 时
+            // incremental_add 也会补缺失文件）
+            for (const auto& rel : sourceRels) {
+                if (existing.count(rel)) continue;
                 ServerConfigEntry entry;
                 entry.worldName = worldName;
-                entry.configPath = configEntry.path().string();
-                entry.relativePath = fs::relative(configEntry.path(), serverConfigDir)
-                    .generic_string();
-
+                entry.configPath = (serverConfigDir / rel).string();
+                entry.relativePath = rel;
                 result.push_back(entry);
             }
         }

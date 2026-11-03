@@ -1757,6 +1757,7 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
     target.cache_dir = NeoBuild::getCacheDir();
     target.branch = modpackBranch;
     target.sync_to_directory = (fmt == "hmcl");
+    target.git_branch = gitBranch;
     fillExportMetadata(target.metadata, wsJson);
 
     if (target.sync_to_directory) {
@@ -1867,6 +1868,7 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
         target.cache_dir = NeoBuild::getCacheDir();
         target.branch = modpackBranch;
         target.sync_to_directory = (fmt == "hmcl");
+        target.git_branch = gitBranch;
         fillExportMetadata(target.metadata, wsJson);
 
         if (target.sync_to_directory) {

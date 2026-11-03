@@ -4,6 +4,7 @@
 #include "modpack_exporter.h"
 #include "serverconfig_sync.h"
 #include "sync_policy_executor.h"
+#include "platform_api.h"
 #include "workspace_manager.h"
 #include <git_operations.h>
 #include <sync_engine.h>
@@ -264,7 +265,7 @@ BuildResult BuildEngine::build(const std::string& branchName,
             return result;
         }
 
-        reportProgress("custom_mods", 75, "Merging custom mods...", progress);
+        reportProgress("custom_mods", 70, "Merging custom mods...", progress);
         if (!stepMergeCustomMods(branchName)) {
             result.warnings.push_back("Custom mod merge had issues");
         }
@@ -273,16 +274,7 @@ BuildResult BuildEngine::build(const std::string& branchName,
             return result;
         }
 
-        reportProgress("server_config", 85, "Syncing server configs...", progress);
-        if (!stepSyncServerConfigs()) {
-            result.warnings.push_back("Server config sync had issues");
-        }
-        if (cancelled()) {
-            result.errorMessage = "构建已取消";
-            return result;
-        }
-
-        reportProgress("finalize", 95, "Generating version files...", progress);
+        reportProgress("finalize", 85, "Generating version files...", progress);
         if (!stepFinalize()) {
             result.warnings.push_back("Finalization had issues");
         }
@@ -292,10 +284,21 @@ BuildResult BuildEngine::build(const std::string& branchName,
         }
 
         if (!targetDir_.empty()) {
-        reportProgress("sync_target", 97, "Syncing target working dir...", progress);
+            reportProgress("sync_target", 92, "Syncing target working dir...", progress);
             if (!stepSyncTarget(progress, cancelToken, result)) {
                 result.warnings.push_back("Sync target had issues");
             }
+        }
+        if (cancelled()) {
+            result.errorMessage = "构建已取消";
+            return result;
+        }
+
+        // L3 存档 serverconfig 同步必须在「目标目录内容已写入」之后执行：
+        // 需要目标里已存在的 saves/<存档>/serverconfig 逐个套用仓库规则。
+        reportProgress("server_config", 97, "Syncing server configs...", progress);
+        if (!stepSyncServerConfigs()) {
+            result.warnings.push_back("Server config sync had issues");
         }
         if (cancelled()) {
             result.errorMessage = "构建已取消";
@@ -363,6 +366,34 @@ bool BuildEngine::stepCheckout(const std::string& branch)
             return false;
         }
 
+        // fetch 只更新 remote-tracking 引用，本地分支不会自动前进 —— 必须
+        // 在构建前把工作树同步到上游，否则会用缓存里的陈旧内容构建
+        // （实测缓存仓库停在旧提交，策略/文件全是旧的）。
+        // 缓存仓库（可丢弃）用 reset --hard；用户自己的仓库用 merge --ff-only
+        // 以免破坏未提交改动。
+        if (git_->hasRemote(workspacePath_)) {
+            const std::string remoteRef = "origin/" + branch;
+            const std::string cacheRoot = NeoBuild::getCacheDir();
+            bool isCacheRepo = !cacheRoot.empty()
+                && workspacePath_.rfind(cacheRoot, 0) == 0;
+            auto verify = git_->refExists(workspacePath_, remoteRef);
+            if (verify.exitCode == 0) {
+                auto sync = isCacheRepo
+                    ? git_->resetHard(workspacePath_, remoteRef)
+                    : git_->mergeFfOnly(workspacePath_, remoteRef);
+                if (sync.exitCode == 0) {
+                    CLogger::Info("Working tree synced to {} ({})", remoteRef,
+                        isCacheRepo ? "reset --hard" : "merge --ff-only");
+                } else {
+                    CLogger::Warn("Working tree sync to {} failed: {}",
+                        remoteRef, sync.stderrOutput);
+                }
+            } else {
+                CLogger::Warn(
+                    "No remote-tracking ref {} (using local HEAD)", remoteRef);
+            }
+        }
+
         CLogger::Info("Checked out branch: {}", branch);
         return true;
     } catch (const std::exception& e) {
@@ -410,6 +441,18 @@ bool BuildEngine::stepMergeBranches(const std::string& targetBranch)
         CLogger::Info("Merged {} files, {} overridden, {} deleted",
             mergeResult.mergedFiles.size(), mergeResult.overriddenFiles.size(),
             mergeResult.deletedFiles.size());
+
+        // 仓库内 save/[save]/serverconfig/ 与 .rule/ 是 L3 存档同步的
+        // 「规则 + 源」，不属于构建产物：既不应进导出包，也不应同步到目标
+        // 工作目录（否则会在目标里生成字面目录 save/[save]/serverconfig）。
+        // L3 由 stepSyncServerConfigs 直接读取仓库仓库路径执行。
+        std::error_code saveEc;
+        const fs::path repoInternalSave = fs::path(outputDir_) / "save";
+        if (fs::exists(repoInternalSave, saveEc)) {
+            fs::remove_all(repoInternalSave, saveEc);
+            CLogger::Info(
+                "Excluded repo-internal save/ (serverconfig rules) from build output");
+        }
 
         return true;
     } catch (const std::exception& e) {

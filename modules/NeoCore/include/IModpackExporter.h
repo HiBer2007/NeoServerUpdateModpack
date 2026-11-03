@@ -28,7 +28,11 @@ struct BuildTarget {
     std::string cache_dir;        // 哈希缓存目录（.NSUM/cache 复用）
     std::string output_path;      // sync_to_directory=false: 中间构建目录；true: 目标工作目录（同步目标）
     std::string staging_dir;      // sync_to_directory=true: 中间构建目录（source），空 = 插件默认
-    std::string branch;           // 整合包分支
+    std::string branch;           // 整合包分支（合并用）
+    // Git 分支（checkout 用）；空 = 与整合包分支同名。
+    // 仓库里整合包分支通常是 branches/<name>/ 目录，git 分支可能只有 main，
+    // 此时必须由调用方显式指定，否则 checkout 会失败。
+    std::string git_branch;
     bool sync_to_directory = false; // true = 工作区同步（HMCL，输出即目录）；false = 打包格式
     ExportMetadata metadata;
 };

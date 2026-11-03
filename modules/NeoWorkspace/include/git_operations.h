@@ -24,6 +24,13 @@ public:
     GitResult pull(const std::string& repoDir, int timeoutMs = 60000);
     GitResult fetch(const std::string& repoDir, const std::string& remote = "origin");
     GitResult checkout(const std::string& repoDir, const std::string& branch);
+    // 构建前把工作树同步到上游（fetch 只更新 remote-tracking 引用）：
+    //   refExists   → rev-parse --verify --quiet <ref>
+    //   resetHard   → reset --hard <ref>       （缓存仓库，可丢弃改动）
+    //   mergeFfOnly → merge --ff-only <ref>    （用户仓库，不破坏改动）
+    GitResult refExists(const std::string& repoDir, const std::string& ref);
+    GitResult resetHard(const std::string& repoDir, const std::string& ref);
+    GitResult mergeFfOnly(const std::string& repoDir, const std::string& ref);
     GitResult createBranch(const std::string& repoDir, const std::string& branch,
         const std::string& baseBranch = "");
     GitResult currentBranch(const std::string& repoDir);

@@ -87,6 +87,33 @@ GitResult GitOperations::checkout(const std::string& repoDir, const std::string&
     return r;
 }
 
+GitResult GitOperations::refExists(const std::string& repoDir, const std::string& ref)
+{
+    return execute({"rev-parse", "--verify", "--quiet", ref}, repoDir, 15000);
+}
+
+GitResult GitOperations::resetHard(const std::string& repoDir, const std::string& ref)
+{
+    CLogger::Info("GitOperations: reset --hard {} in {}", ref, repoDir);
+    GitResult r = execute({"reset", "--hard", ref}, repoDir, 30000);
+    if (r.errorCode != NeoCore::ErrorCode::Success) {
+        lastError_ = NeoCore::AnalyzeGitError(r.stderrOutput);
+        CLogger::Warn("GitOperations: reset --hard failed: {}", lastError_);
+    }
+    return r;
+}
+
+GitResult GitOperations::mergeFfOnly(const std::string& repoDir, const std::string& ref)
+{
+    CLogger::Info("GitOperations: merge --ff-only {} in {}", ref, repoDir);
+    GitResult r = execute({"merge", "--ff-only", ref}, repoDir, 30000);
+    if (r.errorCode != NeoCore::ErrorCode::Success) {
+        lastError_ = NeoCore::AnalyzeGitError(r.stderrOutput);
+        CLogger::Warn("GitOperations: merge --ff-only failed: {}", lastError_);
+    }
+    return r;
+}
+
 GitResult GitOperations::listBranches(const std::string& repoDir)
 {
     return execute({"branch"}, repoDir, 15000);

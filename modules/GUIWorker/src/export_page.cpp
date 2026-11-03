@@ -190,8 +190,8 @@ void ExportPage::loadFormats()
         fmts.append({"modrinth", ".mrpack",
             "Modrinth Modpack Format\u3002",
             QString::fromUtf8("Modrinth (.mrpack)")});
-        fmts.append({"hmcl", ".zip",
-            "HMCL \u539f\u751f\u683c\u5f0f\u3002",
+        fmts.append({"hmcl", "",
+            "HMCL \u5de5\u4f5c\u533a\u540c\u6b65\uff08\u540c\u6b65\u5230\u6e38\u620f\u5de5\u4f5c\u76ee\u5f55\uff09\u3002",
             QString::fromUtf8("HMCL \u5de5\u4f5c\u76ee\u5f55")});
     }
 

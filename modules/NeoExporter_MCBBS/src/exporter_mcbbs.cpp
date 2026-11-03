@@ -179,7 +179,7 @@ public:
             r.errorMessage = "Failed to initialize build engine";
             return r;
         }
-        return engine.build(target.branch, progress, cancel);
+        return engine.build(target.branch, progress, cancel, target.git_branch);
     }
 
     bool export_modpack(

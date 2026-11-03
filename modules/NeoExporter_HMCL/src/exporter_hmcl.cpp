@@ -50,7 +50,7 @@ public:
         }
 
         engine.setTargetDir(target.output_path);
-        return engine.build(target.branch, progress, cancel);
+        return engine.build(target.branch, progress, cancel, target.git_branch);
     }
 
     nlohmann::json preview_structure(

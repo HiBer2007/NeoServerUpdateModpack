@@ -226,6 +226,7 @@ void BuildPage::runBuildWorker()
         target.cache_dir = NeoBuild::getCacheDir();
         target.branch = modpackBranch_.toStdString();
         target.sync_to_directory = (exportFormat_ == QLatin1String("hmcl"));
+        target.git_branch = gitBranch_.toStdString();
         target.output_path = outputPath_.toStdString();
 
         NeoWorkspace::WorkspaceManager wm;

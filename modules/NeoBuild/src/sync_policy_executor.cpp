@@ -24,6 +24,10 @@ constexpr const char* kCustomModsSub = "custom/mod";
 constexpr const char* kHashesFile = ".NSUM/hashes.json";
 constexpr const char* kHmclDir = ".hmcl";
 
+// HMCL 系统文件：工作区同步模式下目标目录里的这两个文件归 HMCL 所有，
+// 本处理器「不识别、不校验、不修改」——不生成、不覆盖、也不作为多余项删除。
+constexpr const char* kHmclSystemFiles[] = { "modpack.cfg", "hmclversion.cfg" };
+
 std::string normalizeRel(const std::string& path)
 {
     std::string p = path;
@@ -40,8 +44,12 @@ std::string relOf(const fs::path& base, const fs::path& p)
 
 bool isProtectedRoot(const std::string& rel)
 {
-    return rel == kNsumDir || rel.rfind(".NSUM/", 0) == 0
-        || rel == kHmclDir || rel.rfind(".hmcl/", 0) == 0;
+    if (rel == kNsumDir || rel.rfind(".NSUM/", 0) == 0) return true;
+    if (rel == kHmclDir || rel.rfind(".hmcl/", 0) == 0) return true;
+    for (const char* name : kHmclSystemFiles) {
+        if (rel == name) return true;
+    }
+    return false;
 }
 
 std::string computeSha256(const std::string& filepath)
@@ -52,10 +60,12 @@ std::string computeSha256(const std::string& filepath)
     }
 
     QCryptographicHash hasher(QCryptographicHash::Sha256);
-    char buffer[1024 * 1024];
+    // 64 KiB 分块：旧实现用 1 MiB 栈缓冲，在 CLI 主线程（默认 1 MiB 栈）
+    // 会直接触发栈溢出 0xC00000FD。
+    std::vector<char> buffer(64 * 1024);
     qint64 read = 0;
-    while ((read = f.read(buffer, sizeof(buffer))) > 0) {
-        hasher.addData(buffer, static_cast<int>(read));
+    while ((read = f.read(buffer.data(), static_cast<qint64>(buffer.size()))) > 0) {
+        hasher.addData(buffer.data(), static_cast<int>(read));
     }
     f.close();
     return hasher.result().toHex().toStdString();
@@ -451,12 +461,15 @@ struct ExecutorImpl {
 
                 std::string base = name;
                 bool isDisabled = false;
-                if (name.size() > 12 &&
-                    name.compare(name.size() - 12, 12, ".jar.disabled") == 0) {
+                // 注意 ".jar.disabled" 是 13 字符（旧代码用 12 → 永不命中）
+                if (name.size() > 13 &&
+                    name.compare(name.size() - 13, 13, ".jar.disabled") == 0) {
                     isDisabled = true;
-                    base = name.substr(0, name.size() - 12);
+                    base = name.substr(0, name.size() - 13);
                 }
-                if (isDisabled && sourceJars.count(base + ".jar")) {
+                // 规格：mods 镜像下 `.disabled` 后缀文件直接清除、不保留
+                // （旧实现会收进 .NSUM/custom/mod 再还原回 mods）。
+                if (isDisabled) {
                     std::error_code r;
                     fs::remove(entry.path(), r);
                     if (!r) {
@@ -465,7 +478,7 @@ struct ExecutorImpl {
                     } else {
                         ++result.deletedFiles;
                         CLogger::Info(
-                            "SyncPolicyExecutor: cleared disabled repo mod {}", name);
+                            "SyncPolicyExecutor: cleared disabled mod {}", name);
                     }
                     continue;
                 }
@@ -524,11 +537,12 @@ struct ExecutorImpl {
                 if (!entry.is_regular_file()) continue;
 
                 std::string name = entry.path().filename().string();
-                if (name.size() < 4) continue;
-                bool isJar = name.compare(name.size() - 4, 4, ".jar") == 0;
-                bool isDisabledJar = name.size() >= 12 &&
-                    name.compare(name.size() - 12, 12, ".jar.disabled") == 0;
-                if (!isJar && !isDisabledJar) continue;
+                // 只还原启用中的 .jar；`.jar.disabled` 属禁用态，规格要求
+                // 直接清除、不还原到 mods。
+                if (name.size() < 4 ||
+                    name.compare(name.size() - 4, 4, ".jar") != 0) {
+                    continue;
+                }
 
                 std::string dstPath = (targetMods / name).string();
                 if (fs::exists(dstPath)) continue;
