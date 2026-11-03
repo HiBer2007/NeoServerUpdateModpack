@@ -442,17 +442,10 @@ bool BuildEngine::stepMergeBranches(const std::string& targetBranch)
             mergeResult.mergedFiles.size(), mergeResult.overriddenFiles.size(),
             mergeResult.deletedFiles.size());
 
-        // 仓库内 save/[save]/serverconfig/ 与 .rule/ 是 L3 存档同步的
-        // 「规则 + 源」，不属于构建产物：既不应进导出包，也不应同步到目标
-        // 工作目录（否则会在目标里生成字面目录 save/[save]/serverconfig）。
-        // L3 由 stepSyncServerConfigs 直接读取仓库仓库路径执行。
-        std::error_code saveEc;
-        const fs::path repoInternalSave = fs::path(outputDir_) / "save";
-        if (fs::exists(repoInternalSave, saveEc)) {
-            fs::remove_all(repoInternalSave, saveEc);
-            CLogger::Info(
-                "Excluded repo-internal save/ (serverconfig rules) from build output");
-        }
+        // 注意：仓库内 save/[save]/serverconfig/ 属于「存档同步目标」的源与
+        // 规则（[save] 是"每个存档"占位），不是可照搬的字面目录。它保留在
+        // 构建产物里（预览/编辑器展示需要），由同步器识别路由到
+        // <目标>/saves/<存档>/serverconfig/（L3），不按字面路径拷贝。
 
         return true;
     } catch (const std::exception& e) {

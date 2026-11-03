@@ -41,9 +41,7 @@ void collectLayers(const std::vector<BranchLayer>& layers,
                 continue;
             }
             if (entry.is_directory(ec)) {
-                // 仓库内 save/ 是 L3（存档 serverconfig）规则与源，构建时已从
-                // 产物剥离，预览同样不列出（否则预览树会显示永不写入的条目）。
-                if (rel == ".NSUM" || rel == ".hmcl" || rel == "save"
+                if (rel == ".NSUM" || rel == ".hmcl"
                     || rel == ".rule" || rel.rfind(".rule/", 0) == 0) {
                     it.disable_recursion_pending();
                     continue;

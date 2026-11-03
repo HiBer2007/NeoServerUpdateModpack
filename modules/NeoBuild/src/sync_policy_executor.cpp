@@ -24,6 +24,11 @@ constexpr const char* kCustomModsSub = "custom/mod";
 constexpr const char* kHashesFile = ".NSUM/hashes.json";
 constexpr const char* kHmclDir = ".hmcl";
 
+// `save/[save]/serverconfig/` 是「存档同步目标」的源与规则（[save] = 每个
+// 存档占位），由 L3（ServerConfigSync）路由到 <目标>/saves/<存档>/serverconfig，
+// 绝不能按字面路径同步到目标工作目录。
+constexpr const char* kSaveRoot = "save";
+
 // HMCL 系统文件：工作区同步模式下目标目录里的这两个文件归 HMCL 所有，
 // 本处理器「不识别、不校验、不修改」——不生成、不覆盖、也不作为多余项删除。
 constexpr const char* kHmclSystemFiles[] = { "modpack.cfg", "hmclversion.cfg" };
@@ -50,6 +55,12 @@ bool isProtectedRoot(const std::string& rel)
         if (rel == name) return true;
     }
     return false;
+}
+
+bool isSaveSyncSource(const std::string& rel)
+{
+    return rel == kSaveRoot
+        || rel.rfind(std::string(kSaveRoot) + "/", 0) == 0;
 }
 
 std::string computeSha256(const std::string& filepath)
@@ -343,6 +354,8 @@ struct ExecutorImpl {
 
             std::string rel = relOf(sourceDir, entry.path());
             if (rel.empty() || isProtectedRoot(rel)) continue;
+            // 存档同步源由 L3 路由，不作为字面路径同步
+            if (isSaveSyncSource(rel)) continue;
 
             sourceFiles.insert(rel);
         }
@@ -398,6 +411,7 @@ struct ExecutorImpl {
 
                 std::string rel = relOf(targetDir, entry.path());
                 if (rel.empty() || isProtectedRoot(rel)) continue;
+                if (isSaveSyncSource(rel)) continue;
                 if (sourceFiles.count(rel)) continue;
 
                 std::error_code r;

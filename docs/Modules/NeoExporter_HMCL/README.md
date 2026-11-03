@@ -90,13 +90,13 @@
 
 ## 同步实现要点（2026-11-03 修订）
 
-工作区同步链路 = **git 分支 checkout → merge 到 staging → 剥离仓库内 `save/` → L1/L2/mods 镜像同步到目标目录 → L3 存档 serverconfig**：
+工作区同步链路 = **git 分支 checkout → merge 到 staging → L1/L2/mods 镜像同步到目标目录 → L3 存档 serverconfig（`save/[save]/` 路由）**：
 
 | 环节 | 约定 |
 |------|------|
 | Git 分支 | `BuildTarget` 新增 `git_branch`（空 = 与整合包分支同名），三导出插件统一传给 `engine.build(..., git_branch)`。仓库里整合包分支通常是 `branches/<name>/` 目录，git 分支可能只有 `main`，必须由 CLI `--git-branch` / GUI `gitBranch_` 显式传入 |
 | 上游同步 | `fetch` 只更新 remote-tracking 引用，构建前必须同步工作树到 `origin/<branch>`：缓存仓库（`getCacheDir()` 下）用 `reset --hard`，用户仓库用 `merge --ff-only`；否则缓存仓库停在旧提交，会用陈旧内容构建 |
-| 仓库内 `save/` | `branches/<branch>/save/[save]/serverconfig/`（含 `.rule/`）是 L3 规则与源，merge 后立即从 staging 删除，不进导出包、也不在目标生成字面 `save/[save]` 目录 |
+| 仓库内 `save/` | `branches/<branch>/save/[save]/serverconfig/`（含 `.rule/`）是**存档同步目标之一**（`[save]` = 每个存档占位）：构建产物与编辑器/预览中**保留显示**（特意保留，用于编辑要同步进存档的配置），但**绝不按字面路径写入目标**——同步器跳过 `save/**` 的字面拷贝/删除，由 L3 路由到 `<目标>/saves/<存档>/serverconfig/` |
 | HMCL 系统文件 | 目标根 `modpack.cfg`、`hmclversion.cfg` 归 HMCL——不生成、不覆盖、不删（`SyncPolicyExecutor::isProtectedRoot`） |
 | mods 镜像 | 仓库模组全量写入；多余项清除；`.jar.disabled` 直接删除（判定须用 13 字符 `.jar.disabled`，旧代码写 12 永不命中）；玩家自放模组收割到 `.NSUM/custom/mod/`，按 modId 冲突检测后还原回 mods |
 | L2 文件策略 | `files` 为对象（`{ "config/test.json": { "mode": "partial", "tracked_keys": ["b"] } }`）；`partial` 经 `IConfigParser::merge_entries` 只写追踪键，未追踪键与本地独有键保持不变 |
