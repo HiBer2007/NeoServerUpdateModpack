@@ -101,4 +101,7 @@
 | mods 镜像 | 仓库模组全量写入；多余项清除；`.jar.disabled` 直接删除（判定须用 13 字符 `.jar.disabled`，旧代码写 12 永不命中）；玩家自放模组收割到 `.NSUM/custom/mod/`，按 modId 冲突检测后还原回 mods |
 | L2 文件策略 | `files` 为对象（`{ "config/test.json": { "mode": "partial", "tracked_keys": ["b"] } }`）；`partial` 经 `IConfigParser::merge_entries` 只写追踪键，未追踪键与本地独有键保持不变 |
 | L3 存档同步 | 扫描 `目标/saves/*/serverconfig/`，每个存档都按仓库规则同步；仓库有而目标缺失的文件会创建（不止覆盖已存在文件） |
-| 哈希 | `.NSUM/hashes.json` 记录写入文件的源 SHA-256；分块 64 KiB 计算（1 MiB 栈缓冲会在 CLI 主线程栈溢出 0xC00000FD） |
+| 哈希 | `.NSUM/hashes.json` 记录写入文件的源 SHA-256；分块 64 KiB 计算（1 MiB 栈缓冲会在 CLI 主线程栈溢出 0xC00000FD）。预览的 `D` 也按该表判定（只报本工具写过、本次构建不再产出的文件，玩家自放文件不误报） |
+| 构建产物 | 每次构建前**清空** staging（`stepMergeBranches` 开头 `remove_all`），否则仓库中已删除的文件会永久残留 → 预览恒 `M`、目标永远删不掉 |
+| `version.json` | 本工具写入目标根的元数据（`name`/`mc_version`/`modloader`/`modloader_version`/`build_time`/`generated_by`），是给外部项目 **FLFHMCL**（HMCL 的 Fabric Loader/Mixin 注入）预留的契约；**真正的 `<name>.json`+壳 jar 由该模组生成**，本插件不生成版本描述、也不改动 HMCL 系统文件 |
+| CLI 预览 | `info preview --export <目标目录>` 才做真实 `U/M/D` 比对（只读）；未给时全部标 `U` 并告警。`modpack.cfg`/`hmclversion.cfg` 不参与 `U/M/D`（受保护） |

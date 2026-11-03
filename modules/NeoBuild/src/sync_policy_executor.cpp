@@ -416,7 +416,7 @@ struct ExecutorImpl {
 
                 std::error_code r;
                 fs::remove(entry.path(), r);
-                if (!r) {
+                if (r) {
                     result.warnings.push_back("Sync failed (delete error): " + rel);
                     continue;
                 }
@@ -486,7 +486,7 @@ struct ExecutorImpl {
                 if (isDisabled) {
                     std::error_code r;
                     fs::remove(entry.path(), r);
-                    if (!r) {
+                    if (r) {
                         result.warnings.push_back(
                             "Sync failed (disabled mod cleanup): " + name);
                     } else {
@@ -501,7 +501,7 @@ struct ExecutorImpl {
                 if (hashes.count(relInTarget)) {
                     std::error_code r;
                     fs::remove(entry.path(), r);
-                    if (!r) {
+                    if (r) {
                         result.warnings.push_back(
                             "Sync failed (removed repo mod cleanup): " + name);
                     } else {
@@ -518,7 +518,7 @@ struct ExecutorImpl {
                 if (fs::exists(libPath)) {
                     std::error_code r;
                     fs::remove(entry.path(), r);
-                    if (!r) {
+                    if (r) {
                         result.warnings.push_back(
                             "Sync failed (custom mod cleanup): " + name);
                     }

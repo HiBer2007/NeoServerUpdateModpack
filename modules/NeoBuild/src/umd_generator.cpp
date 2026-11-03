@@ -94,6 +94,9 @@ void scanDir(const fs::path& root, std::map<std::string, bool>& out)
             continue;
         }
         if (rel.empty()) continue;
+        // HMCL 系统文件归启动器所有（同步器 isProtectedRoot 保护：不生成、
+        // 不覆盖、不删除），预览不列为 U/M/D，否则会误报将被修改/删除。
+        if (rel == "modpack.cfg" || rel == "hmclversion.cfg") continue;
         out[rel] = it->is_directory(ec);
         ec.clear();
     }
@@ -125,6 +128,29 @@ bool filesEqual(const fs::path& buildPath, const fs::path& targetPath)
     return sha256File(buildPath) == sha256File(targetPath);
 }
 
+// .NSUM/hashes.json 记录「本工具写入过的文件」。同步器只删除这类文件
+// （仓库中已移除/镜像多余项），玩家自放内容不在其列 —— 预览的 D 必须同口径，
+// 否则会把玩家文件误报为将被删除。
+std::set<std::string> loadRecordedFiles(const fs::path& targetDir)
+{
+    std::set<std::string> out;
+    QFile f(QString::fromUtf8(
+        (targetDir / ".NSUM" / "hashes.json").u8string().c_str()));
+    if (!f.open(QIODevice::ReadOnly)) return out;
+    const QByteArray raw = f.readAll();
+    f.close();
+    try {
+        auto j = nlohmann::json::parse(raw.toStdString());
+        if (j.is_object()) {
+            for (auto it = j.begin(); it != j.end(); ++it) {
+                out.insert(it.key());
+            }
+        }
+    } catch (const std::exception&) {
+    }
+    return out;
+}
+
 } // namespace
 
 nlohmann::json generateUmdStructure(const std::string& buildDir,
@@ -148,11 +174,13 @@ nlohmann::json generateUmdStructure(const std::string& buildDir,
 
     std::set<std::string> deleted;
     if (compare) {
+        const std::set<std::string> recorded =
+            loadRecordedFiles(fs::u8path(targetDir));
         for (const auto& kv : targetSet) {
             if (kv.second) continue;
-            if (buildSet.find(kv.first) == buildSet.end()) {
-                deleted.insert(kv.first);
-            }
+            if (buildSet.find(kv.first) != buildSet.end()) continue;
+            if (!recorded.count(kv.first)) continue;
+            deleted.insert(kv.first);
         }
     }
 

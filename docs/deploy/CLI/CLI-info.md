@@ -365,7 +365,7 @@ NeoServerUpdateModpack.exe info workspace --repo <url|path> [--git-branch <b>] [
 虚拟构建文件树预览（不产出最终产物）。
 
 ```
-NeoServerUpdateModpack.exe info preview --repo <url|path> --modpack <branch> [--format <mcbbs|modrinth|hmcl>] [--git-branch <b>] [--json]
+NeoServerUpdateModpack.exe info preview --repo <url|path> --modpack <branch> [--format <mcbbs|modrinth|hmcl>] [--git-branch <b>] [--export <dir>] [--json]
 ```
 
 **必配参数：**
@@ -380,10 +380,13 @@ NeoServerUpdateModpack.exe info preview --repo <url|path> --modpack <branch> [--
 | 参数 | 默认 | 说明 |
 |------|------|------|
 | `--format` | `mcbbs` | 仅接受 `mcbbs\|modrinth\|hmcl`，否则 `Unsupported format: <f>. Use mcbbs, modrinth, or hmcl.` exit 2 |
-| `--git-branch` | — | clone/fetch 后 checkout 的分支 |
+| `--git-branch` | — | clone/fetch 后 checkout 的分支（预览构建同样使用；缺省 = 与整合包分支同名） |
+| `--export` | — | **目标目录，仅用于比对**（只读、不写入）。`hmcl` 为工作区同步，给了它才能做真实 `U/M/D` 比对；未给时全部标记 `U` 并输出 `[!] No --export target dir given for hmcl: ...` 警告 |
 
 **行为**：克隆/更新缓存 → 用 BuildEngine 在 `<temp>/nsum_preview` 做**虚拟构建** → 按格式生成
-预览结构树（`ModpackExporter::previewStructure`）。
+预览结构树（`ModpackExporter::previewStructure`）。`hmcl` 的 `D`（删除）只针对 `.NSUM/hashes.json`
+记录过、且本次构建不再产出的文件（与本工具实际删除规则一致，玩家自放文件不会误报删除）；
+`modpack.cfg` / `hmclversion.cfg` 属 HMCL 系统文件，预览不列为 `U/M/D`。
 
 **JSON 示例（exit 0）：**
 

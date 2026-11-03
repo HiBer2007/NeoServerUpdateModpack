@@ -908,6 +908,8 @@ int CliDispatcher::cmdInfoPreview(const CliCommand& cmd)
     const std::string repoUrl = cmd.get("repo");
     const std::string modpackBranch = cmd.get("modpack");
     const std::string fmt = cmd.get("format");
+    const std::string previewTarget = cmd.get("export");
+    const std::string gitBranch = cmd.get("git-branch");
 
     if (repoUrl.empty()) {
         CliOutput::error("No repository URL specified. Use --repo <url>.");
@@ -942,7 +944,7 @@ int CliDispatcher::cmdInfoPreview(const CliCommand& cmd)
     }
 
     CliOutput::info("Running virtual build for preview: " + modpackBranch);
-    auto result = engine.build(modpackBranch, nullptr, &cancelToken_);
+    auto result = engine.build(modpackBranch, nullptr, &cancelToken_, gitBranch);
     if (!result.success) {
         CliOutput::error("Preview build failed: " + result.errorMessage);
         return 1;
@@ -953,7 +955,14 @@ int CliDispatcher::cmdInfoPreview(const CliCommand& cmd)
 
     NeoBuild::ModpackExporter exporter;
     exporter.scanExporters((fs::path(exeDir()) / "exporters").string());
-    auto tree = exporter.previewStructure(format, result.outputDir, meta);
+    // hmcl 为工作区同步：给了 --export 目标游戏目录才能做真实 U/M/D 比对
+    // （否则 generateUmdStructure 无目标可扫，全部标记为新增）。
+    auto tree = exporter.previewStructure(format, result.outputDir, meta, previewTarget);
+    if (format == "hmcl" && previewTarget.empty()) {
+        CliOutput::warning(
+            "No --export target dir given for hmcl: entries are all marked 'U' "
+            "(no modify/delete comparison against a real game dir).");
+    }
 
     nlohmann::json data;
     data["format"] = format;

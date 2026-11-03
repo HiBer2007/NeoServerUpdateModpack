@@ -405,6 +405,21 @@ bool BuildEngine::stepCheckout(const std::string& branch)
 bool BuildEngine::stepMergeBranches(const std::string& targetBranch)
 {
     try {
+        // 构建产物目录必须每次从零重建：旧实现直接 merge 进已存在的
+        // outputDir_，仓库里已删除的文件会永久残留 → 预览误报 M、目标端
+        // 永远删不掉（镜像/删除逻辑全部失效）。
+        {
+            std::error_code wipeEc;
+            fs::remove_all(outputDir_, wipeEc);
+            fs::create_directories(outputDir_, wipeEc);
+            if (wipeEc) {
+                CLogger::Warn("BuildEngine: cannot clean output dir {}: {}",
+                    outputDir_, wipeEc.message());
+            } else {
+                CLogger::Info("BuildEngine: cleaned output dir {}", outputDir_);
+            }
+        }
+
         std::vector<BranchLayer> layers;
 
         auto chain = workspace_->branchInheritanceChain(targetBranch);
