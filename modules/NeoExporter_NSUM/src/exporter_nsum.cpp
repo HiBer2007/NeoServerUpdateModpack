@@ -151,7 +151,7 @@ namespace {
 class NsumExporter : public NeoCore::IModpackExporter {
 public:
     std::string format_name() const override { return "nsum"; }
-    std::string file_extension() const override { return ".zip"; }
+    std::string file_extension() const override { return ".nsumpack"; }
     std::string format_description() const override {
         return "NSUM \u6574\u5408\u5305\uff08HMCL \u7ecf NSUM Bridge \u63a5\u5165\u670d\u52a1\u5668\u540c\u6b65\uff09";
     }
