@@ -1,0 +1,25 @@
+{
+  "id": "install",
+  "steps": [
+    { "id": "lang", "ui": "language", "default": "zh" },
+    { "id": "license", "ui": "license", "source": "dir:LICENSE.txt" },
+    { "id": "path", "ui": "path" },
+    { "id": "components", "ui": "components" },
+    { "id": "cleanTarget", "type": "clean", "target": "{installDir}" },
+    { "id": "extract", "type": "extract", "source": "dir:deploy", "target": "{installDir}" },
+    { "id": "writeconf", "type": "template", "target": "{installDir}",
+      "file": "install.conf",
+      "header": "# NSUM Runtime Install Configuration",
+      "template": {
+        "install_path": "{installDir}",
+        "installed_by": "nsum-bridge"
+      } },
+    { "id": "shortcutA", "type": "shortcut", "enabled": false, "kind": "desktop",
+      "name": "NSUM.lnk", "target": "{installDir}/NeoServerUpdateModpack.exe",
+      "workDir": "{installDir}" },
+    { "id": "shortcutB", "type": "shortcut", "enabled": false, "kind": "startmenu",
+      "name": "NSUM/NSUM.lnk", "target": "{installDir}/NeoServerUpdateModpack.exe",
+      "workDir": "{installDir}" },
+    { "id": "finish", "ui": "finish", "message": "NSUM Runtime 安装完成" }
+  ]
+}

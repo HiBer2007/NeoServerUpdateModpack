@@ -143,6 +143,17 @@ if(INSTALLER_ONLY_BUILD)
         "${CMAKE_SOURCE_DIR}/modules/HiBerCommonInstaller/ext/winget/src/winget_ext.cpp"
     )
 
+    # CLI 分发目录（供 bridge 以 --cli --json 无人值守装 Runtime）：
+    # hci_cli.exe + product.json + install.json（无快捷方式）+ LICENSE.txt + deploy/
+    add_custom_target(hci_cli_dist ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/nsum_cli_dist"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:hci_cli>" "${CMAKE_BINARY_DIR}/nsum_cli_dist/hci_cli.exe"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NSI_GENERATED}/product.json" "${CMAKE_BINARY_DIR}/nsum_cli_dist/product.json"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NSI_ROOT}/install_cli.json" "${CMAKE_BINARY_DIR}/nsum_cli_dist/install.json"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NSI_ROOT}/LICENSE.txt" "${CMAKE_BINARY_DIR}/nsum_cli_dist/LICENSE.txt"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${DEPLOY_SOURCE}" "${CMAKE_BINARY_DIR}/nsum_cli_dist/deploy"
+        DEPENDS hci_cli
+        COMMENT "Assemble NSUM CLI runtime installer dist (nsum_cli_dist)")
     # 便捷释放：hci_gui.exe（含运行时 DLL，过滤中间产物）复制到构建目录根
     # （build_nsum_installer/），方便直接查找/运行
     add_custom_target(hci_gui_release_to_root ALL
