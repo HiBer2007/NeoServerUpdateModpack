@@ -9,6 +9,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QDirIterator>
+#include <QCryptographicHash>
 
 #include <algorithm>
 #include <filesystem>
@@ -119,7 +120,35 @@ std::string extraString(const json& extra, const char* key, const std::string& f
     return fallback;
 }
 
-json buildManifest(const NeoCore::ExportMetadata& meta) {
+json collectFileIndex(const std::string& buildDir) {
+    json files = json::array();
+    std::string root = buildDir;
+    while (!root.empty() && (root.back() == '/' || root.back() == '\\')) root.pop_back();
+    if (root.empty()) return files;
+    QDirIterator it(QString::fromStdString(root), QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        QFileInfo fi = it.fileInfo();
+        std::string rel = relativePath(root, fi.absoluteFilePath().toStdString());
+        if (rel.empty()) continue;
+        std::replace(rel.begin(), rel.end(), '\\', '/');
+        if (rel == "save" || rel.rfind("save/", 0) == 0) continue;
+        std::string hash;
+        QFile fh(fi.absoluteFilePath());
+        if (fh.open(QIODevice::ReadOnly)) {
+            QCryptographicHash h(QCryptographicHash::Sha256);
+            h.addData(&fh);
+            hash = h.result().toHex().toStdString();
+            fh.close();
+        }
+        files.push_back({{"path", rel},
+                         {"size", static_cast<long long>(fi.size())},
+                         {"sha256", hash}});
+    }
+    return files;
+}
+
+json buildManifest(const NeoCore::ExportMetadata& meta, const json& files) {
     json j;
     j["schema"] = 1;
     j["type"] = "nsum";
@@ -138,6 +167,7 @@ json buildManifest(const NeoCore::ExportMetadata& meta) {
         {"branch", extraString(extra, "branch", "base")},
         {"gitBranch", extraString(extra, "git_branch")}
     };
+    j["files"] = files;
     j["runtime"] = {
         {"minVersion", extraString(extra, "runtime_min_version", "1.0.0")}
     };
@@ -209,9 +239,9 @@ public:
         }
 
         try {
-            json manifest = buildManifest(metadata);
+            json manifest = buildManifest(metadata, collectFileIndex(build_dir));
             std::string manifestStr = manifest.dump(2);
-            zf.addData("nsum.modpack.json", manifestStr.data(), manifestStr.size());
+            zf.addData("nsum.index.json", manifestStr.data(), manifestStr.size());
             scanAndPackDirectory(zf, build_dir, "overrides");
 
             if (zf.close() != LIBZIPPP_OK) {
@@ -235,7 +265,7 @@ public:
         (void)metadata;
         (void)target_dir;
         nlohmann::json entries = nlohmann::json::array();
-        entries.push_back({{"path", "nsum.modpack.json"}, {"dir", false}, {"umd", ""}});
+        entries.push_back({{"path", "nsum.index.json"}, {"dir", false}, {"umd", ""}});
 
         std::string normBuildDir = build_dir;
         while (!normBuildDir.empty()

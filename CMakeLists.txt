@@ -94,7 +94,10 @@ if(INSTALLER_ONLY_BUILD)
     set(HCI_GUI_OUTPUT_NAME "NSUM_Installer_${NSUM_INSTALLER_VERSION}")
 
     set(HCI_BUILD_GUI ON)
-    set(HCI_BUILD_CLI OFF)
+    # CLI 壳：供 bridge 以 --cli --json 驱动安装并回显进度（默认关，-DHCI_BUILD_CLI=ON 打开）
+    if(NOT DEFINED HCI_BUILD_CLI)
+        set(HCI_BUILD_CLI OFF)
+    endif()
     set(HCI_BUILD_TUI OFF)
     set(HCI_BUILD_EXAMPLES OFF)
     set(HIBERGUI_BUILD_EXAMPLES OFF)
