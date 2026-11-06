@@ -36,9 +36,9 @@ bool ServerConfigSync::init(const std::string& savesDir,
     repoRoot_ = repoRoot;
     branchName_ = branchName;
 
-    fs::path ruleBase = fs::path(repoRoot_) / "branches" / branchName_
+    fs::path ruleBase = fs::u8path(repoRoot_) / "branches" / branchName_
         / "save" / "[save]" / "serverconfig" / ".rule";
-    ruleDir_ = ruleBase.string();
+    ruleDir_ = ruleBase.u8string();
 
     if (branchName_.empty()) {
         CLogger::Warn("ServerConfigSync: empty branch name, rules disabled");
@@ -75,7 +75,7 @@ void ServerConfigSync::loadRules()
     };
 
     try {
-        fs::path globlePath = fs::path(ruleDir_) / "globle.json";
+        fs::path globlePath = fs::u8path(ruleDir_) / "globle.json";
         if (fs::exists(globlePath)) {
             std::ifstream f(globlePath);
             nlohmann::json j = nlohmann::json::parse(f, nullptr, false);
@@ -94,7 +94,7 @@ void ServerConfigSync::loadRules()
             }
         }
 
-        fs::path listPath = fs::path(ruleDir_) / "list.json";
+        fs::path listPath = fs::u8path(ruleDir_) / "list.json";
         if (fs::exists(listPath)) {
             std::ifstream f(listPath);
             nlohmann::json j = nlohmann::json::parse(f, nullptr, false);
@@ -152,9 +152,9 @@ std::vector<std::string> ServerConfigSync::trackedKeysFor(
 std::string ServerConfigSync::sourcePathFor(const std::string& relPath) const
 {
     if (ruleDir_.empty()) return "";
-    fs::path src = fs::path(repoRoot_) / "branches" / branchName_
+    fs::path src = fs::u8path(repoRoot_) / "branches" / branchName_
         / "save" / "[save]" / "serverconfig" / relPath;
-    return src.string();
+    return src.u8string();
 }
 
 std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
@@ -172,7 +172,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
         // 是「每个存档都同步」，缺失文件也要按规则创建。
         std::vector<std::string> sourceRels;
         {
-            const fs::path sourceDir = fs::path(ruleDir_).parent_path();
+            const fs::path sourceDir = fs::u8path(ruleDir_).parent_path();
             std::error_code dirEc;
             if (!ruleDir_.empty() && fs::is_directory(sourceDir, dirEc)) {
                 for (auto it = fs::recursive_directory_iterator(
@@ -197,7 +197,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
 
             if (!worldEntry.is_directory()) continue;
 
-            std::string worldName = worldEntry.path().filename().string();
+            std::string worldName = worldEntry.path().filename().u8string();
             fs::path serverConfigDir = worldEntry.path() / "serverconfig";
 
             std::set<std::string> existing;
@@ -209,7 +209,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
 
                     ServerConfigEntry entry;
                     entry.worldName = worldName;
-                    entry.configPath = configEntry.path().string();
+                    entry.configPath = configEntry.path().u8string();
                     entry.relativePath = fs::relative(configEntry.path(), serverConfigDir)
                         .generic_string();
 
@@ -224,7 +224,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
                 if (existing.count(rel)) continue;
                 ServerConfigEntry entry;
                 entry.worldName = worldName;
-                entry.configPath = (serverConfigDir / rel).string();
+                entry.configPath = (serverConfigDir / rel).u8string();
                 entry.relativePath = rel;
                 result.push_back(entry);
             }
@@ -376,8 +376,8 @@ bool ServerConfigSync::syncPartial(const ServerConfigEntry& entry,
     std::string localContent = readFile(entry.configPath);
 
     NeoCore::PluginLoader loader;
-    std::string parsersDir = (fs::path(
-        QCoreApplication::applicationDirPath().toStdString()) / "parsers").string();
+    std::string parsersDir = (fs::u8path(
+        QCoreApplication::applicationDirPath().toStdString()) / "parsers").u8string();
     if (fs::exists(parsersDir)) {
         loader.ScanDirectory(parsersDir);
     }
@@ -449,7 +449,7 @@ bool ServerConfigSync::writeFile(const std::string& filepath,
     const std::string& content) const
 {
     try {
-        fs::create_directories(fs::path(filepath).parent_path());
+        fs::create_directories(fs::u8path(filepath).parent_path());
 
         QFile f(QString::fromStdString(filepath));
         if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {

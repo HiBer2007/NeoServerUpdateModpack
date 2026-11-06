@@ -377,6 +377,27 @@ struct ExecutorImpl {
                 modsScope = f.path;
             }
         }
+
+        // 顶层 default_folder_policy = mirror 时，未显式列出的文件夹也要严格镜像；
+        // 用空 scope 表示「根」，删除时跳过显式声明的文件夹与文件策略路径。
+        if (resolveDefault("default") == "mirror"
+            && std::find(mirrorScopes.begin(), mirrorScopes.end(), "") == mirrorScopes.end()) {
+            mirrorScopes.push_back("");
+        }
+    }
+
+    // 显式声明的文件夹/文件策略路径（根 scope 删除时跳过，交由各自策略处理）
+    bool isExplicitlyManaged(const std::string& rel) const
+    {
+        for (const auto& f : policy.folders) {
+            if (f.path.empty()) continue;
+            if (rel == f.path || rel.rfind(f.path + "/", 0) == 0) return true;
+        }
+        for (const auto& f : policy.files) {
+            if (f.path.empty()) continue;
+            if (rel == f.path) return true;
+        }
+        return false;
     }
 
     bool inScope(const std::string& scope, const std::string& rel) const
@@ -412,6 +433,15 @@ struct ExecutorImpl {
                 std::string rel = relOf(targetDir, entry.path());
                 if (rel.empty() || isProtectedRoot(rel)) continue;
                 if (isSaveSyncSource(rel)) continue;
+                // 根级 HMCL 版本描述/图标不属于同步内容，严格镜像不得删除
+                if (scope.empty() && rel.find('/') == std::string::npos
+                    && (rel.rfind("icon.", 0) == 0
+                        || (rel.size() > 5 && rel.rfind(".json") == rel.size() - 5))) {
+                    continue;
+                }
+                // 根 scope 的严格镜像不得动存档目录：存档内容由 L3 serverconfig 规则管理
+                if (scope.empty() && (rel.rfind("saves/", 0) == 0 || rel.rfind("save/", 0) == 0)) continue;
+                if (scope.empty() && isExplicitlyManaged(rel)) continue;
                 if (sourceFiles.count(rel)) continue;
 
                 std::error_code r;

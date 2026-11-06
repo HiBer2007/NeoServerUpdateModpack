@@ -24,8 +24,8 @@ GUI：向导 → 整合包 → 导出类型选「NSUM 整合包 (.zip)」→ 选
 | `file_extension()` | `".zip"` |
 | `format_description()` | `"NSUM 整合包（HMCL 经 NSUM Bridge 接入服务器同步）"` |
 | `build_modpack(target, progress, cancel)` | `BuildEngine::init(wsJson, cache_dir, output_path)` → `build(branch, progress, cancel, target.git_branch)` |
-| `export_modpack(build_dir, output_path, metadata)` | 写 `nsum.modpack.json` + `overrides/**`（排除 `save/`） |
-| `preview_structure(build_dir, metadata, target_dir="")` | `nsum.modpack.json` + `overrides/**` |
+| `export_modpack(build_dir, output_path, metadata)` | 写 `nsum.index.json` + `overrides/**`（排除 `save/`） |
+| `preview_structure(build_dir, metadata, target_dir="")` | `nsum.index.json` + `overrides/**` |
 
 ## 客户端侧（nsum-bridge）
 

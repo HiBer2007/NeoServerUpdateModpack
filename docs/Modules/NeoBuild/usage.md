@@ -221,7 +221,7 @@ public:
 
 层次语义（头文件注释）：
 
-- **L1 文件夹策略**（`sync_policies.folders`，最长前缀匹配，递归含子文件夹）：`skip` / `mirror`（严格镜像：清空重写 + 删多余）/ `incremental_add`（只补缺失）/ `incremental_overwrite`（保留多余项，被改过也写入）/ `default`（兜底）。
+- **L1 文件夹策略**（`sync_policies.folders`，最长前缀匹配，递归含子文件夹）：`skip` / `mirror`（严格镜像：清空重写 + 删多余）/ `incremental_add`（只补缺失）/ `incremental_overwrite`（保留多余项，被改过也写入）/ `default`（兜底）。**`default_folder_policy` 生效**：未显式列出的文件夹按它执行，且同样做删多余；根 scope 删除时跳过 `saves/`、显式声明的文件夹/文件策略路径、根级 `<id>.json`/`icon.*` 与受保护文件（`.NSUM`、`.hmcl`、`modpack.cfg`、`hmclversion.cfg`）。
 - **L2 配置文件特化**（`sync_policies.files`）：`full`（仅覆盖）/ `partial`（半同步 merge，经 `IConfigParser`，`tracked_keys` 为空时取全部键）/ `ignore`。
 - **mods 目录为 mirror 时特殊处理**：`.disabled` 清除、custom 模组收集到 `.NSUM/custom/mod`（只增不覆盖）、同步后复制回 mods、modId 冲突检测（保留镜像模组，冲突模组留在库中 + 警告）。
 - `.NSUM/hashes.json` 记录每次写入文件的源 SHA-256，供增量策略比对。

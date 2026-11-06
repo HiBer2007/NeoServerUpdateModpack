@@ -152,8 +152,12 @@ std::string WorkspaceManager::workspaceName() const
 std::string WorkspaceManager::minecraftVersion() const
 {
     try {
-        return config_.value("workspace", nlohmann::json::object())
-            .value("minecraft_version", "");
+        const auto workspace = config_.value("workspace", nlohmann::json::object());
+        std::string version = workspace.value("minecraft_version", "");
+        if (version.empty()) {
+            version = workspace.value("minecraft", "");
+        }
+        return version;
     }
     catch (...) {
         return "";
@@ -165,6 +169,17 @@ std::string WorkspaceManager::modloader() const
     try {
         return config_.value("workspace", nlohmann::json::object())
             .value("modloader", "");
+    }
+    catch (...) {
+        return "";
+    }
+}
+
+std::string WorkspaceManager::modloaderVersion() const
+{
+    try {
+        return config_.value("workspace", nlohmann::json::object())
+            .value("modloader_version", "");
     }
     catch (...) {
         return "";

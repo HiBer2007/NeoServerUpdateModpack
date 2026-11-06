@@ -151,7 +151,7 @@ if(INSTALLER_ONLY_BUILD)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NSI_GENERATED}/product.json" "${CMAKE_BINARY_DIR}/nsum_cli_dist/product.json"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NSI_ROOT}/install_cli.json" "${CMAKE_BINARY_DIR}/nsum_cli_dist/install.json"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NSI_ROOT}/LICENSE.txt" "${CMAKE_BINARY_DIR}/nsum_cli_dist/LICENSE.txt"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${DEPLOY_SOURCE}" "${CMAKE_BINARY_DIR}/nsum_cli_dist/deploy"
+        COMMAND ${CMAKE_COMMAND} -P "${NSI_ROOT}/release_cli_dist.cmake" "${DEPLOY_SOURCE}" "${CMAKE_BINARY_DIR}/nsum_cli_dist/deploy"
         DEPENDS hci_cli
         COMMENT "Assemble NSUM CLI runtime installer dist (nsum_cli_dist)")
     # 便捷释放：hci_gui.exe（含运行时 DLL，过滤中间产物）复制到构建目录根

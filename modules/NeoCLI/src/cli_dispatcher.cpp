@@ -224,6 +224,7 @@ static void fillExportMetadata(NeoCore::ExportMetadata& meta,
     meta.name = wm.workspaceName();
     meta.game_version = wm.minecraftVersion();
     meta.modloader = wm.modloader();
+    meta.modloader_version = wm.modloaderVersion();
 }
 
 CliDispatcher::CliDispatcher()
@@ -1770,9 +1771,8 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
     fillExportMetadata(target.metadata, wsJson);
     target.metadata.extra["branch"] = modpackBranch;
     target.metadata.extra["git_branch"] = gitBranch;
-    if (!target.metadata.extra.contains("repo")) {
-        target.metadata.extra["repo"] = workDir;
-    }
+    // 包内记录用户给定的仓库地址（而不是本地缓存路径），否则客户端会同步到过期缓存。
+    target.metadata.extra["repo"] = repoUrl.empty() ? workDir : repoUrl;
 
     if (target.sync_to_directory) {
         if (!exportPath.empty()) {

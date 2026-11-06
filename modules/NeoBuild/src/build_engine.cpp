@@ -98,6 +98,13 @@ bool BuildEngine::init(const std::string& workspacePath,
             exporter_->scanExporters(exportersDir);
         }
 
+        // 指针解析器：导出插件内部也会走 stepProcessFiles 解析 .pointer，
+        // 因此必须在引擎初始化时扫描一次（进程 exe 目录下的 pointers/）。
+        const std::string pointersDir =
+            (fs::path(QCoreApplication::applicationDirPath().toStdString()) / "pointers").string();
+        downloader_->scanResolvers(pointersDir);
+        CLogger::Info("BuildEngine: pointer resolvers scanned from '{}'", pointersDir);
+
         return true;
     } catch (const std::exception& e) {
         CLogger::Error("BuildEngine::init exception: {}", e.what());
@@ -533,6 +540,8 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
                                     fs::copy_options::overwrite_existing, ec);
                                 if (!ec) {
                                     CLogger::Info("Cached copy: {} -> {}", ptr.sha256, stem);
+                                    std::error_code rmEc;
+                                    fs::remove(pfile, rmEc);
                                 }
                                 continue;
                             } else {
@@ -556,6 +565,8 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
                             fs::copy_options::overwrite_existing, ec);
                         if (!ec) {
                             CLogger::Info("Downloaded and placed: {}", stem);
+                            std::error_code rmEc;
+                            fs::remove(pfile, rmEc);
                         }
                     } else {
                         CLogger::Error("Download failed for {}: {}", ptr.sha256, dlResult.errorMessage);

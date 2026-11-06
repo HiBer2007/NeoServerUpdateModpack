@@ -61,6 +61,7 @@ public:
     std::string workspaceName() const;
     std::string minecraftVersion() const;
     std::string modloader() const;
+    std::string modloaderVersion() const;
     std::string gitRemote() const;
     std::string defaultBranch() const;
     const nlohmann::json& config() const;
