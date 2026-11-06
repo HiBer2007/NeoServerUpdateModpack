@@ -65,6 +65,7 @@
 | NeoExporter_MCBBS | [README](NeoExporter_MCBBS/README.md) | [usage](NeoExporter_MCBBS/usage.md) | MCBBS/PCL/HMCL 通用 .zip |
 | NeoExporter_Modrinth | [README](NeoExporter_Modrinth/README.md) | [usage](NeoExporter_Modrinth/usage.md) | .mrpack |
 | NeoExporter_HMCL | [README](NeoExporter_HMCL/README.md) | [usage](NeoExporter_HMCL/usage.md) | HMCL 原生格式 |
+| NeoExporter_NSUM | [README](NeoExporter_NSUM/README.md) | [usage](NeoExporter_NSUM/usage.md) | NSUM 整合包 .zip（HMCL + nsum-bridge 客户端） |
 
 **编辑器扩展插件**（实现 `IConfigEditorExtension`/`IPointerEditorExtension`，部署到 `editor/extension/`）：
 

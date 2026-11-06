@@ -921,8 +921,8 @@ int CliDispatcher::cmdInfoPreview(const CliCommand& cmd)
     }
 
     std::string format = fmt.empty() ? "mcbbs" : fmt;
-    if (format != "mcbbs" && format != "modrinth" && format != "hmcl") {
-        CliOutput::error("Unsupported format: " + format + ". Use mcbbs, modrinth, or hmcl.");
+    if (format != "mcbbs" && format != "modrinth" && format != "hmcl" && format != "nsum") {
+        CliOutput::error("Unsupported format: " + format + ". Use mcbbs, modrinth, hmcl, or nsum.");
         return 2;
     }
 
@@ -1733,8 +1733,8 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
         CliOutput::info("Git branch: " + gitBranch);
 
     std::string fmt = exportFormat.empty() ? "mcbbs" : exportFormat;
-    if (fmt != "mcbbs" && fmt != "modrinth" && fmt != "hmcl") {
-        CliOutput::error("Unsupported format: " + fmt + ". Use mcbbs, modrinth, or hmcl.");
+    if (fmt != "mcbbs" && fmt != "modrinth" && fmt != "hmcl" && fmt != "nsum") {
+        CliOutput::error("Unsupported format: " + fmt + ". Use mcbbs, modrinth, hmcl, or nsum.");
         return 2;
     }
 
@@ -1768,6 +1768,11 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
     target.sync_to_directory = (fmt == "hmcl");
     target.git_branch = gitBranch;
     fillExportMetadata(target.metadata, wsJson);
+    target.metadata.extra["branch"] = modpackBranch;
+    target.metadata.extra["git_branch"] = gitBranch;
+    if (!target.metadata.extra.contains("repo")) {
+        target.metadata.extra["repo"] = workDir;
+    }
 
     if (target.sync_to_directory) {
         if (!exportPath.empty()) {
@@ -1840,8 +1845,8 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
     }
 
     std::string fmt = exportFormat;
-    if (fmt != "mcbbs" && fmt != "modrinth" && fmt != "hmcl") {
-        CliOutput::error("Unsupported format: " + fmt + ". Use mcbbs, modrinth, or hmcl.");
+    if (fmt != "mcbbs" && fmt != "modrinth" && fmt != "hmcl" && fmt != "nsum") {
+        CliOutput::error("Unsupported format: " + fmt + ". Use mcbbs, modrinth, hmcl, or nsum.");
         return 2;
     }
 
@@ -1879,6 +1884,11 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
         target.sync_to_directory = (fmt == "hmcl");
         target.git_branch = gitBranch;
         fillExportMetadata(target.metadata, wsJson);
+        target.metadata.extra["branch"] = modpackBranch;
+        target.metadata.extra["git_branch"] = gitBranch;
+        if (!target.metadata.extra.contains("repo")) {
+            target.metadata.extra["repo"] = workDir;
+        }
 
         if (target.sync_to_directory) {
             if (!exportPath.empty()) {

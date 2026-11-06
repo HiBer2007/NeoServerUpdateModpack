@@ -187,6 +187,9 @@ void ExportPage::loadFormats()
         fmts.append({"mcbbs", ".zip",
             "MCBBS / PCL / HMCL \u901a\u7528\u6574\u5408\u5305\u683c\u5f0f\u3002",
             QString::fromUtf8("MCBBS \u6574\u5408\u5305 (.zip)")});
+        fmts.append({"nsum", ".zip",
+            "NSUM \u6574\u5408\u5305\u3002",
+            QString::fromUtf8("NSUM \u6574\u5408\u5305 (.zip)")});
         fmts.append({"modrinth", ".mrpack",
             "Modrinth Modpack Format\u3002",
             QString::fromUtf8("Modrinth (.mrpack)")});

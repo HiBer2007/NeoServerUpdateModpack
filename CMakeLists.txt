@@ -186,6 +186,7 @@ add_subdirectory(modules/NeoPointer_DirectURL)
 add_subdirectory(modules/NeoExporter_MCBBS)
 add_subdirectory(modules/NeoExporter_Modrinth)
 add_subdirectory(modules/NeoExporter_HMCL)
+add_subdirectory(modules/NeoExporter_NSUM)
 
 # ============================================================
 # Editor Extensions DLLs (编辑器扩展，运行时加载)
@@ -246,7 +247,7 @@ set(PARSER_TARGETS
 set(POINTER_TARGETS
     NeoPointer_Modrinth NeoPointer_DirectURL)
 set(EXPORTER_TARGETS
-    NeoExporter_MCBBS NeoExporter_Modrinth NeoExporter_HMCL)
+    NeoExporter_MCBBS NeoExporter_Modrinth NeoExporter_HMCL NeoExporter_NSUM)
 
 set(DEPLOY_DIR "${CMAKE_BINARY_DIR}/deploy")
 
@@ -430,7 +431,7 @@ endforeach()
 foreach(_t NeoPointer_Modrinth NeoPointer_DirectURL)
     nsum_add_version_info(${_t} "NSUM 指针解析器插件 (${_t})" "NSUM构建工具")
 endforeach()
-foreach(_t NeoExporter_MCBBS NeoExporter_Modrinth NeoExporter_HMCL)
+foreach(_t NeoExporter_MCBBS NeoExporter_Modrinth NeoExporter_HMCL NeoExporter_NSUM)
     nsum_add_version_info(${_t} "NSUM 导出插件 (${_t})" "NSUM构建工具")
 endforeach()
 foreach(_t NeoEditorExtension_Pointer_Modrinth NeoEditorExtension_Pointer_DirectURL)

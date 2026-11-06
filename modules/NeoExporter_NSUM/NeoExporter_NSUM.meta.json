@@ -1,0 +1,14 @@
+{
+  "name": "NSUM Modpack Exporter",
+  "version": "0.1.0",
+  "dll": "NeoExporter_NSUM.dll",
+  "format": "nsum",
+  "extension": ".zip",
+  "description": "NSUM 整合包（供 HMCL 的 NSUM Bridge 接入服务器同步）",
+  "fields": [
+    { "key": "name", "label": "整合包名称", "required": true, "group": "基本信息", "placeholder": "例如: NeoServer" },
+    { "key": "version", "label": "版本号", "required": true, "group": "基本信息", "placeholder": "例如: 1.0.0" },
+    { "key": "author", "label": "作者", "required": false, "group": "基本信息", "placeholder": "作者名称" },
+    { "key": "description", "label": "整合包描述", "required": false, "group": "可选信息", "type": "multiline", "placeholder": "整合包描述 (可选)" }
+  ]
+}

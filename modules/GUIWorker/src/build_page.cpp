@@ -234,9 +234,18 @@ void BuildPage::runBuildWorker()
             target.metadata.name = wm.workspaceName();
             target.metadata.game_version = wm.minecraftVersion();
             target.metadata.modloader = wm.modloader();
+            const std::string remote = wm.gitRemote();
+            if (!remote.empty()) {
+                target.metadata.extra["repo"] = remote;
+            }
         }
         if (target.metadata.name.empty()) {
             target.metadata.name = modpackBranch_.toStdString();
+        }
+        target.metadata.extra["branch"] = modpackBranch_.toStdString();
+        target.metadata.extra["git_branch"] = gitBranch_.toStdString();
+        if (!target.metadata.extra.contains("repo")) {
+            target.metadata.extra["repo"] = repoDir_.toStdString();
         }
 
         GuiBuildProgress progress(this, &cancelToken_);

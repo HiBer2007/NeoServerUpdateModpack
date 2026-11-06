@@ -148,9 +148,12 @@ void ExportTypePage::scanExporters()
             {"modrinth", "Modrinth (.mrpack)",
              ".mrpack",
              "Modrinth Modpack Format\u3002"},
-            {"hmcl", "HMCL \u5de5\u4f5c\u76ee\u5f55",
+            {"nsum", "NSUM \u6574\u5408\u5305 (.zip)",
              ".zip",
-             "HMCL \u539f\u751f\u683c\u5f0f\u3002"}
+             "NSUM \u6574\u5408\u5305\uff1aHMCL \u88c5 NSUM Bridge \u540e\u53ef\u81ea\u52a8\u540c\u6b65\u670d\u52a1\u5668\u3002"},
+            {"hmcl", "HMCL \u5de5\u4f5c\u76ee\u5f55",
+             "",
+             "HMCL \u5de5\u4f5c\u533a\u540c\u6b65\uff08\u76f4\u63a5\u5199\u5165\u6e38\u620f\u5de5\u4f5c\u76ee\u5f55\uff09\u3002"}
         };
     }
 }
