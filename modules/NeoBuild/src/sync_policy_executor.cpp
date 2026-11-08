@@ -433,9 +433,13 @@ struct ExecutorImpl {
                 std::string rel = relOf(targetDir, entry.path());
                 if (rel.empty() || isProtectedRoot(rel)) continue;
                 if (isSaveSyncSource(rel)) continue;
-                // 根级 HMCL 版本描述/图标不属于同步内容，严格镜像不得删除
+                // 根级 HMCL 版本描述/图标/游戏运行文件不属于同步内容，严格镜像不得删除
                 if (scope.empty() && rel.find('/') == std::string::npos
                     && (rel.rfind("icon.", 0) == 0
+                        || rel == "log4j2.xml"
+                        || rel == "options.txt"
+                        || rel.rfind("natives", 0) == 0
+                        || (rel.size() > 4 && rel.rfind(".jar") == rel.size() - 4)
                         || (rel.size() > 5 && rel.rfind(".json") == rel.size() - 5))) {
                     continue;
                 }
