@@ -74,6 +74,7 @@ public:
         std::string modloaderVersion;
         std::string description;
         bool hidden = false;
+        std::string type = "universal";
     };
     std::vector<BranchConfig> branches() const;
     BranchConfig findBranch(const std::string& name) const;

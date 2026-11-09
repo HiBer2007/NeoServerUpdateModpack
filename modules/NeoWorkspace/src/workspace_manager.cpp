@@ -232,6 +232,7 @@ void WorkspaceManager::parseBranches()
             bc.modloaderVersion = b.value("modloader_version", "");
             bc.description = b.value("description", "");
             bc.hidden = b.value("hidden", false);
+            bc.type = b.value("type", "universal");
 
             if (bc.name.empty()) {
                 CLogger::Warn("WorkspaceManager: Skipping branch with empty name");

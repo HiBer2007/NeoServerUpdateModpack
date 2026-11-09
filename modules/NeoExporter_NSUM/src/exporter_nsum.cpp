@@ -165,7 +165,8 @@ json buildManifest(const NeoCore::ExportMetadata& meta, const json& files) {
     j["instance"] = {
         {"repo", extraString(extra, "repo")},
         {"branch", extraString(extra, "branch", "base")},
-        {"gitBranch", extraString(extra, "git_branch")}
+        {"gitBranch", extraString(extra, "git_branch")},
+        {"branchType", extraString(extra, "branch_type", "universal")}
     };
     j["files"] = files;
     j["runtime"] = {

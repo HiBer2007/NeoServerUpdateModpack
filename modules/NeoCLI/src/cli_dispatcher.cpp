@@ -227,6 +227,19 @@ static void fillExportMetadata(NeoCore::ExportMetadata& meta,
     meta.modloader_version = wm.modloaderVersion();
 }
 
+static std::string branchTypeOf(const std::string& wsJson, const std::string& branchName)
+{
+    if (wsJson.empty()) return "universal";
+    NeoWorkspace::WorkspaceManager wm;
+    if (!wm.loadFromFile(wsJson)) return "universal";
+    for (const auto& b : wm.branches()) {
+        if (b.name == branchName) {
+            return b.type.empty() ? "universal" : b.type;
+        }
+    }
+    return "universal";
+}
+
 CliDispatcher::CliDispatcher()
 {
     auto prev = std::signal(SIGINT, signalHandler);
@@ -837,6 +850,7 @@ static nlohmann::json branchConfigToJson(const NeoWorkspace::WorkspaceManager::B
     j["modloader_version"] = b.modloaderVersion;
     j["hidden"] = b.hidden;
     j["description"] = b.description;
+    j["type"] = b.type;
     return j;
 }
 
@@ -1771,6 +1785,7 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
     fillExportMetadata(target.metadata, wsJson);
     target.metadata.extra["branch"] = modpackBranch;
     target.metadata.extra["git_branch"] = gitBranch;
+    target.metadata.extra["branch_type"] = branchTypeOf(wsJson, modpackBranch);
     // 包内记录用户给定的仓库地址（而不是本地缓存路径），否则客户端会同步到过期缓存。
     target.metadata.extra["repo"] = repoUrl.empty() ? workDir : repoUrl;
 
@@ -1886,6 +1901,7 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
         fillExportMetadata(target.metadata, wsJson);
         target.metadata.extra["branch"] = modpackBranch;
         target.metadata.extra["git_branch"] = gitBranch;
+        target.metadata.extra["branch_type"] = branchTypeOf(wsJson, modpackBranch);
         if (!target.metadata.extra.contains("repo")) {
             target.metadata.extra["repo"] = workDir;
         }
