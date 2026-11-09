@@ -231,6 +231,7 @@ void BuildPage::runBuildWorker()
 
         NeoWorkspace::WorkspaceManager wm;
         std::string branchType = "universal";
+        std::string branchCore;
         if (wm.loadFromFile(target.workspace_json)) {
             target.metadata.name = wm.workspaceName();
             target.metadata.game_version = wm.minecraftVersion();
@@ -242,11 +243,13 @@ void BuildPage::runBuildWorker()
             for (const auto& b : wm.branches()) {
                 if (b.name == modpackBranch_.toStdString()) {
                     branchType = b.type.empty() ? "universal" : b.type;
+                    branchCore = b.core;
                     break;
                 }
             }
         }
         target.metadata.extra["branch_type"] = branchType;
+        target.metadata.extra["core"] = branchCore;
         if (target.metadata.name.empty()) {
             target.metadata.name = modpackBranch_.toStdString();
         }

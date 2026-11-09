@@ -41,6 +41,8 @@ private slots:
     void onModloaderVersionChanged(const QString& text);
     void onDescriptionChanged(const QString& text);
     void onHiddenToggled(bool checked);
+    void onTypeChanged(int index);
+    void onCoreChanged(int index);
     void onEditSyncPolicies();
 
     void refreshParentCombos();
@@ -61,6 +63,8 @@ private:
         std::string modloaderVersion;
         std::string description;
         bool hidden = false;
+        std::string type = "universal";
+        std::string core;
         nlohmann::json raw;
     };
 
@@ -77,6 +81,8 @@ private:
     QGroupBox* editorGroup_;
     QLineEdit* nameEdit_;
     QComboBox* parentCombo_;
+    QComboBox* typeCombo_;
+    QComboBox* coreCombo_;
     QLineEdit* modloaderVersionEdit_;
     QLineEdit* descriptionEdit_;
     QCheckBox* hiddenCheck_;

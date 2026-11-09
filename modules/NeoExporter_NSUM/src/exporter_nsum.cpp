@@ -159,6 +159,7 @@ json buildManifest(const NeoCore::ExportMetadata& meta, const json& files) {
     j["gameVersion"] = meta.game_version;
     j["modloader"] = meta.modloader;
     j["modloaderVersion"] = meta.modloader_version;
+    j["core"] = extraString(meta.extra, "core");
     j["description"] = meta.description.empty() ? meta.summary : meta.description;
 
     const json& extra = meta.extra;

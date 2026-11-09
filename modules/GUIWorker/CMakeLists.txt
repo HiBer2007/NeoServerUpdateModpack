@@ -14,6 +14,7 @@ add_library(GUIWorker STATIC
     src/done_page.cpp
     src/repo_editor.cpp
     src/branch_editor.cpp
+    src/core_catalog.cpp
     src/modpack_content_ide.cpp
     src/folder_policy_editor.cpp
     src/config_file_editor.cpp
@@ -27,6 +28,7 @@ add_library(GUIWorker STATIC
         include/extra_info_page.h
         include/done_page.h
         include/branch_editor.h
+        include/core_catalog.h
         include/branch_page.h
         include/build_page.h
         include/build_tool_window.h

@@ -1,4 +1,5 @@
 #include "branch_editor.h"
+#include "core_catalog.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -62,6 +63,25 @@ void BranchEditor::buildUI()
     nameEdit_->setPlaceholderText("分支名称 (英文)");
     parentCombo_ = new QComboBox(editorGroup_);
     parentCombo_->addItem("(无 - 根分支)", QVariant(QString("")));
+    typeCombo_ = new QComboBox(editorGroup_);
+    typeCombo_->addItem("通用包", QVariant(QString("universal")));
+    typeCombo_->addItem("客户端专用", QVariant(QString("client")));
+    typeCombo_->addItem("服务端专用", QVariant(QString("server")));
+    coreCombo_ = new QComboBox(editorGroup_);
+    {
+        QString currentCategory;
+        for (const auto& core : availableCores()) {
+            QString category = QString::fromStdString(core.category);
+            if (!currentCategory.isEmpty() && category != currentCategory) {
+                coreCombo_->insertSeparator(coreCombo_->count());
+            }
+            currentCategory = category;
+            coreCombo_->addItem(
+                QString::fromStdString(coreCategoryLabel(core.category) + " / " + core.name),
+                QVariant(QString::fromStdString(core.id)));
+        }
+    }
+    coreCombo_->setEnabled(false);
     modloaderVersionEdit_ = new QLineEdit(editorGroup_);
     modloaderVersionEdit_->setPlaceholderText("例如: 0.16.10 (留空则继承全局)");
     descriptionEdit_ = new QLineEdit(editorGroup_);
@@ -69,6 +89,8 @@ void BranchEditor::buildUI()
     hiddenCheck_ = new QCheckBox("隐藏此分支 (不在引导GUI中展示, 仍可通过命令行指定)", editorGroup_);
     editorLayout->addRow("分支名:", nameEdit_);
     editorLayout->addRow("父分支:", parentCombo_);
+    editorLayout->addRow("分支类型:", typeCombo_);
+    editorLayout->addRow("服务端核心:", coreCombo_);
     editorLayout->addRow("加载器版本:", modloaderVersionEdit_);
     editorLayout->addRow("描述:", descriptionEdit_);
     editorLayout->addRow("", hiddenCheck_);
@@ -135,6 +157,10 @@ void BranchEditor::connectSignals()
     connect(nameEdit_, &QLineEdit::textChanged, this, &BranchEditor::onNameChanged);
     connect(parentCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
         this, &BranchEditor::onParentChanged);
+    connect(typeCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        this, &BranchEditor::onTypeChanged);
+    connect(coreCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        this, &BranchEditor::onCoreChanged);
     connect(modloaderVersionEdit_, &QLineEdit::textChanged,
         this, &BranchEditor::onModloaderVersionChanged);
     connect(descriptionEdit_, &QLineEdit::textChanged,
@@ -156,6 +182,12 @@ void BranchEditor::connectSignals()
             j["modloader_version"] = b.modloaderVersion;
             j["description"] = b.description;
             j["hidden"] = b.hidden;
+            j["type"] = b.type;
+            if (b.type == "server" && !b.core.empty()) {
+                j["core"] = b.core;
+            } else {
+                j.erase("core");
+            }
             result.push_back(j);
         }
         emit saveRequested(QString::fromStdString(nlohmann::json(result).dump()));
@@ -177,6 +209,8 @@ void BranchEditor::loadBranches(
         row.modloaderVersion = b.value("modloader_version", "");
         row.description = b.value("description", "");
         row.hidden = b.value("hidden", false);
+        row.type = b.value("type", "universal");
+        row.core = b.value("core", "");
         row.raw = b;
         branches_.push_back(row);
     }
@@ -216,6 +250,12 @@ std::vector<nlohmann::json> BranchEditor::saveBranches() const
         j["modloader_version"] = b.modloaderVersion;
         j["description"] = b.description;
         j["hidden"] = b.hidden;
+        j["type"] = b.type;
+        if (b.type == "server" && !b.core.empty()) {
+            j["core"] = b.core;
+        } else {
+            j.erase("core");
+        }
         result.push_back(j);
     }
     return result;
@@ -395,6 +435,29 @@ void BranchEditor::onHiddenToggled(bool checked)
     markModified();
 }
 
+void BranchEditor::onTypeChanged(int index)
+{
+    (void)index;
+    if (currentIndex_ < 0) return;
+    auto& row = branches_[currentIndex_];
+    row.type = typeCombo_->currentData().toString().toStdString();
+    coreCombo_->setEnabled(row.type == "server");
+    if (row.type != "server") {
+        row.core.clear();
+    }
+    markModified();
+    validateBranchConfig();
+}
+
+void BranchEditor::onCoreChanged(int index)
+{
+    (void)index;
+    if (currentIndex_ < 0) return;
+    branches_[currentIndex_].core = coreCombo_->currentData().toString().toStdString();
+    markModified();
+    validateBranchConfig();
+}
+
 void BranchEditor::refreshParentCombos()
 {
     parentCombo_->blockSignals(true);
@@ -462,6 +525,8 @@ void BranchEditor::syncTableToCurrentBranch()
 
     nameEdit_->blockSignals(true);
     parentCombo_->blockSignals(true);
+    typeCombo_->blockSignals(true);
+    coreCombo_->blockSignals(true);
     modloaderVersionEdit_->blockSignals(true);
     descriptionEdit_->blockSignals(true);
     hiddenCheck_->blockSignals(true);
@@ -469,12 +534,19 @@ void BranchEditor::syncTableToCurrentBranch()
     nameEdit_->setText(QString::fromStdString(b.name));
     int parentIdx = parentCombo_->findData(QVariant(QString::fromStdString(b.parent)));
     parentCombo_->setCurrentIndex(parentIdx >= 0 ? parentIdx : 0);
+    int typeIdx = typeCombo_->findData(QVariant(QString::fromStdString(b.type)));
+    typeCombo_->setCurrentIndex(typeIdx >= 0 ? typeIdx : 0);
+    int coreIdx = coreCombo_->findData(QVariant(QString::fromStdString(b.core)));
+    coreCombo_->setCurrentIndex(coreIdx >= 0 ? coreIdx : 0);
+    coreCombo_->setEnabled(b.type == "server");
     modloaderVersionEdit_->setText(QString::fromStdString(b.modloaderVersion));
     descriptionEdit_->setText(QString::fromStdString(b.description));
     hiddenCheck_->setChecked(b.hidden);
 
     nameEdit_->blockSignals(false);
     parentCombo_->blockSignals(false);
+    typeCombo_->blockSignals(false);
+    coreCombo_->blockSignals(false);
     modloaderVersionEdit_->blockSignals(false);
     descriptionEdit_->blockSignals(false);
     hiddenCheck_->blockSignals(false);
@@ -486,6 +558,8 @@ void BranchEditor::syncCurrentBranchToTable()
     auto& b = branches_[currentIndex_];
     b.name = nameEdit_->text().toStdString();
     b.parent = parentCombo_->currentData().toString().toStdString();
+    b.type = typeCombo_->currentData().toString().toStdString();
+    b.core = coreCombo_->currentData().toString().toStdString();
     b.modloaderVersion = modloaderVersionEdit_->text().toStdString();
     b.description = descriptionEdit_->text().toStdString();
     b.hidden = hiddenCheck_->isChecked();

@@ -75,6 +75,7 @@ public:
         std::string description;
         bool hidden = false;
         std::string type = "universal";
+        std::string core;
     };
     std::vector<BranchConfig> branches() const;
     BranchConfig findBranch(const std::string& name) const;
