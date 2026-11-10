@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(NeoServerUpdateModpack VERSION 1.0.0 LANGUAGES CXX)
+project(NeoServerUpdateModpack VERSION 1.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -139,6 +139,13 @@ if(INSTALLER_ONLY_BUILD)
     # （HCI_REGISTER_EXTENSION 静态注册，不再使用 DLL 放置方式）
     target_sources(hci_gui PRIVATE
         "${NSI_ROOT}/ext/nsum_args_ext.cpp"
+        "${CMAKE_SOURCE_DIR}/modules/HiBerCommonInstaller/ext/git/src/git_ext.cpp"
+        "${CMAKE_SOURCE_DIR}/modules/HiBerCommonInstaller/ext/winget/src/winget_ext.cpp"
+    )
+
+    # CLI 版同样需要 git 步骤（bridge 无人值守安装 Runtime 时用 hci_cli）：
+    # 否则 install.json 里的 git_plan / git_finalize 会报 unknown step type。
+    target_sources(hci_cli PRIVATE
         "${CMAKE_SOURCE_DIR}/modules/HiBerCommonInstaller/ext/git/src/git_ext.cpp"
         "${CMAKE_SOURCE_DIR}/modules/HiBerCommonInstaller/ext/winget/src/winget_ext.cpp"
     )

@@ -28,6 +28,7 @@
 #include <functional>
 #include <regex>
 #include <cctype>
+#include <QDateTime>
 #include <cstdlib>
 #include <csignal>
 #include <thread>
@@ -151,6 +152,7 @@ static QString findRunnableGit(const QString& gitDir)
     const QStringList candidates = {
         QDir(gitDir).absoluteFilePath("bin/git.exe"),
         QDir(gitDir).absoluteFilePath("mingw64/bin/git.exe"),
+        QDir(gitDir).absoluteFilePath("ucrt64/bin/git.exe"),
         QDir(gitDir).absoluteFilePath("cmd/git.exe"),
     };
     for (const auto& c : candidates) {
@@ -376,20 +378,10 @@ int CliDispatcher::cmdCrashTest(const CliCommand& cmd)
 
 int CliDispatcher::cmdGitUpdate(const CliCommand& cmd)
 {
+    // 这条命令的语义就是「安装/更新内置 Git」：即使当前是系统 Git 模式也执行，
+    // 安装完成后 install.conf 会写成 use_system_git=false，下次启动即用内置 Git。
     if (useSystemGit_) {
-        if (cmd.json) {
-            CliOutput::jsonBlock({
-                {"category", "exec"},
-                {"command", "git-update"},
-                {"data", {
-                    {"installed", false},
-                    {"use_system_git", true},
-                    {"message", "System git mode — nothing to update"}
-                }}
-            });
-        }
-        CliOutput::warning("System git mode — nothing to update.");
-        return 1;
+        CliOutput::info("当前使用系统 Git；本命令将安装内置 Git 并在 install.conf 中切换为内置。");
     }
 
     CliOutput::title("Install Git");
@@ -406,8 +398,36 @@ int CliDispatcher::cmdGitUpdate(const CliCommand& cmd)
     std::string gitExeStr = gitExe.isEmpty()
         ? "" : QDir::toNativeSeparators(gitExe).toStdString();
 
-    if (!currentVer.isEmpty()) {
+    // 内置 Git 自动更新：查询 GitHub 最新 MinGit 版本，与已安装版本比较。
+    QString latestTag;
+    QString latestUrl;
+    {
+        QProcess ps;
+        ps.start("powershell", {"-NoProfile", "-Command",
+            "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;"
+            "$r=Invoke-RestMethod -Uri 'https://api.github.com/repos/git-for-windows/git/releases/latest';"
+            "$u='';foreach($a in $r.assets){if($a.name -like '*MinGit*64-bit*.zip'){$u=$a.browser_download_url;break}};"
+            "Write-Output ($r.tag_name + '|' + $u)"});
+        ps.waitForFinished(30000);
+        QString out = QString::fromUtf8(ps.readAllStandardOutput()).trimmed();
+        int bar = out.indexOf('|');
+        if (bar > 0) {
+            latestTag = out.left(bar).trimmed();
+            latestUrl = out.mid(bar + 1).trimmed();
+        }
+    }
+    const bool force = cmd.get("force") == "true" || cmd.get("force") == "1";
+    QString latestBare = latestTag;
+    if (latestBare.startsWith("v") || latestBare.startsWith("V")) {
+        latestBare = latestBare.mid(1);
+    }
+    const bool hasUpdate = !currentVer.isEmpty() && !latestBare.isEmpty()
+        && !currentVer.contains(latestBare);
+    if (!currentVer.isEmpty() && !force && (latestTag.isEmpty() || !hasUpdate)) {
         CliOutput::info("Bundled Git already present: " + currentVer.toStdString());
+        if (!latestTag.isEmpty()) {
+            CliOutput::info("Latest available: " + latestTag.toStdString());
+        }
 
         std::vector<std::string> confPaths = writeGitInstallConfFiles(layout.confPaths, installRootStr, gitExeStr);
 
@@ -420,10 +440,12 @@ int CliDispatcher::cmdGitUpdate(const CliCommand& cmd)
                 {"data", {
                     {"installed", true},
                     {"already_installed", true},
+                    {"updated", false},
                     {"use_system_git", false},
                     {"install_root", installRootStr},
                     {"git_path", gitExeStr},
                     {"git_version", currentVer.toStdString()},
+                    {"latest_version", latestTag.toStdString()},
                     {"install_conf", conf}
                 }}
             });
@@ -435,31 +457,81 @@ int CliDispatcher::cmdGitUpdate(const CliCommand& cmd)
         return 0;
     }
 
-    CliOutput::info("Installing bundled Git to " + gitDir.toStdString());
+    // 覆盖安装前先备份旧目录，失败可回滚。
+    QString backupDir;
+    if (QDir(gitDir).exists() && !QDir(gitDir).isEmpty()) {
+        backupDir = gitDir + ".bak-"
+            + QDateTime::currentDateTime().toString("yyyyMMddHHmmss");
+        QDir().rename(gitDir, backupDir);
+        QDir().mkpath(gitDir);
+    }
+
+    if (currentVer.isEmpty()) {
+        CliOutput::info("Installing bundled Git to " + gitDir.toStdString());
+    } else {
+        CliOutput::info("Updating bundled Git " + currentVer.toStdString()
+            + " -> " + latestTag.toStdString());
+    }
 
     QProcess ps;
-    ps.start("powershell", {"-NoProfile", "-Command",
-        "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;"
-        "$r=Invoke-RestMethod -Uri 'https://api.github.com/repos/git-for-windows/git/releases/latest';"
-        "foreach($a in $r.assets){if($a.name -like '*MinGit*64-bit*.zip'){"
-        "Write-Output $a.browser_download_url;break}}"});
-    ps.waitForFinished(30000);
-    QString url = QString::fromUtf8(ps.readAllStandardOutput()).trimmed();
+    if (latestUrl.isEmpty()) {
+        ps.start("powershell", {"-NoProfile", "-Command",
+            "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;"
+            "$r=Invoke-RestMethod -Uri 'https://api.github.com/repos/git-for-windows/git/releases/latest';"
+            "foreach($a in $r.assets){if($a.name -like '*MinGit*64-bit*.zip'){"
+            "Write-Output $a.browser_download_url;break}}"});
+        ps.waitForFinished(30000);
+        latestUrl = QString::fromUtf8(ps.readAllStandardOutput()).trimmed();
+    }
+    QString url = latestUrl;
     if (url.isEmpty() || !url.startsWith("http")) {
         CliOutput::error("Failed to get Git URL");
         return 1;
     }
 
-    CliOutput::info("Downloading " + url.toStdString());
     QString zip = QDir::tempPath() + "/neo_git_install.zip";
-    {
+    QFile::remove(zip);
+
+    // 下载链：GitHub 官方 → 清华 TUNA 镜像 → 南大镜像 → PowerShell。
+    // 国内网络访问 GitHub Release 资产经常极慢或挂起，镜像可显著改善。
+    const QString fileName = url.section('/', -1);
+    QStringList urls = { url };
+    if (!fileName.isEmpty()) {
+        urls << "https://mirrors.tuna.tsinghua.edu.cn/github-release/git-for-windows/git/LatestRelease/" + fileName;
+        urls << "https://mirror.nju.edu.cn/github-release/git-for-windows/git/LatestRelease/" + fileName;
+    }
+
+    auto tryCurl = [](const QString& link, const QString& dest) -> bool {
         QProcess dl;
-        dl.start("powershell", {"-Command", "Invoke-WebRequest", "-Uri", url, "-OutFile", zip});
-        dl.waitForFinished(300000);
-        if (dl.exitCode() != 0) {
-            CliOutput::error("Download failed");
-            return 1;
-        }
+        dl.start("curl.exe", {"--ssl-no-revoke", "-L", "--retry", "2", "--max-time", "1800",
+                              "-o", dest, link});
+        if (!dl.waitForFinished(1860000)) { dl.kill(); return false; }
+        return dl.exitCode() == 0 && QFileInfo::exists(dest) && QFileInfo(dest).size() > 0;
+    };
+    auto tryPowerShell = [](const QString& link, const QString& dest) -> bool {
+        QProcess dl;
+        dl.start("powershell", {"-NoProfile", "-Command",
+            "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;"
+            "Invoke-WebRequest -UseBasicParsing -Uri '" + link + "' -OutFile '" + dest + "'"});
+        if (!dl.waitForFinished(900000)) { dl.kill(); return false; }
+        return dl.exitCode() == 0 && QFileInfo::exists(dest) && QFileInfo(dest).size() > 0;
+    };
+
+    bool downloaded = false;
+    for (const auto& link : urls) {
+        CliOutput::info("Downloading " + link.toStdString());
+        QFile::remove(zip);
+        if (tryCurl(link, zip)) { downloaded = true; break; }
+        CliOutput::warning("curl 下载失败，尝试下一个源");
+    }
+    if (!downloaded) {
+        CliOutput::info("Downloading (PowerShell) " + url.toStdString());
+        QFile::remove(zip);
+        downloaded = tryPowerShell(url, zip);
+    }
+    if (!downloaded) {
+        CliOutput::error("Download failed (official + mirrors)");
+        return 1;
     }
 
     QProcess tar;
@@ -477,8 +549,16 @@ int CliDispatcher::cmdGitUpdate(const CliCommand& cmd)
     gitExe = findRunnableGit(gitDir);
     currentVer = gitExe.isEmpty() ? QString() : installedGitVersion(gitExe);
     if (currentVer.isEmpty()) {
+        if (!backupDir.isEmpty()) {
+            QDir(gitDir).removeRecursively();
+            QDir().rename(backupDir, gitDir);
+            CliOutput::warning("Git update failed — previous bundled Git restored");
+        }
         CliOutput::error("Git install failed: no runnable git.exe found under " + gitDir.toStdString());
         return 1;
+    }
+    if (!backupDir.isEmpty()) {
+        QDir(backupDir).removeRecursively();
     }
     gitExeStr = QDir::toNativeSeparators(gitExe).toStdString();
 

@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include <QTimer>
 #include <QProcess>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -81,6 +82,37 @@ static void holdOrReleaseConsole()
 namespace fs = std::filesystem;
 
 static int runFlowGuiMode(int argc, char* argv[], const NeoCLI::CliCommand& cmd);
+
+/// 内置 Git 自动更新（GUI 启动时后台执行，7 天最多检查一次）。
+///
+/// 只处理内置布局 <exeDir>/tools/git 或 <exeDir>/../tools/git；
+/// 系统 Git 模式不触发。更新由 `exec git-update` 子进程完成，不阻塞界面。
+static void maybeAutoUpdateBundledGit()
+{
+    QString exeDir = QCoreApplication::applicationDirPath();
+    const QStringList dirs = {
+        QDir(exeDir).absoluteFilePath("tools/git"),
+        QDir(exeDir).absoluteFilePath("../tools/git"),
+    };
+    for (const auto& dir : dirs) {
+        if (!QFileInfo::exists(dir)) continue;
+        QString marker = dir + "/.last-update-check";
+        if (QFileInfo::exists(marker)) {
+            QDateTime last = QFileInfo(marker).lastModified();
+            if (last.isValid() && last.daysTo(QDateTime::currentDateTime()) < 7) {
+                return;
+            }
+        }
+        QFile mark(marker);
+        if (mark.open(QIODevice::WriteOnly)) {
+            mark.write(QDateTime::currentDateTime().toString(Qt::ISODate).toUtf8());
+            mark.close();
+        }
+        QProcess::startDetached(QCoreApplication::applicationFilePath(),
+            {"exec", "git-update", "--silent"});
+        return;
+    }
+}
 
 static void printBanner(std::ostream& os = std::cout)
 {
@@ -298,6 +330,7 @@ static int runFlowGuiMode(int argc, char* argv[], const NeoCLI::CliCommand& cmd)
         return 1;
     }
     NeoWorkspace::GitOperations::SetDefaultGitPath(icfg.gitPath);
+    maybeAutoUpdateBundledGit();
 
     auto* wizard = new GUIWorker::WizardWindow();
     wizard->setAttribute(Qt::WA_DeleteOnClose);
@@ -368,6 +401,7 @@ static int runGuiMode(int argc, char* argv[])
         return 1;
     }
     NeoWorkspace::GitOperations::SetDefaultGitPath(cfg.gitPath);
+    maybeAutoUpdateBundledGit();
     CLogger::Info("Git: {} ({})", cfg.gitPath, cfg.useSystemGit ? "system" : "bundled");
 
     CLogger::Info("=== GUI Mode Started ===");

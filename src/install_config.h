@@ -7,30 +7,69 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QProcess>
+#include <QStringList>
 
+/// 运行时 Git 配置。
+///
+/// 规则（2026-11-09 用户裁定）：**必须使用内置 Git，不依赖系统 Git**。
+/// 解析顺序：
+///   1. install.conf 的 git_path（内置安装时写入，MinGit/PortableGit 均可）；
+///   2. <exeDir>/tools/git 下的可执行文件（MinGit: mingw64/bin 或 cmd；PortableGit: bin）；
+///   3. <exeDir>/../tools/git 同款（开发布局 build/deploy + build/tools/git）；
+///   4. 仅当前三步都找不到时才回退系统 PATH 的 git（并标记 useSystemGit）。
 struct InstallConfig {
     std::string installPath;
     bool installEditor = false;
-    bool useSystemGit = true;
+    bool useSystemGit = false;
     std::string gitPath = "git";
+    std::string gitVersion;
     bool valid = false;
     std::string errorMsg;
+
+    /// 在 gitDir 下按 MinGit / PortableGit 布局找可运行的 git.exe。
+    static std::string findRunnableGit(const QString& gitDir)
+    {
+        const QStringList candidates = {
+            QDir(gitDir).absoluteFilePath("bin/git.exe"),
+            QDir(gitDir).absoluteFilePath("mingw64/bin/git.exe"),
+            QDir(gitDir).absoluteFilePath("ucrt64/bin/git.exe"),
+            QDir(gitDir).absoluteFilePath("cmd/git.exe"),
+        };
+        for (const auto& candidate : candidates) {
+            if (!QFileInfo::exists(candidate)) continue;
+            QProcess test;
+            test.start(candidate, {"--version"});
+            test.waitForFinished(8000);
+            if (test.exitCode() == 0) {
+                return candidate.toStdString();
+            }
+        }
+        return {};
+    }
+
+    static std::string probeVersion(const std::string& exe)
+    {
+        if (exe.empty()) return {};
+        QProcess test;
+        test.start(QString::fromStdString(exe), {"--version"});
+        test.waitForFinished(15000);
+        if (test.exitCode() != 0) return {};
+        return QString::fromUtf8(test.readAllStandardOutput()).trimmed().toStdString();
+    }
 
     static InstallConfig load()
     {
         InstallConfig cfg;
         QString exeDir = QCoreApplication::applicationDirPath();
 
-        // 1. Try install.conf next to exe or one level up
-        QStringList searchPaths = {
-            exeDir + "/install.conf",
-            exeDir + "/../install.conf"
-        };
+        QStringList searchPaths = { exeDir + "/install.conf", exeDir + "/../install.conf" };
         std::string confPath;
         for (auto& p : searchPaths) {
             if (QFileInfo::exists(p)) { confPath = p.toStdString(); break; }
         }
 
+        std::string confGitPath;
+        bool confUseSystemGit = false;
         if (!confPath.empty()) {
             std::ifstream f(confPath);
             std::string line;
@@ -43,78 +82,63 @@ struct InstallConfig {
             }
             cfg.installPath = kv["install_path"];
             cfg.installEditor = (kv["install_editor"] == "true");
-            cfg.useSystemGit = (kv["use_system_git"] == "true");
-            if (!kv["git_path"].empty()) cfg.gitPath = kv["git_path"];
+            confUseSystemGit = (kv["use_system_git"] == "true");
+            confGitPath = kv["git_path"];
         }
 
-        // 2. If using system git, check it actually works
-        //    (Git for Windows first launch can exceed a few seconds;
-        //     give it a generous window before declaring "not found").
-        if (cfg.useSystemGit || cfg.gitPath == "git") {
+        // 1. install.conf 里记录的内置 git
+        if (!confGitPath.empty() && confGitPath != "git"
+            && QFileInfo::exists(QString::fromStdString(confGitPath))) {
+            std::string version = probeVersion(confGitPath);
+            if (!version.empty()) {
+                cfg.gitPath = confGitPath;
+                cfg.gitVersion = version;
+                cfg.useSystemGit = false;
+                cfg.valid = true;
+                return cfg;
+            }
+        }
+
+        // 2/3. exe 旁或上一级的 tools/git（内置）
+        const QStringList bundledDirs = {
+            QDir(exeDir).absoluteFilePath("tools/git"),
+            QDir(exeDir).absoluteFilePath("../tools/git"),
+        };
+        for (const auto& dir : bundledDirs) {
+            if (!QFileInfo::exists(dir)) continue;
+            std::string exe = findRunnableGit(dir);
+            if (exe.empty()) continue;
+            cfg.gitPath = exe;
+            cfg.gitVersion = probeVersion(exe);
+            cfg.useSystemGit = false;
+            cfg.valid = true;
+            return cfg;
+        }
+
+        // 4. 回退系统 Git（仅当确实没有内置 Git，且用户没有明确要求内置）
+        if (!confUseSystemGit) {
             QProcess test;
             test.start("git", {"--version"});
             test.waitForFinished(15000);
             if (test.exitCode() == 0) {
-                cfg.valid = true;
-                cfg.useSystemGit = true;
                 cfg.gitPath = "git";
-                return cfg;
-            }
-        }
-
-        // 3. Try bundled git path from install.conf
-        if (!cfg.gitPath.empty() && cfg.gitPath != "git") {
-            if (QFileInfo::exists(QString::fromStdString(cfg.gitPath))) {
-                QProcess test;
-                test.start(QString::fromStdString(cfg.gitPath), {"--version"});
-                test.waitForFinished(3000);
-                if (test.exitCode() == 0) {
-                    cfg.valid = true;
-                    cfg.useSystemGit = false;
-                    return cfg;
-                }
-            }
-        }
-
-        // 4. Search tools/git/ relative to exe (portable layout)
-        QString portableGit = QDir(exeDir).absoluteFilePath("tools/git/bin/git.exe");
-        if (QFileInfo::exists(portableGit)) {
-            QProcess test;
-            test.start(portableGit, {"--version"});
-            test.waitForFinished(3000);
-            if (test.exitCode() == 0) {
+                cfg.gitVersion = QString::fromUtf8(test.readAllStandardOutput()).trimmed().toStdString();
+                cfg.useSystemGit = true;
                 cfg.valid = true;
-                cfg.useSystemGit = false;
-                cfg.gitPath = portableGit.toStdString();
-                return cfg;
-            }
-        }
-        // Also try one level up (dev layout: build/deploy/tools/git/...)
-        portableGit = QDir(exeDir).absoluteFilePath("../tools/git/bin/git.exe");
-        if (QFileInfo::exists(portableGit)) {
-            QProcess test;
-            test.start(portableGit, {"--version"});
-            test.waitForFinished(3000);
-            if (test.exitCode() == 0) {
-                cfg.valid = true;
-                cfg.useSystemGit = false;
-                cfg.gitPath = portableGit.toStdString();
                 return cfg;
             }
         }
 
-        // 5. Fatal: no git found anywhere
         cfg.valid = false;
         cfg.errorMsg =
-            "FATAL: Git is required but was not found.\n\n"
-            "Checked:\n"
-            "  - System PATH (git --version)\n"
-            "  - " + cfg.gitPath + "\n"
-            "  - " + portableGit.toStdString() + "\n\n"
-            "Solutions:\n"
-            "  1. Install Git from https://git-scm.com/download/win\n"
-            "  2. Re-run NSUM_Installer_1.0.0.exe (install/repair) to bundle Git\n"
-            "  3. Set use_system_git=false and git_path=<path> in install.conf\n";
+            "FATAL: 未找到可用的 Git。\n\n"
+            "NSUM 内置 Git 应位于 <安装目录>/tools/git（MinGit 或 PortableGit）。\n"
+            "已检查：\n"
+            "  - install.conf 的 git_path\n"
+            "  - " + QDir(exeDir).absoluteFilePath("tools/git").toStdString() + "\n"
+            "  - " + QDir(exeDir).absoluteFilePath("../tools/git").toStdString() + "\n\n"
+            "修复：运行 NeoServerUpdateModpack.exe exec git-update 下载/更新内置 Git，"
+            "或重跑安装器的「修复」。";
         return cfg;
     }
 };
