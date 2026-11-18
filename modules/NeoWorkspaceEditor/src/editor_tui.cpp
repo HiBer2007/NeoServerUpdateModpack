@@ -272,7 +272,7 @@ std::string EditorTui::renderFrame(int width, int height)
                 out += std::string(static_cast<size_t>(
                     (std::max)(0, cardW - pad - static_cast<int>(art.size()))), ' ');
             } else {
-                const std::string ver = "NeoServerUpdateModpack Editor v1.0.0";
+                const std::string ver = std::string("NeoServerUpdateModpack Editor [") + NSUM_EXTERNAL_VERSION + "](\u5185\u90e8 " + NSUM_INTERNAL_VERSION + ")";
                 const int pad = (std::max)(0, (cardW - static_cast<int>(ver.size())) / 2);
                 out += std::string(static_cast<size_t>(pad), ' ');
                 out += kWhite;

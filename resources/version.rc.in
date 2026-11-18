@@ -4,8 +4,8 @@
 
 @NSUM_ICON_BLOCK@
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION @NSUM_VER_MAJOR@,@NSUM_VER_MINOR@,@NSUM_VER_PATCH@,0
- PRODUCTVERSION @NSUM_VER_MAJOR@,@NSUM_VER_MINOR@,@NSUM_VER_PATCH@,0
+ FILEVERSION @NSUM_VER_MAJOR@,@NSUM_VER_MINOR@,@NSUM_VER_PATCH@,@NSUM_VER_BUILD@
+ PRODUCTVERSION @NSUM_VER_MAJOR@,@NSUM_VER_MINOR@,@NSUM_VER_PATCH@,@NSUM_VER_BUILD@
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
  FILEOS 0x40004L
@@ -18,12 +18,15 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "HiBer2007"
             VALUE "FileDescription", "@NSUM_DESC@"
-            VALUE "FileVersion", "@NSUM_VERSION@"
+            VALUE "FileVersion", "@NSUM_BUILD_VERSION@"
+            VALUE "InternalVersion", "@NSUM_INTERNAL_VERSION_ONLY@"
             VALUE "InternalName", "@NSUM_INTERNAL@"
             VALUE "LegalCopyright", "Copyright (C) 2026 HiBer2007"
             VALUE "OriginalFilename", "@NSUM_ORIGINAL@"
             VALUE "ProductName", "@NSUM_PRODUCT@"
-            VALUE "ProductVersion", "@NSUM_VERSION@"
+            VALUE "ProductVersion", "@NSUM_BUILD_VERSION@"
+            VALUE "BuildVersion", "@NSUM_BUILD_VERSION@"
+            VALUE "GitCommit", "@NSUM_GIT_COMMIT@"
         END
     END
     BLOCK "VarFileInfo"

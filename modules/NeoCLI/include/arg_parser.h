@@ -50,6 +50,8 @@ public:
     void printVersion() const;
 
     static std::string version();
+    static std::string buildVersion();
+    static std::string gitCommit();
     static CliCategory categoryFromName(const std::string& name);
     static std::string categoryName(CliCategory category);
     static bool isHelpToken(const std::string& token);

@@ -42,6 +42,7 @@
 #include <QSysInfo>
 #include <QUrl>
 #include <QCoreApplication>
+#include <QCryptographicHash>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -51,6 +52,109 @@
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
+
+namespace {
+
+/// 计算单文件 SHA-256（十六进制小写）；失败返回空串。
+std::string sha256HexOfFile(const fs::path& path)
+{
+    QFile file(QString::fromStdString(path.u8string()));
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    if (!hash.addData(&file)) {
+        return {};
+    }
+    return hash.result().toHex().toStdString();
+}
+
+/// MCLHR 兼容层（用户裁定 2026-11-17）：
+/// 把实例 mods/ 下的 jar 收进共享内容仓 <exe>/stores/mods（按 SHA-256 命名），
+/// 再用硬链接把实例中的文件指向仓内文件：
+///   - 同一 jar 被多个分支/实例使用时只占一份磁盘空间；
+///   - 仓目录作为 MCLHR 的 store，可被 `mclhr mc mods sync` 直接物化/聚合；
+///   - 同时写 <实例>/.mclhr/mods.json，声明 store 来源与链接模式。
+void applyMclhrStore(const std::string& outputDir)
+{
+    fs::path out = fs::u8path(outputDir);
+    fs::path mods = out / "mods";
+    if (!fs::is_directory(mods)) {
+        return;
+    }
+    fs::path store = fs::u8path(QCoreApplication::applicationDirPath().toStdString()) / "stores" / "mods";
+    std::error_code ec;
+    fs::create_directories(store, ec);
+    if (ec) {
+        NeoCLI::CliOutput::warning("[mclhr] cannot create store: " + ec.message());
+        return;
+    }
+
+    int linked = 0;
+    int copied = 0;
+    int skipped = 0;
+    for (auto it = fs::recursive_directory_iterator(mods);
+         it != fs::recursive_directory_iterator(); ++it) {
+        if (!it->is_regular_file()) {
+            continue;
+        }
+        const fs::path source = it->path();
+        if (source.extension() != ".jar") {
+            continue;
+        }
+        const std::string sha = sha256HexOfFile(source);
+        if (sha.size() != 64) {
+            ++skipped;
+            continue;
+        }
+        const fs::path stored = store / fs::u8path(
+            source.stem().u8string() + "_" + sha.substr(0, 16) + ".jar");
+        if (!fs::is_regular_file(stored)) {
+            std::error_code copyEc;
+            fs::copy_file(source, stored, fs::copy_options::overwrite_existing, copyEc);
+            if (copyEc) {
+                ++skipped;
+                continue;
+            }
+            ++copied;
+        }
+        bool linkedNow = false;
+#ifdef _WIN32
+        fs::remove(source, ec);
+        if (CreateHardLinkW(source.wstring().c_str(), stored.wstring().c_str(), nullptr)) {
+            linkedNow = true;
+        }
+#endif
+        if (!linkedNow) {
+            std::error_code fallbackEc;
+            fs::copy_file(stored, source, fs::copy_options::overwrite_existing, fallbackEc);
+        }
+        ++linked;
+    }
+
+    fs::path catalogDir = out / ".mclhr";
+    fs::create_directories(catalogDir, ec);
+    if (!ec) {
+        json catalog;
+        catalog["schema"] = 1;
+        catalog["generatedBy"] = "nsum";
+        catalog["sources"] = json::array({
+            {{"path", store.u8string()}, {"mode", "link"}, {"priority", 100}}
+        });
+        std::ofstream file(catalogDir / "mods.json", std::ios::binary);
+        if (file.is_open()) {
+            file << catalog.dump(2);
+        }
+    }
+
+    NeoCLI::CliOutput::info("[mclhr] mods store: " + store.u8string());
+    NeoCLI::CliOutput::info("[mclhr] jars linked=" + std::to_string(linked)
+        + " copied-to-store=" + std::to_string(copied)
+        + " skipped=" + std::to_string(skipped));
+}
+
+} // namespace
+
 
 namespace NeoCLI {
 
@@ -851,12 +955,18 @@ int CliDispatcher::cmdInfoVersion(const CliCommand& cmd)
             {"command", "version"},
             {"data", {
                 {"version", ArgParser::version()},
+                {"internal_version", ArgParser::buildVersion()},
+                {"full_version", std::string(NSUM_FULL_VERSION)},
+                {"git_commit", ArgParser::gitCommit()},
                 {"build_type", buildType}
             }}
         });
     } else {
         CliOutput::info("Version: " + ArgParser::version()
             + " (" + buildType + ")");
+        CliOutput::info("Internal version: " + ArgParser::buildVersion());
+        CliOutput::info("Full version: " + std::string(NSUM_FULL_VERSION));
+        CliOutput::info("Git commit: " + ArgParser::gitCommit());
     }
     return 0;
 }
@@ -1923,6 +2033,10 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
         CliOutput::warning(w);
     }
 
+    if (target.sync_to_directory) {
+        applyMclhrStore(result.outputDir);
+    }
+
     if (!target.sync_to_directory && !exportPath.empty()) {
         CliOutput::info("Exporting to: " + exportPath);
         if (!plugin->export_modpack(result.outputDir, exportPath, target.metadata)) {
@@ -2195,10 +2309,25 @@ int CliDispatcher::cmdListModpacks(const CliCommand& cmd)
     }
 
     auto branches = wm.branches();
+    const std::string wsMinecraft = wm.minecraftVersion();
+    const std::string wsModloader = wm.modloader();
+    const std::string wsLoaderVersion = wm.modloaderVersion();
 
     if (cmd.json) {
         nlohmann::json arr = nlohmann::json::array();
-        for (const auto& b : branches) arr.push_back(branchConfigToJson(b));
+        for (const auto& b : branches) {
+            nlohmann::json item = branchConfigToJson(b);
+            if (item["game_version"].get<std::string>().empty()) {
+                item["game_version"] = wsMinecraft;
+            }
+            if (item["modloader"].get<std::string>().empty()) {
+                item["modloader"] = wsModloader;
+            }
+            if (item["modloader_version"].get<std::string>().empty()) {
+                item["modloader_version"] = wsLoaderVersion;
+            }
+            arr.push_back(item);
+        }
         CliOutput::jsonBlock({{"category", "info"},
             {"command", "modpacks"}, {"data", {{"count", branches.size()}, {"branches", arr}}}});
         return 0;

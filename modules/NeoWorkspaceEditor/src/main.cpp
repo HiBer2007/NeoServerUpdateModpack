@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
     app->setApplicationName("NSUMEditor");
     app->setOrganizationName("HiBer2007");
     app->setApplicationDisplayName("NSUM 仓库管理器");
-    app->setApplicationVersion("1.0.0");
+    app->setApplicationVersion(NSUM_FULL_VERSION);
 
     HiBerCTM::InstallCrashHandler();
     HiBerCTM::InstallCrtReportHook();

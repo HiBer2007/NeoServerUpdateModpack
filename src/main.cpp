@@ -121,7 +121,18 @@ static void printBanner(std::ostream& os = std::cout)
     os << "  /  |/ /\\__ \\/ / / / /|_/ /\n";
     os << " / /|  /___/ / /_/ / /  / /\n";
     os << "/_/ |_//____/\\____/_/  /_/ \n";
-    os << "NeoServerUpdateModpack v1.0.0\n\n";
+    os << "NeoServerUpdateModpack [" << NSUM_EXTERNAL_VERSION << "]"
+       << "\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a" << NSUM_INTERNAL_VERSION << "\uff09"
+       << " build=" << NSUM_FULL_VERSION << "\n\n";
+}
+
+/// 启动日志：外部版本 / 内部构建版本 / Git 提交（CLI 与 GUI 共用）。
+static void logBuildInfo(const char* mode)
+{
+    CLogger::Info("NSUM build info: mode={} external={} internal={} full={} git={}",
+        mode, NSUM_EXTERNAL_VERSION, NSUM_INTERNAL_VERSION, NSUM_FULL_VERSION, NSUM_GIT_COMMIT);
+    CLogger::Info("NSUM version line: [{}]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a{}\uff09 full={} commit={}",
+        NSUM_EXTERNAL_VERSION, NSUM_INTERNAL_VERSION, NSUM_FULL_VERSION, NSUM_GIT_COMMIT);
 }
 
 static bool verifyRuntimeEnvironment(bool quiet = false)
@@ -199,6 +210,7 @@ static int runCliMode(int argc, char* argv[])
     QCoreApplication app(argc, argv);
     HiBerCTM::SetCrashCliMode(true);
     CLogger::Init("builder.log", "builder");
+    logBuildInfo("cli");
     HiBerCTM::InstallCrashHandler();
     HiBerCTM::SetCrashAppName("NeoServerUpdateModpackHandler");
     HiBerCTM::SetCrashHelpText(
@@ -236,6 +248,8 @@ static int runCliMode(int argc, char* argv[])
         "Unhandled C++ exception. Check the call stack.\n"
         "Common causes: invalid JSON, network timeout, missing plugin dependencies.");
     NeoWorkspace::GitOperations::SetDefaultGitPath(cfg.gitPath);
+    cliOut << "[INIT] NSUM [" << NSUM_EXTERNAL_VERSION << "]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a" << NSUM_INTERNAL_VERSION
+           << "\uff09 git=" << NSUM_GIT_COMMIT << std::endl;
     cliOut << "[INIT] Git: " << cfg.gitPath << " (" << (cfg.useSystemGit ? "system" : "bundled") << ")" << std::endl;
 
     std::string exeDir = QCoreApplication::applicationDirPath().toStdString();
@@ -312,6 +326,7 @@ static int runFlowGuiMode(int argc, char* argv[], const NeoCLI::CliCommand& cmd)
     app.setApplicationDisplayName("NSUM构建工具");
 
     CLogger::Init("builder.log", "builder");
+    logBuildInfo("flow-gui");
     HiBerCTM::InstallCrashHandler();
     HiBerCTM::SetCrashAppName("NeoServerUpdateModpackHandler");
     HiBerCTM::SetCrashHelpText(
@@ -382,6 +397,7 @@ static int runGuiMode(int argc, char* argv[])
     std::string exeDir = QCoreApplication::applicationDirPath().toStdString();
 
     CLogger::Init("gui.log", "gui");
+    logBuildInfo("gui");
     HiBerCTM::InstallCrashHandler();
     HiBerCTM::SetCrashAppName("NeoServerUpdateModpackHandler");
     HiBerCTM::SetCrashHelpText(

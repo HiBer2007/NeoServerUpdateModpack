@@ -361,7 +361,12 @@ void EditorWindow::buildUI()
     statusBar->addWidget(gitStatusLabel_, 1);
     statusBar->addPermanentWidget(modifiedLabel_);
 
-    auto* verLabel = new CrashLabel("NSUM Editor v1.0.0", this);
+    auto* verLabel = new CrashLabel(
+        QString("[%1]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a%2\uff09")
+            .arg(NSUM_EXTERNAL_VERSION, NSUM_INTERNAL_VERSION),
+        this);
+    verLabel->setToolTip(QString::fromUtf8("\u5b8c\u6574\u7248\u672c\uff1a%1\nGit \u63d0\u4ea4\uff1a%2")
+        .arg(NSUM_FULL_VERSION, NSUM_GIT_COMMIT));
     verLabel->setStyleSheet("color: #999; font-size: 9px; padding-right: 6px;");
     verLabel->installFilter(this);
     statusBar->addPermanentWidget(verLabel);
@@ -545,10 +550,15 @@ void EditorWindow::buildMenus()
     });
     auto* aboutAction = helpMenu->addAction("关于(&A)");
     connect(aboutAction, &QAction::triggered, [this]() {
-        QMessageBox::about(this, "\u5173\u4e8e NSUM \u7f16\u8f91\u5668",
-            "NSUM \u4ed3\u5e93\u7ba1\u7406\u5668 v1.0\n\n"
-            "\u57fa\u4e8e NeoServerUpdateModpack \u7684 Git \u4ed3\u5e93\u7ba1\u7406\u5de5\u5177\u3002\n"
-            "\u76f4\u63a5\u7f16\u8f91 workspace.json \u5e76\u63d0\u4ea4\u5230 Git \u4ed3\u5e93\u3002");
+        QMessageBox::about(this, QString::fromUtf8("\u5173\u4e8e NSUM \u7f16\u8f91\u5668"),
+            QString::fromUtf8("NSUM \u4ed3\u5e93\u7ba1\u7406\u5668\n\n"
+                "\u7248\u672c\uff1a[%1]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a%2\uff09\n"
+                "\u5b8c\u6574\u7248\u672c\uff1a%3\n"
+                "Git \u63d0\u4ea4\uff1a%4\n\n"
+                "\u57fa\u4e8e NeoServerUpdateModpack \u7684 Git \u4ed3\u5e93\u7ba1\u7406\u5de5\u5177\u3002\n"
+                "\u76f4\u63a5\u7f16\u8f91 workspace.json \u5e76\u63d0\u4ea4\u5230 Git \u4ed3\u5e93\u3002")
+                .arg(NSUM_EXTERNAL_VERSION, NSUM_INTERNAL_VERSION,
+                     NSUM_FULL_VERSION, NSUM_GIT_COMMIT));
     });
 }
 

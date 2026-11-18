@@ -1,37 +1,90 @@
 {
   "id": "repair",
   "steps": [
-    { "id": "lang", "ui": "language", "default": "zh" },
-    { "id": "confirm", "ui": "confirm",
+    {
+      "id": "lang",
+      "ui": "language",
+      "default": "zh"
+    },
+    {
+      "id": "confirm",
+      "ui": "confirm",
       "prompt": "修复 NSUM？将重新释放部署文件并刷新快捷方式（保留配置与数据）。",
-      "defaultYes": true },
-    { "id": "extractApp", "type": "extract", "source": "qrc:/deploy",
-      "target": "{installDir}", "skip": ["*.dmp", "config/custom/*"] },
-    { "id": "gitPlan", "type": "git_plan",
-      "when": "vars.gitPlanned ~= 'true'" },
-    { "id": "gitDownload", "type": "download", "asset": "git-for-windows/git",
-      "variant": "{gitVariant}", "dest": "{tempDir}/neo_git.zip",
-      "when": "vars.gitDownload == 'true' and vars.gitInstallKind ~= 'system'" },
-    { "id": "gitExtract", "type": "extract", "source": "zip:{tempDir}/neo_git.zip",
+      "defaultYes": true
+    },
+    {
+      "id": "extractApp",
+      "type": "extract",
+      "source": "qrc:/deploy",
+      "target": "{installDir}",
+      "skip": [
+        "*.dmp",
+        "config/custom/*"
+      ]
+    },
+    {
+      "id": "gitPlan",
+      "type": "git_plan",
+      "when": "vars.gitPlanned ~= 'true'"
+    },
+    {
+      "id": "gitDownload",
+      "type": "download",
+      "asset": "git-for-windows/git",
+      "variant": "{gitVariant}",
+      "dest": "{tempDir}/neo_git.zip",
+      "when": "vars.gitDownload == 'true' and vars.gitInstallKind ~= 'system'",
+      "optional": true,
+      "timeoutSeconds": 150
+    },
+    {
+      "id": "gitExtract",
+      "type": "extract",
+      "source": "zip:{tempDir}/neo_git.zip",
       "target": "{gitInstallDir}",
-      "when": "vars.gitDownload == 'true' and vars.gitInstallKind ~= 'system'" },
-    { "id": "gitFinalize", "type": "git_finalize",
-      "when": "vars.gitDownload == 'true' and vars.gitInstallKind ~= 'system'" },
-    { "id": "writeconf", "type": "template", "target": "{installDir}",
-      "file": "install.conf", "header": "# NSUM Install Configuration",
+      "when": "vars.gitDownload == 'true' and vars.gitInstallKind ~= 'system'",
+      "optional": true
+    },
+    {
+      "id": "gitFinalize",
+      "type": "git_finalize",
+      "when": "vars.gitDownload == 'true' and vars.gitInstallKind ~= 'system'",
+      "optional": true
+    },
+    {
+      "id": "writeconf",
+      "type": "template",
+      "target": "{installDir}",
+      "file": "install.conf",
+      "header": "# NSUM Install Configuration",
       "template": {
         "install_path": "{installDir}",
         "install_editor": "{components.editor}",
         "use_system_git": "{gitUseSystem}",
         "git_path": "{gitPath}"
-      } },
-    { "id": "shortcutA", "type": "shortcut", "kind": "desktop",
-      "name": "NSUM.lnk", "target": "{installDir}/NeoServerUpdateModpack.exe",
-      "workDir": "{installDir}" },
-    { "id": "shortcutB", "type": "shortcut", "kind": "startmenu",
-      "name": "NSUM/NSUM.lnk", "target": "{installDir}/NeoServerUpdateModpack.exe",
-      "workDir": "{installDir}" },
-    { "id": "finish", "ui": "finish", "message": "NSUM 修复完成",
-      "launch": "NeoServerUpdateModpack.exe" }
+      }
+    },
+    {
+      "id": "shortcutA",
+      "type": "shortcut",
+      "kind": "desktop",
+      "name": "NSUM.lnk",
+      "target": "{installDir}/NeoServerUpdateModpack.exe",
+      "workDir": "{installDir}"
+    },
+    {
+      "id": "shortcutB",
+      "type": "shortcut",
+      "kind": "startmenu",
+      "name": "NSUM/NSUM.lnk",
+      "target": "{installDir}/NeoServerUpdateModpack.exe",
+      "workDir": "{installDir}"
+    },
+    {
+      "id": "finish",
+      "ui": "finish",
+      "message": "NSUM 修复完成",
+      "launch": "NeoServerUpdateModpack.exe"
+    }
   ]
 }

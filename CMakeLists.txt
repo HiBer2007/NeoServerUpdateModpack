@@ -1,5 +1,58 @@
 cmake_minimum_required(VERSION 3.20)
-project(NeoServerUpdateModpack VERSION 1.0.1 LANGUAGES CXX)
+
+# ============================================================
+# 双版本号（用户裁定 2026-11-17）：
+#   外部发布版本 = version.json 的 external（x.x.x，仅「发布一版」时递增）
+#   内部构建版本 = version.json 的 internal（x.x.x，日常迭代只递增它）
+#   完整版本     = external.internal（x.x.x.x.x.x，6 段）
+#   递增工具：tools/bump_version.ps1（-Part external-patch / internal-patch ...）
+#   Git 提交（短哈希，含 -dirty）单独记录，用于定位构建。
+# ============================================================
+set(NSUM_VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/version.json")
+if(NOT EXISTS "${NSUM_VERSION_FILE}")
+    message(FATAL_ERROR "version.json not found at ${NSUM_VERSION_FILE}")
+endif()
+file(READ "${NSUM_VERSION_FILE}" _nsum_version_json)
+string(JSON NSUM_EXTERNAL_VERSION GET "${_nsum_version_json}" external)
+string(JSON NSUM_INTERNAL_VERSION GET "${_nsum_version_json}" internal)
+if(NOT NSUM_EXTERNAL_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "version.json external must be x.x.x (got '${NSUM_EXTERNAL_VERSION}')")
+endif()
+if(NOT NSUM_INTERNAL_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "version.json internal must be x.x.x (got '${NSUM_INTERNAL_VERSION}')")
+endif()
+set(NSUM_FULL_VERSION "${NSUM_EXTERNAL_VERSION}.${NSUM_INTERNAL_VERSION}")
+
+project(NeoServerUpdateModpack VERSION ${NSUM_EXTERNAL_VERSION} LANGUAGES CXX)
+
+set(NSUM_GIT_COMMIT "unknown")
+set(NSUM_GIT_DIRTY "")
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE _nsum_commit OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET RESULT_VARIABLE _nsum_commit_rc)
+    execute_process(COMMAND "${GIT_EXECUTABLE}" status --porcelain
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE _nsum_status OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+    if(_nsum_commit_rc EQUAL 0 AND _nsum_commit)
+        set(NSUM_GIT_COMMIT "${_nsum_commit}")
+    endif()
+    if(NOT _nsum_status STREQUAL "")
+        set(NSUM_GIT_DIRTY "-dirty")
+    endif()
+endif()
+set(NSUM_GIT_COMMIT_FULL "${NSUM_GIT_COMMIT}${NSUM_GIT_DIRTY}")
+
+add_compile_definitions(
+    NSUM_EXTERNAL_VERSION="${NSUM_EXTERNAL_VERSION}"
+    NSUM_INTERNAL_VERSION="${NSUM_INTERNAL_VERSION}"
+    NSUM_FULL_VERSION="${NSUM_FULL_VERSION}"
+    NSUM_GIT_COMMIT="${NSUM_GIT_COMMIT_FULL}"
+)
+message(STATUS "NSUM version: external=${NSUM_EXTERNAL_VERSION} internal=${NSUM_INTERNAL_VERSION} full=${NSUM_FULL_VERSION} git=${NSUM_GIT_COMMIT_FULL}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,7 +103,11 @@ function(nsum_add_version_info target desc product)
     string(REPLACE "@NSUM_VER_MAJOR@" "${PROJECT_VERSION_MAJOR}" _nsum_content "${_nsum_content}")
     string(REPLACE "@NSUM_VER_MINOR@" "${PROJECT_VERSION_MINOR}" _nsum_content "${_nsum_content}")
     string(REPLACE "@NSUM_VER_PATCH@" "${PROJECT_VERSION_PATCH}" _nsum_content "${_nsum_content}")
-    string(REPLACE "@NSUM_VERSION@" "${PROJECT_VERSION}" _nsum_content "${_nsum_content}")
+    string(REPLACE "@NSUM_VER_BUILD@" "0" _nsum_content "${_nsum_content}")
+    string(REPLACE "@NSUM_VERSION@" "${NSUM_EXTERNAL_VERSION}" _nsum_content "${_nsum_content}")
+    string(REPLACE "@NSUM_BUILD_VERSION@" "${NSUM_FULL_VERSION}" _nsum_content "${_nsum_content}")
+    string(REPLACE "@NSUM_INTERNAL_VERSION_ONLY@" "${NSUM_INTERNAL_VERSION}" _nsum_content "${_nsum_content}")
+    string(REPLACE "@NSUM_GIT_COMMIT@" "${NSUM_GIT_COMMIT_FULL}" _nsum_content "${_nsum_content}")
     string(REPLACE "@NSUM_DESC@" "${desc}" _nsum_content "${_nsum_content}")
     string(REPLACE "@NSUM_PRODUCT@" "${product}" _nsum_content "${_nsum_content}")
     string(REPLACE "@NSUM_INTERNAL@" "${target}" _nsum_content "${_nsum_content}")

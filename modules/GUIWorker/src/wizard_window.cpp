@@ -282,10 +282,33 @@ WizardWindow::WizardWindow(QWidget* parent)
         close();
     });
 
-    auto* verLabel = new CrashLabel("NSUM v1.0.0", this);
+    auto* verLabel = new CrashLabel(
+        QString("[%1]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a%2\uff09")
+            .arg(NSUM_EXTERNAL_VERSION, NSUM_INTERNAL_VERSION),
+        this);
+    verLabel->setToolTip(QString::fromUtf8("\u5b8c\u6574\u7248\u672c\uff1a%1\nGit \u63d0\u4ea4\uff1a%2")
+        .arg(NSUM_FULL_VERSION, NSUM_GIT_COMMIT));
     verLabel->setStyleSheet("color: #999; font-size: 9px; padding-right: 6px;");
     verLabel->installFilter(this);
     statusBar()->addPermanentWidget(verLabel);
+
+    auto* aboutLabel = new ClickableLabel(QString::fromUtf8("\u5173\u4e8e"), this);
+    aboutLabel->setToolTip(QString::fromUtf8("\u5b8c\u6574\u7248\u672c\uff1a%1\nGit \u63d0\u4ea4\uff1a%2")
+        .arg(NSUM_FULL_VERSION, NSUM_GIT_COMMIT));
+    aboutLabel->setTextInteractionFlags(Qt::NoTextInteraction);
+    aboutLabel->setStyleSheet("color: #4a90d9; font-size: 9px; padding-left: 8px;");
+    aboutLabel->setCursor(Qt::PointingHandCursor);
+    aboutLabel->setClicked([this]() {
+        QMessageBox::about(this, QString::fromUtf8("\u5173\u4e8e NSUM"),
+            QString::fromUtf8("NSUM \u6784\u5efa\u5de5\u5177\n\n"
+                "\u7248\u672c\uff1a[%1]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a%2\uff09\n"
+                "\u5b8c\u6574\u7248\u672c\uff1a%3\n"
+                "Git \u63d0\u4ea4\uff1a%4\n\n"
+                "\u57fa\u4e8e NeoServerUpdateModpack \u7684\u670d\u52a1\u5668\u81ea\u52a8\u66f4\u65b0\u6574\u5408\u5305\u63a7\u5236\u5668\u3002")
+                .arg(NSUM_EXTERNAL_VERSION, NSUM_INTERNAL_VERSION,
+                     NSUM_FULL_VERSION, NSUM_GIT_COMMIT));
+    });
+    statusBar()->addPermanentWidget(aboutLabel);
 
 auto* helpLabel = new ClickableLabel(QString::fromUtf8("\u5e2e\u52a9\u6587\u6863"), this);
     helpLabel->setToolTip(QString::fromUtf8("\u6253\u5f00\u5f53\u524d\u9875\u9762\u76f8\u5173\u7684\u5e2e\u52a9\u6587\u6863"));

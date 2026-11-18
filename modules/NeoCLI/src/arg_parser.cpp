@@ -5,13 +5,25 @@
 
 namespace NeoCLI {
 
-static const char* VERSION = "1.0.0";
+static const char* VERSION = NSUM_EXTERNAL_VERSION;
+static const char* BUILD_VERSION = NSUM_INTERNAL_VERSION;
+static const char* GIT_COMMIT = NSUM_GIT_COMMIT;
 
 ArgParser::ArgParser() = default;
 
 std::string ArgParser::version()
 {
     return VERSION;
+}
+
+std::string ArgParser::buildVersion()
+{
+    return BUILD_VERSION;
+}
+
+std::string ArgParser::gitCommit()
+{
+    return GIT_COMMIT;
 }
 
 CliCategory ArgParser::categoryFromName(const std::string& name)
@@ -283,7 +295,7 @@ void ArgParser::printHelp(CliCategory category) const
 
 void ArgParser::printVersion() const
 {
-    std::cout << "NeoServerUpdateModpack CLI v" << VERSION << std::endl;
+    std::cout << "NeoServerUpdateModpack CLI [" << VERSION << "]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a" << BUILD_VERSION << "\uff09 full=" << NSUM_FULL_VERSION << " git=" << GIT_COMMIT << std::endl;
 }
 
 } // namespace NeoCLI

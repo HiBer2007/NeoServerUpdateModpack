@@ -154,7 +154,8 @@ void BuildToolWindow::executeCommand(const QString& cmd)
 
     if (lower == "status") {
     appendLog("info", "System status: ready");
-    appendLog("info", "NSUM Build Tool v1.0.0");
+    appendLog("info", QString("NSUM Build Tool [%1]\uff08\u5185\u90e8\u7248\u672c\u53f7\uff1a%2\uff09 full=%3 git=%4")
+        .arg(NSUM_EXTERNAL_VERSION, NSUM_INTERNAL_VERSION, NSUM_FULL_VERSION, NSUM_GIT_COMMIT));
         return;
     }
 
