@@ -1,6 +1,7 @@
 #include "serverconfig_sync.h"
 #include <PluginLoader.h>
 #include <logger.h>
+#include <path_utf8.h>
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -54,7 +55,7 @@ bool ServerConfigSync::init(const std::string& savesDir,
 
 bool ServerConfigSync::hasRules() const
 {
-    return !ruleDir_.empty() && fs::exists(ruleDir_);
+    return !ruleDir_.empty() && fsu8::exists(ruleDir_);
 }
 
 void ServerConfigSync::loadRules()
@@ -63,7 +64,7 @@ void ServerConfigSync::loadRules()
     fileModes_.clear();
     fileTrackedKeys_.clear();
 
-    if (ruleDir_.empty() || !fs::exists(ruleDir_)) {
+    if (ruleDir_.empty() || !fsu8::exists(ruleDir_)) {
         return;
     }
 
@@ -76,7 +77,7 @@ void ServerConfigSync::loadRules()
 
     try {
         fs::path globlePath = fs::u8path(ruleDir_) / "globle.json";
-        if (fs::exists(globlePath)) {
+        if (fsu8::exists(globlePath)) {
             std::ifstream f(globlePath);
             nlohmann::json j = nlohmann::json::parse(f, nullptr, false);
             if (j.is_object() && j.contains("default_mode") && j["default_mode"].is_string()) {
@@ -95,7 +96,7 @@ void ServerConfigSync::loadRules()
         }
 
         fs::path listPath = fs::u8path(ruleDir_) / "list.json";
-        if (fs::exists(listPath)) {
+        if (fsu8::exists(listPath)) {
             std::ifstream f(listPath);
             nlohmann::json j = nlohmann::json::parse(f, nullptr, false);
             if (j.is_object() && j.contains("files") && j["files"].is_object()) {
@@ -163,7 +164,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
     std::vector<ServerConfigEntry> result;
 
     try {
-        if (!fs::exists(savesDir_) || !fs::is_directory(savesDir_)) {
+        if (!fsu8::exists(savesDir_) || !fsu8::is_directory(savesDir_)) {
             return result;
         }
 
@@ -174,7 +175,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
         {
             const fs::path sourceDir = fs::u8path(ruleDir_).parent_path();
             std::error_code dirEc;
-            if (!ruleDir_.empty() && fs::is_directory(sourceDir, dirEc)) {
+            if (!ruleDir_.empty() && fsu8::is_directory(sourceDir, dirEc)) {
                 for (auto it = fs::recursive_directory_iterator(
                          sourceDir, fs::directory_options::skip_permission_denied,
                          dirEc);
@@ -192,7 +193,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
             }
         }
 
-        for (const auto& worldEntry : fs::directory_iterator(savesDir_,
+        for (const auto& worldEntry : fs::directory_iterator(fsu8::path(savesDir_),
             fs::directory_options::skip_permission_denied)) {
 
             if (!worldEntry.is_directory()) continue;
@@ -201,7 +202,7 @@ std::vector<ServerConfigEntry> ServerConfigSync::scanServerConfigs()
             fs::path serverConfigDir = worldEntry.path() / "serverconfig";
 
             std::set<std::string> existing;
-            if (fs::exists(serverConfigDir) && fs::is_directory(serverConfigDir)) {
+            if (fsu8::exists(serverConfigDir) && fsu8::is_directory(serverConfigDir)) {
                 for (const auto& configEntry : fs::recursive_directory_iterator(
                     serverConfigDir, fs::directory_options::skip_permission_denied)) {
 
@@ -247,14 +248,14 @@ bool ServerConfigSync::syncConfig(const ServerConfigEntry& entry,
     try {
         if (cancelToken && cancelToken->is_cancelled()) return false;
 
-        if (ruleDir_.empty() || !fs::exists(ruleDir_)) {
+        if (ruleDir_.empty() || !fsu8::exists(ruleDir_)) {
             CLogger::Debug("ServerConfigSync: no rules, skipping {} -> {}",
                 entry.worldName, entry.relativePath);
             return true;
         }
 
         std::string sourcePath = sourcePathFor(entry.relativePath);
-        if (!fs::exists(sourcePath)) {
+        if (!fsu8::exists(sourcePath)) {
             CLogger::Info("ServerConfigSync: no repo version for {} -> {}",
                 entry.worldName, entry.relativePath);
             return true;
@@ -319,7 +320,7 @@ bool ServerConfigSync::syncByFolderMode(const ServerConfigEntry& entry,
         return true;
     case ServerConfigFolderMode::IncrementalAdd:
         // 只补缺失: 目标已存在则不动 (无论内容差异)
-        if (fs::exists(entry.configPath)) {
+        if (fsu8::exists(entry.configPath)) {
             ++skipped_;
             CLogger::Debug("ServerConfigSync: incremental_add exists: {}",
                 entry.relativePath);
@@ -338,7 +339,7 @@ bool ServerConfigSync::syncByFolderMode(const ServerConfigEntry& entry,
 bool ServerConfigSync::syncOverwrite(const ServerConfigEntry& entry,
     const std::string& remoteContent)
 {
-    if (remoteContent.empty() && fs::exists(entry.configPath)) {
+    if (remoteContent.empty() && fsu8::exists(entry.configPath)) {
         CLogger::Info("ServerConfigSync: empty repo version for {}",
             entry.relativePath);
         return true;
@@ -354,12 +355,12 @@ bool ServerConfigSync::syncOverwrite(const ServerConfigEntry& entry,
     }
 
     if (writeFile(entry.configPath, remoteContent)) {
-        if (fs::exists(backupPath)) {
+        if (fsu8::exists(backupPath)) {
             fs::remove(backupPath, ec);
         }
         return true;
     } else {
-        if (fs::exists(backupPath)) {
+        if (fsu8::exists(backupPath)) {
             std::error_code rec;
             fs::copy_file(backupPath, entry.configPath,
                 fs::copy_options::overwrite_existing, rec);
@@ -378,7 +379,7 @@ bool ServerConfigSync::syncPartial(const ServerConfigEntry& entry,
     NeoCore::PluginLoader loader;
     std::string parsersDir = (fs::u8path(
         QCoreApplication::applicationDirPath().toStdString()) / "parsers").u8string();
-    if (fs::exists(parsersDir)) {
+    if (fsu8::exists(parsersDir)) {
         loader.ScanDirectory(parsersDir);
     }
 

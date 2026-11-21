@@ -4,6 +4,7 @@
 #include <logger.h>
 #include <PluginLoader.h>
 #include <nlohmann/json.hpp>
+#include <path_utf8.h>
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
@@ -44,7 +45,7 @@ std::string relOf(const fs::path& base, const fs::path& p)
 {
     fs::path rel = fs::relative(p, base);
     if (rel.empty()) return "";
-    return normalizeRel(rel.string());
+    return normalizeRel(rel.u8string());
 }
 
 bool isProtectedRoot(const std::string& rel)
@@ -95,7 +96,7 @@ std::string readFile(const std::string& filepath)
 
 bool writeFile(const std::string& filepath, const std::string& content)
 {
-    fs::create_directories(fs::path(filepath).parent_path());
+    fs::create_directories(fsu8::path(filepath).parent_path());
     QFile f(QString::fromStdString(filepath));
     if (!f.open(QIODevice::WriteOnly)) {
         return false;
@@ -108,24 +109,24 @@ bool writeFile(const std::string& filepath, const std::string& content)
 bool copyFile(const std::string& src, const std::string& dst)
 {
     std::error_code ec;
-    fs::create_directories(fs::path(dst).parent_path(), ec);
+    fs::create_directories(fsu8::path(dst).parent_path(), ec);
     if (ec) return false;
     ec.clear();
-    fs::copy_file(src, dst, fs::copy_options::overwrite_existing, ec);
+    fs::copy_file(fsu8::path(src), fsu8::path(dst), fs::copy_options::overwrite_existing, ec);
     return !ec;
 }
 
 bool moveFile(const std::string& src, const std::string& dst)
 {
     std::error_code ec;
-    fs::create_directories(fs::path(dst).parent_path(), ec);
+    fs::create_directories(fsu8::path(dst).parent_path(), ec);
     if (ec) return false;
     ec.clear();
-    fs::rename(src, dst, ec);
+    fs::rename(fsu8::path(src), fsu8::path(dst), ec);
     if (ec) {
         ec.clear();
         if (!copyFile(src, dst)) return false;
-        fs::remove(src, ec);
+        fs::remove(fsu8::path(src), ec);
     }
     return true;
 }
@@ -209,7 +210,7 @@ struct ExecutorImpl {
     void loadHashes()
     {
         hashes.clear();
-        std::string hashPath = (fs::path(targetDir) / kHashesFile).string();
+        std::string hashPath = (fsu8::path(targetDir) / kHashesFile).u8string();
         try {
             std::ifstream in(hashPath);
             if (!in.is_open()) return;
@@ -241,19 +242,19 @@ struct ExecutorImpl {
         for (const auto& k : keys) {
             j[k] = hashes[k];
         }
-        writeFile((fs::path(targetDir) / kHashesFile).string(), j.dump(2) + "\n");
+        writeFile((fsu8::path(targetDir) / kHashesFile).u8string(), j.dump(2) + "\n");
     }
 
     // 目标是否存在（且是文件）
     bool targetExists(const std::string& rel) const
     {
-        return fs::is_regular_file(fs::path(targetDir) / rel);
+        return fs::is_regular_file(fsu8::path(targetDir) / rel);
     }
 
     bool copyIfNeeded(const std::string& rel, bool overwrite)
     {
-        std::string srcPath = (fs::path(sourceDir) / rel).string();
-        std::string dstPath = (fs::path(targetDir) / rel).string();
+        std::string srcPath = (fsu8::path(sourceDir) / rel).u8string();
+        std::string dstPath = (fsu8::path(targetDir) / rel).u8string();
 
         if (!overwrite && targetExists(rel)) {
             ++result.skippedFiles;
@@ -287,8 +288,8 @@ struct ExecutorImpl {
 
     void mergeFile(const std::string& rel, const NeoWorkspace::SyncPolicyFile& filePolicy)
     {
-        std::string srcPath = (fs::path(sourceDir) / rel).string();
-        std::string dstPath = (fs::path(targetDir) / rel).string();
+        std::string srcPath = (fsu8::path(sourceDir) / rel).u8string();
+        std::string dstPath = (fsu8::path(targetDir) / rel).u8string();
 
         std::string localContent;
         if (targetExists(rel)) {
@@ -296,9 +297,9 @@ struct ExecutorImpl {
         }
 
         NeoCore::PluginLoader loader;
-        std::string parsers = (fs::path(
-            QCoreApplication::applicationDirPath().toStdString()) / "parsers").string();
-        if (fs::exists(parsers)) {
+        std::string parsers = (fsu8::path(
+            QCoreApplication::applicationDirPath().toStdString()) / "parsers").u8string();
+        if (fsu8::exists(parsers)) {
             loader.ScanDirectory(parsers);
         }
 
@@ -339,7 +340,7 @@ struct ExecutorImpl {
     {
         sourceFiles.clear();
 
-        if (!fs::is_directory(sourceDir)) return;
+        if (!fsu8::is_directory(sourceDir)) return;
 
         std::error_code ec;
         for (auto it = fs::recursive_directory_iterator(
@@ -352,7 +353,7 @@ struct ExecutorImpl {
             const fs::directory_entry& entry = *it;
             if (!entry.is_regular_file()) continue;
 
-            std::string rel = relOf(sourceDir, entry.path());
+            std::string rel = relOf(fsu8::path(sourceDir), entry.path());
             if (rel.empty() || isProtectedRoot(rel)) continue;
             // 存档同步源由 L3 路由，不作为字面路径同步
             if (isSaveSyncSource(rel)) continue;
@@ -409,14 +410,14 @@ struct ExecutorImpl {
     // 通用 mirror 删除多余项（mods 作用域交给 runModsMirror）
     void deleteExtras()
     {
-        if (!fs::is_directory(targetDir)) return;
+        if (!fsu8::is_directory(targetDir)) return;
 
         for (const auto& scope : mirrorScopes) {
             if (isModsScope(scope) && hasModsMirror) continue;
 
             std::error_code ec;
-            fs::path scopePath = fs::path(targetDir) / scope;
-            if (!fs::exists(scopePath)) continue;
+            fs::path scopePath = fsu8::path(targetDir) / scope;
+            if (!fsu8::exists(scopePath)) continue;
 
             for (auto it = fs::recursive_directory_iterator(
                      scopePath, fs::directory_options::skip_permission_denied, ec);
@@ -430,7 +431,7 @@ struct ExecutorImpl {
                 const fs::directory_entry& entry = *it;
                 if (!entry.is_regular_file()) continue;
 
-                std::string rel = relOf(targetDir, entry.path());
+                std::string rel = relOf(fsu8::path(targetDir), entry.path());
                 if (rel.empty() || isProtectedRoot(rel)) continue;
                 if (isSaveSyncSource(rel)) continue;
                 // 根级 HMCL 版本描述/图标/游戏运行文件不属于同步内容，严格镜像不得删除
@@ -464,26 +465,26 @@ struct ExecutorImpl {
     // mods 严格镜像：harvest custom → 清除 .disabled → 复制库回 mods（冲突检测）
     void runModsMirror()
     {
-        fs::path sourceMods = fs::path(sourceDir) / modsScope;
-        fs::path targetMods = fs::path(targetDir) / modsScope;
-        fs::path customLib = fs::path(targetDir) / kNsumDir / kCustomModsSub;
+        fs::path sourceMods = fsu8::path(sourceDir) / modsScope;
+        fs::path targetMods = fsu8::path(targetDir) / modsScope;
+        fs::path customLib = fsu8::path(targetDir) / kNsumDir / kCustomModsSub;
 
         std::error_code ec;
         fs::create_directories(customLib, ec);
 
         std::unordered_set<std::string> sourceJars;
         std::vector<std::string> sourceJarPaths;
-        if (fs::is_directory(sourceMods)) {
+        if (fsu8::is_directory(sourceMods)) {
             for (const auto& entry : fs::directory_iterator(
                      sourceMods, fs::directory_options::skip_permission_denied)) {
                 if (!entry.is_regular_file()) continue;
-                std::string name = entry.path().filename().string();
+                std::string name = entry.path().filename().u8string();
                 if (name.size() < 4 ||
                     name.compare(name.size() - 4, 4, ".jar") != 0) {
                     continue;
                 }
                 sourceJars.insert(name);
-                sourceJarPaths.push_back(entry.path().string());
+                sourceJarPaths.push_back(entry.path().u8string());
             }
         }
 
@@ -494,13 +495,13 @@ struct ExecutorImpl {
         }
 
         // harvest + .disabled 清除
-        if (fs::is_directory(targetMods)) {
+        if (fsu8::is_directory(targetMods)) {
             for (const auto& entry : fs::directory_iterator(
                      targetMods, fs::directory_options::skip_permission_denied)) {
                 if (cancelled()) return;
                 if (!entry.is_regular_file()) continue;
 
-                std::string name = entry.path().filename().string();
+                std::string name = entry.path().filename().u8string();
                 if (sourceJars.count(name)) continue;
 
                 std::string relInTarget = modsScope.empty()
@@ -548,8 +549,8 @@ struct ExecutorImpl {
                     continue;
                 }
 
-                std::string libPath = (customLib / name).string();
-                if (fs::exists(libPath)) {
+                std::string libPath = (customLib / name).u8string();
+                if (fsu8::exists(libPath)) {
                     std::error_code r;
                     fs::remove(entry.path(), r);
                     if (r) {
@@ -563,7 +564,7 @@ struct ExecutorImpl {
                 fs::rename(entry.path(), libPath, r);
                 if (r) {
                     r.clear();
-                    if (!copyFile(entry.path().string(), libPath)) {
+                    if (!copyFile(entry.path().u8string(), libPath)) {
                         result.warnings.push_back(
                             "Sync failed (custom mod harvest): " + name);
                         continue;
@@ -578,13 +579,13 @@ struct ExecutorImpl {
         }
 
         // restore：库中模组复制回 mods（modId 冲突则保留在库中 + 警告）
-        if (fs::is_directory(customLib)) {
+        if (fsu8::is_directory(customLib)) {
             for (const auto& entry : fs::directory_iterator(
                      customLib, fs::directory_options::skip_permission_denied)) {
                 if (cancelled()) return;
                 if (!entry.is_regular_file()) continue;
 
-                std::string name = entry.path().filename().string();
+                std::string name = entry.path().filename().u8string();
                 // 只还原启用中的 .jar；`.jar.disabled` 属禁用态，规格要求
                 // 直接清除、不还原到 mods。
                 if (name.size() < 4 ||
@@ -592,11 +593,11 @@ struct ExecutorImpl {
                     continue;
                 }
 
-                std::string dstPath = (targetMods / name).string();
-                if (fs::exists(dstPath)) continue;
+                std::string dstPath = (targetMods / name).u8string();
+                if (fsu8::exists(dstPath)) continue;
 
                 bool conflict = false;
-                auto ids = extractModIds(entry.path().string());
+                auto ids = extractModIds(entry.path().u8string());
                 for (const auto& id : ids) {
                     if (sourceModIds.count(id)) {
                         conflict = true;
@@ -632,8 +633,8 @@ struct ExecutorImpl {
 
     void run()
     {
-        fs::path src = fs::path(sourceDir).lexically_normal();
-        fs::path dst = fs::path(targetDir).lexically_normal();
+        fs::path src = fsu8::path(sourceDir).lexically_normal();
+        fs::path dst = fsu8::path(targetDir).lexically_normal();
         if (src == dst) {
             result.warnings.push_back(
                 "Sync target equals build directory, skipping sync");
@@ -650,7 +651,7 @@ struct ExecutorImpl {
             return;
         }
 
-        fs::create_directories(fs::path(targetDir) / kNsumDir / "cache", ec);
+        fs::create_directories(fsu8::path(targetDir) / kNsumDir / "cache", ec);
         if (ec) {
             result.success = false;
             result.warnings.push_back("Sync failed (cannot create .NSUM dir): "

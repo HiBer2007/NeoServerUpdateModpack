@@ -1,3 +1,4 @@
+#include <path_utf8.h>
 #include "pointer_downloader.h"
 #include <logger.h>
 #include <plugin_log_sink.h>
@@ -64,19 +65,19 @@ void PointerDownloader::registerResolver(
 
 void PointerDownloader::scanResolvers(const std::string& pointersDir)
 {
-    if (!fs::exists(pointersDir) || !fs::is_directory(pointersDir)) {
+    if (!fsu8::exists(pointersDir) || !fsu8::is_directory(pointersDir)) {
         CLogger::Info("PointerDownloader: pointers dir not found: {}", pointersDir);
         return;
     }
 
-    for (const auto& entry : fs::directory_iterator(pointersDir,
+    for (const auto& entry : fs::directory_iterator(fsu8::path(pointersDir),
         fs::directory_options::skip_permission_denied)) {
 
         if (!entry.is_regular_file()) continue;
 
-        auto ext = entry.path().extension().string();
+        auto ext = entry.path().extension().u8string();
         if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
-            loadResolverDLL(entry.path().string());
+            loadResolverDLL(entry.path().u8string());
         }
     }
 
@@ -89,7 +90,15 @@ void PointerDownloader::loadResolverDLL(const std::string& dllPath)
     try {
         void* handle = nullptr;
 #ifdef _WIN32
-        std::wstring widePath(dllPath.begin(), dllPath.end());
+        std::wstring widePath;
+        {
+            const int wlen = MultiByteToWideChar(CP_UTF8, 0, dllPath.c_str(), -1, nullptr, 0);
+            if (wlen > 0) {
+                widePath.resize(static_cast<size_t>(wlen - 1));
+                MultiByteToWideChar(CP_UTF8, 0, dllPath.c_str(), -1,
+                    widePath.data(), wlen);
+            }
+        }
         handle = LoadLibraryW(widePath.c_str());
         if (!handle) {
             DWORD err = GetLastError();
@@ -237,7 +246,7 @@ DownloadResult PointerDownloader::download(const NeoCore::PointerInfo& pointer,
     }
 
     std::string cached = cachePath(cacheDir, pointer.sha256);
-    if (fs::exists(cached)) {
+    if (fsu8::exists(cached)) {
         if (validateFile(cached, pointer.sha256)) {
             result.success = true;
             result.cachedPath = cached;
@@ -294,7 +303,7 @@ DownloadResult PointerDownloader::download(const NeoCore::PointerInfo& pointer,
         result.success = false;
         result.errorMessage = "Download failed";
 
-        if (fs::exists(cached)) {
+        if (fsu8::exists(cached)) {
             fs::remove(cached, ec);
         }
         return result;
@@ -303,7 +312,7 @@ DownloadResult PointerDownloader::download(const NeoCore::PointerInfo& pointer,
     if (cancelToken && cancelToken->is_cancelled()) {
         result.success = false;
         result.errorMessage = "Download cancelled";
-        if (fs::exists(cached)) {
+        if (fsu8::exists(cached)) {
             fs::remove(cached, ec);
         }
         return result;
@@ -355,7 +364,7 @@ bool PointerDownloader::isCached(const std::string& cacheDir,
     if (sha256.empty()) return false;
 
     std::string path = cachePath(cacheDir, sha256);
-    if (!fs::exists(path)) return false;
+    if (!fsu8::exists(path)) return false;
 
     return validateFile(path, sha256);
 }
@@ -363,7 +372,7 @@ bool PointerDownloader::isCached(const std::string& cacheDir,
 std::string PointerDownloader::cachePath(const std::string& cacheDir,
     const std::string& sha256) const
 {
-    return (fs::path(cacheDir) / sha256).string();
+    return (fsu8::path(cacheDir) / sha256).u8string();
 }
 
 bool PointerDownloader::validateFile(const std::string& filepath,

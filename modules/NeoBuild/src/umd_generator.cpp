@@ -1,5 +1,6 @@
 #include "umd_generator.h"
 #include <logger.h>
+#include <path_utf8.h>
 #include <filesystem>
 #include <map>
 #include <set>
@@ -18,7 +19,7 @@ void collectLayers(const std::vector<BranchLayer>& layers,
     for (const auto& layer : layers) {
         std::error_code ec;
         const fs::path basePath = fs::u8path(layer.baseDir);
-        if (!fs::is_directory(basePath, ec)) continue;
+        if (!fsu8::is_directory(basePath, ec)) continue;
 
         for (auto it = fs::recursive_directory_iterator(
                  basePath, fs::directory_options::skip_permission_denied, ec);
@@ -60,7 +61,7 @@ void collectLayers(const std::vector<BranchLayer>& layers,
             if (mi != layer.manifest.markers.end()
                 && mi->second == NeoWorkspace::FileMarker::Override) {
                 std::string ov = layer.overridesDir + "/" + rel;
-                if (fs::exists(fs::u8path(ov))) src = ov;
+                if (fsu8::exists(fs::u8path(ov))) src = ov;
             }
             buildSet[rel] = { false, src };
         }
@@ -70,7 +71,7 @@ void collectLayers(const std::vector<BranchLayer>& layers,
 void scanDir(const fs::path& root, std::map<std::string, bool>& out)
 {
     std::error_code ec;
-    if (!fs::exists(root, ec) || !fs::is_directory(root, ec)) return;
+    if (!fsu8::exists(root, ec) || !fsu8::is_directory(root, ec)) return;
 
     fs::recursive_directory_iterator it(
         root, fs::directory_options::skip_permission_denied, ec);

@@ -140,13 +140,14 @@ static bool verifyRuntimeEnvironment(bool quiet = false)
     std::vector<std::string> missing;
 
     auto checkDir = [&](const std::string& dir, const std::string& desc) {
-        if (!fs::exists(dir) || !fs::is_directory(dir)) {
+        const fs::path dirPath = fs::u8path(dir);
+        if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
             missing.push_back("[" + desc + "] Directory not found: " + dir);
         }
     };
 
     auto checkFile = [&](const std::string& path, const std::string& desc) {
-        if (!fs::exists(path)) {
+        if (!fs::exists(fs::u8path(path))) {
             missing.push_back("[" + desc + "] File not found: " + path);
         }
     };
@@ -464,6 +465,36 @@ static int runGuiMode(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+    {
+        // Windows argv is ANSI (ACP) encoded; the whole pipeline keeps paths in
+        // UTF-8, so re-read the wide command line and re-encode it as UTF-8.
+        int wargc = 0;
+        LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+        if (wargv) {
+            static std::vector<std::string> utf8Args;
+            static std::vector<char*> utf8Pointers;
+            utf8Args.clear();
+            utf8Pointers.clear();
+            for (int i = 0; i < wargc; ++i) {
+                const int len = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,
+                    nullptr, 0, nullptr, nullptr);
+                std::string value(len > 1 ? static_cast<size_t>(len - 1) : 0, '\0');
+                if (len > 1) {
+                    WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,
+                        value.data(), len, nullptr, nullptr);
+                }
+                utf8Args.push_back(std::move(value));
+            }
+            LocalFree(wargv);
+            for (auto& value : utf8Args) {
+                utf8Pointers.push_back(value.data());
+            }
+            argc = static_cast<int>(utf8Pointers.size());
+            argv = utf8Pointers.data();
+        }
+    }
+#endif
     HiBerCTM::InstallCrashHandler();
     HiBerCTM::InstallCrtReportHook();
     HiBerCTM::SetCrashAppName("NeoServerUpdateModpackHandler");

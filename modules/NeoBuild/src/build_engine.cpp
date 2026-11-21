@@ -11,6 +11,7 @@
 #include <file_scanner.h>
 #include <logger.h>
 #include <error_codes.h>
+#include <path_utf8.h>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -53,19 +54,19 @@ bool BuildEngine::init(const std::string& workspacePath,
         // 兼容传入 workspace.json 文件路径（取其所在目录）
         fs::path wsPath(workspacePath);
         if (fs::is_regular_file(wsPath)) {
-            workspacePath_ = wsPath.parent_path().string();
+            workspacePath_ = wsPath.parent_path().u8string();
         } else {
             workspacePath_ = workspacePath;
         }
 
         if (cacheDir.empty()) {
-            cacheDir_ = (fs::path(workspacePath) / ".cache").string();
+            cacheDir_ = (fsu8::path(workspacePath) / ".cache").u8string();
         } else {
             cacheDir_ = cacheDir;
         }
 
         if (outputBaseDir.empty()) {
-            outputDir_ = (fs::path(workspacePath) / "output").string();
+            outputDir_ = (fsu8::path(workspacePath) / "output").u8string();
         } else {
             outputDir_ = outputBaseDir;
         }
@@ -101,7 +102,7 @@ bool BuildEngine::init(const std::string& workspacePath,
         // 指针解析器：导出插件内部也会走 stepProcessFiles 解析 .pointer，
         // 因此必须在引擎初始化时扫描一次（进程 exe 目录下的 pointers/）。
         const std::string pointersDir =
-            (fs::path(QCoreApplication::applicationDirPath().toStdString()) / "pointers").string();
+            (fsu8::path(QCoreApplication::applicationDirPath().toStdString()) / "pointers").u8string();
         downloader_->scanResolvers(pointersDir);
         CLogger::Info("BuildEngine: pointer resolvers scanned from '{}'", pointersDir);
 
@@ -128,7 +129,7 @@ bool BuildEngine::loadBranchConfig(const std::string& branchName)
         }
 
         const std::string bcFile = workspacePath_ + "/branch_config/" + branchName + ".json";
-        if (!fs::exists(bcFile)) {
+        if (!fsu8::exists(bcFile)) {
             CLogger::Info("BuildEngine: no branch_config for '{}', using top-level "
                 "file_manifest/pointer_files ({} entries)", branchName,
                 mergedFileManifest_.size());
@@ -330,7 +331,7 @@ BuildResult BuildEngine::build(const std::string& branchName,
 bool BuildEngine::stepCloneOrFetch()
 {
     try {
-        if (!fs::exists(workspacePath_)) {
+        if (!fsu8::exists(workspacePath_)) {
             fs::create_directories(workspacePath_);
             CLogger::Info("Created workspace directory: {}", workspacePath_);
             return true;
@@ -434,9 +435,9 @@ bool BuildEngine::stepMergeBranches(const std::string& targetBranch)
             chain.push_back(targetBranch);
         }
         for (const auto& name : chain) {
-            const std::string baseDir = (fs::path(workspacePath_)
-                / "branches" / name).string();
-            if (!fs::is_directory(baseDir)) {
+            const std::string baseDir = (fsu8::path(workspacePath_)
+                / "branches" / name).u8string();
+            if (!fsu8::is_directory(baseDir)) {
                 CLogger::Warn("BranchMerger: branch dir missing, skipping layer: {}",
                     baseDir);
                 continue;
@@ -496,8 +497,8 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
             }
 
             if (entry.relativePath.find(".pointer") != std::string::npos) {
-                auto pfile = fs::path(outputDir_) / entry.relativePath;
-                QFile qf(QString::fromStdString(pfile.string()));
+                auto pfile = fsu8::path(outputDir_) / entry.relativePath;
+                QFile qf(QString::fromStdString(pfile.u8string()));
                 if (!qf.open(QIODevice::ReadOnly | QIODevice::Text)) {
                     CLogger::Warn("Cannot read pointer file: {}", entry.relativePath);
                     continue;
@@ -519,7 +520,7 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
                     }
 
                     std::string cachedFile = downloader_->cachePath(cacheDir_, ptr.sha256);
-                    if (fs::exists(cachedFile)) {
+                    if (fsu8::exists(cachedFile)) {
                         QFile cfile(QString::fromStdString(cachedFile));
                         if (cfile.open(QIODevice::ReadOnly)) {
                             QCryptographicHash hasher(QCryptographicHash::Sha256);
@@ -533,8 +534,8 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
                                     stem = stem.substr(0, dotPos);
                                 }
 
-                                std::string destPath = (fs::path(outputDir_) / stem).string();
-                                fs::create_directories(fs::path(destPath).parent_path());
+                                std::string destPath = (fsu8::path(outputDir_) / stem).u8string();
+                                fs::create_directories(fsu8::path(destPath).parent_path());
                                 std::error_code ec;
                                 fs::copy_file(cachedFile, destPath,
                                     fs::copy_options::overwrite_existing, ec);
@@ -558,8 +559,8 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
                             stem = stem.substr(0, dotPos);
                         }
 
-                        std::string destPath = (fs::path(outputDir_) / stem).string();
-                        fs::create_directories(fs::path(destPath).parent_path());
+                        std::string destPath = (fsu8::path(outputDir_) / stem).u8string();
+                        fs::create_directories(fsu8::path(destPath).parent_path());
                         std::error_code ec;
                         fs::copy_file(dlResult.cachedPath, destPath,
                             fs::copy_options::overwrite_existing, ec);
@@ -589,8 +590,8 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
                 continue;
             }
 
-            std::string destPath = (fs::path(outputDir_) / rel).string();
-            fs::create_directories(fs::path(destPath).parent_path());
+            std::string destPath = (fsu8::path(outputDir_) / rel).u8string();
+            fs::create_directories(fsu8::path(destPath).parent_path());
             std::error_code ec;
             fs::copy_file(dlResult.cachedPath, destPath,
                 fs::copy_options::overwrite_existing, ec);
@@ -611,14 +612,14 @@ bool BuildEngine::stepProcessFiles(const std::string& branchName)
 bool BuildEngine::stepMergeCustomMods(const std::string& branchName)
 {
     try {
-        fs::path customModsDir = fs::path(workspacePath_) / "custom" / "mods";
+        fs::path customModsDir = fsu8::path(workspacePath_) / "custom" / "mods";
 
-        if (!fs::exists(customModsDir) || !fs::is_directory(customModsDir)) {
+        if (!fsu8::exists(customModsDir) || !fsu8::is_directory(customModsDir)) {
             CLogger::Info("No custom mods directory found, skipping");
             return true;
         }
 
-        fs::path outputModsDir = fs::path(outputDir_) / "mods";
+        fs::path outputModsDir = fsu8::path(outputDir_) / "mods";
         fs::create_directories(outputModsDir);
 
         for (const auto& entry : fs::directory_iterator(customModsDir,
@@ -632,10 +633,10 @@ bool BuildEngine::stepMergeCustomMods(const std::string& branchName)
 
             if (ec) {
                 CLogger::Warn("Failed to copy custom mod {}: {}",
-                    entry.path().filename().string(), ec.message());
+                    entry.path().filename().u8string(), ec.message());
             } else {
                 CLogger::Info("Copied custom mod: {}",
-                    entry.path().filename().string());
+                    entry.path().filename().u8string());
             }
         }
 
@@ -650,10 +651,10 @@ bool BuildEngine::stepMergeCustomMods(const std::string& branchName)
 bool BuildEngine::stepSyncServerConfigs()
 {
     try {
-        std::string savesRoot = (fs::path(targetDir_.empty() ? outputDir_ : targetDir_)
-            / "saves").string();
+        std::string savesRoot = (fsu8::path(targetDir_.empty() ? outputDir_ : targetDir_)
+            / "saves").u8string();
 
-        if (!fs::exists(savesRoot) || !fs::is_directory(savesRoot)) {
+        if (!fsu8::exists(savesRoot) || !fsu8::is_directory(savesRoot)) {
             CLogger::Info("No saves directory, skipping server config sync");
             return true;
         }
@@ -688,8 +689,8 @@ bool BuildEngine::stepFinalize()
 {
     try {
         std::string versionJson = generateVersionJson();
-        fs::path versionPath = fs::path(outputDir_) / "version.json";
-        QFile vf(QString::fromStdString(versionPath.string()));
+        fs::path versionPath = fsu8::path(outputDir_) / "version.json";
+        QFile vf(QString::fromStdString(versionPath.u8string()));
         if (vf.open(QIODevice::WriteOnly | QIODevice::Text)) {
             vf.write(versionJson.c_str(), static_cast<qint64>(versionJson.size()));
             vf.close();
@@ -699,8 +700,8 @@ bool BuildEngine::stepFinalize()
         }
 
         std::string hmclCfg = generateHMCLVersionCfg();
-        fs::path hmclPath = fs::path(outputDir_) / "hmclversion.cfg";
-        QFile hf(QString::fromStdString(hmclPath.string()));
+        fs::path hmclPath = fsu8::path(outputDir_) / "hmclversion.cfg";
+        QFile hf(QString::fromStdString(hmclPath.u8string()));
         if (hf.open(QIODevice::WriteOnly | QIODevice::Text)) {
             hf.write(hmclCfg.c_str(), static_cast<qint64>(hmclCfg.size()));
             hf.close();
@@ -753,7 +754,7 @@ bool BuildEngine::exportModpack(const std::string& format,
     const NeoCore::ExportMetadata& metadata)
 {
     try {
-        if (!fs::exists(outputDir_)) {
+        if (!fsu8::exists(outputDir_)) {
             CLogger::Error("Output directory does not exist: {}", outputDir_);
             return false;
         }

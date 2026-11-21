@@ -55,7 +55,33 @@ using json = nlohmann::json;
 
 namespace {
 
+/// 当前进程 exe 所在目录（宽字符 API + UTF-8），供 MCLHR 共享仓定位。
+static std::string toolExeDir()
+{
+#ifdef _WIN32
+    wchar_t wbuf[4096] = {};
+    const DWORD n = GetModuleFileNameW(nullptr, wbuf, 4096);
+    if (n == 0) return std::string(".");
+    const int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, static_cast<int>(n),
+        nullptr, 0, nullptr, nullptr);
+    std::string utf8(len > 0 ? static_cast<size_t>(len) : 0, '\0');
+    if (len > 0) {
+        WideCharToMultiByte(CP_UTF8, 0, wbuf, static_cast<int>(n),
+            utf8.data(), len, nullptr, nullptr);
+    }
+    return fs::u8path(utf8).parent_path().u8string();
+#else
+    return std::string(".");
+#endif
+}
+
 /// 计算单文件 SHA-256（十六进制小写）；失败返回空串。
+inline bool pathExists(const std::string& value) { std::error_code ec; return fs::exists(fs::u8path(value), ec); }
+inline bool pathExists(const char* value) { return pathExists(std::string(value)); }
+inline bool pathExists(const fs::path& value) { std::error_code ec; return fs::exists(value, ec); }
+inline bool pathIsDir(const std::string& value) { std::error_code ec; return fs::is_directory(fs::u8path(value), ec); }
+inline bool pathIsDir(const fs::path& value) { std::error_code ec; return fs::is_directory(value, ec); }
+
 std::string sha256HexOfFile(const fs::path& path)
 {
     QFile file(QString::fromStdString(path.u8string()));
@@ -79,10 +105,10 @@ void applyMclhrStore(const std::string& outputDir)
 {
     fs::path out = fs::u8path(outputDir);
     fs::path mods = out / "mods";
-    if (!fs::is_directory(mods)) {
+    if (!pathIsDir(mods)) {
         return;
     }
-    fs::path store = fs::u8path(QCoreApplication::applicationDirPath().toStdString()) / "stores" / "mods";
+    fs::path store = fs::u8path(toolExeDir()) / "stores" / "mods";
     std::error_code ec;
     fs::create_directories(store, ec);
     if (ec) {
@@ -228,13 +254,22 @@ private:
 
 static std::string exeDir()
 {
-    char buf[4096] = {};
 #ifdef _WIN32
-    GetModuleFileNameA(nullptr, buf, sizeof(buf));
-    return fs::path(buf).parent_path().string();
+    wchar_t wbuf[4096] = {};
+    const DWORD n = GetModuleFileNameW(nullptr, wbuf, 4096);
+    if (n == 0) return std::string(".");
+    const int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, static_cast<int>(n),
+        nullptr, 0, nullptr, nullptr);
+    std::string utf8(len > 0 ? static_cast<size_t>(len) : 0, '\0');
+    if (len > 0) {
+        WideCharToMultiByte(CP_UTF8, 0, wbuf, static_cast<int>(n),
+            utf8.data(), len, nullptr, nullptr);
+    }
+    return fs::u8path(utf8).parent_path().u8string();
 #else
+    char buf[4096] = {};
     ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf));
-    if (n > 0) return fs::path(std::string(buf, n)).parent_path().string();
+    if (n > 0) return fs::u8path(std::string(buf, n)).parent_path().u8string();
     return std::string(".");
 #endif
 }
@@ -900,7 +935,7 @@ int CliDispatcher::cmdResolvePointer(const CliCommand& cmd)
     }
 
     NeoBuild::PointerDownloader downloader;
-    downloader.scanResolvers((fs::path(exeDir()) / "pointers").string());
+    downloader.scanResolvers((fs::u8path(exeDir()) / "pointers").u8string());
 
     NeoCore::PointerInfo pointer = pfd.resolvers.front();
     pointer.sha256 = pfd.sha256;
@@ -1154,7 +1189,7 @@ int CliDispatcher::cmdInfoPreview(const CliCommand& cmd)
         return 1;
     }
 
-    std::string previewOut = (fs::temp_directory_path() / "nsum_preview").string();
+    std::string previewOut = (fs::temp_directory_path() / "nsum_preview").u8string();
     NeoBuild::BuildEngine engine;
     engine.setGitPath(gitPath_);
     if (!engine.init(workDir, NeoBuild::getCacheDir(), previewOut)) {
@@ -1173,7 +1208,7 @@ int CliDispatcher::cmdInfoPreview(const CliCommand& cmd)
     fillExportMetadata(meta, wsJson);
 
     NeoBuild::ModpackExporter exporter;
-    exporter.scanExporters((fs::path(exeDir()) / "exporters").string());
+    exporter.scanExporters((fs::u8path(exeDir()) / "exporters").u8string());
     // hmcl 为工作区同步：给了 --export 目标游戏目录才能做真实 U/M/D 比对
     // （否则 generateUmdStructure 无目标可扫，全部标记为新增）。
     auto tree = exporter.previewStructure(format, result.outputDir, meta, previewTarget);
@@ -1203,10 +1238,10 @@ static nlohmann::json scanMetaDir(const std::string& dir)
 {
     nlohmann::json arr = nlohmann::json::array();
     std::error_code ec;
-    if (!fs::exists(dir) || !fs::is_directory(dir)) return arr;
-    for (const auto& entry : fs::directory_iterator(dir)) {
+    if (!pathExists(dir) || !pathIsDir(dir)) return arr;
+    for (const auto& entry : fs::directory_iterator(fs::u8path(dir))) {
         if (!entry.is_regular_file()) continue;
-        auto ext = entry.path().extension().string();
+        auto ext = entry.path().extension().u8string();
         std::transform(ext.begin(), ext.end(), ext.begin(),
             [](unsigned char c) { return std::tolower(c); });
         if (ext != ".json") continue;
@@ -1214,7 +1249,7 @@ static nlohmann::json scanMetaDir(const std::string& dir)
         if (!f.is_open()) continue;
         try {
             nlohmann::json meta = nlohmann::json::parse(f);
-            meta["file"] = entry.path().filename().string();
+            meta["file"] = entry.path().filename().u8string();
             arr.push_back(meta);
         } catch (const std::exception&) {
         }
@@ -1226,9 +1261,9 @@ int CliDispatcher::cmdInfoPlugins(const CliCommand& cmd)
 {
     std::string base = exeDir();
     nlohmann::json data;
-    data["parsers"] = scanMetaDir((fs::path(base) / "parsers").string());
-    data["pointers"] = scanMetaDir((fs::path(base) / "pointers").string());
-    data["exporters"] = scanMetaDir((fs::path(base) / "exporters").string());
+    data["parsers"] = scanMetaDir((fs::u8path(base) / "parsers").u8string());
+    data["pointers"] = scanMetaDir((fs::u8path(base) / "pointers").u8string());
+    data["exporters"] = scanMetaDir((fs::u8path(base) / "exporters").u8string());
     data["parser_count"] = data["parsers"].size();
     data["pointer_count"] = data["pointers"].size();
     data["exporter_count"] = data["exporters"].size();
@@ -1255,7 +1290,7 @@ int CliDispatcher::cmdInfoPlugins(const CliCommand& cmd)
 
 int CliDispatcher::cmdInfoExporters(const CliCommand& cmd)
 {
-    auto arr = scanMetaDir((fs::path(exeDir()) / "exporters").string());
+    auto arr = scanMetaDir((fs::u8path(exeDir()) / "exporters").u8string());
     nlohmann::json data;
     data["exporters"] = arr;
     if (cmd.json) {
@@ -1392,7 +1427,7 @@ static bool promptConsoleText(const std::string& prompt,
 static std::vector<std::string> listExportFormats()
 {
     std::vector<std::string> out;
-    auto arr = scanMetaDir((fs::path(exeDir()) / "exporters").string());
+    auto arr = scanMetaDir((fs::u8path(exeDir()) / "exporters").u8string());
     for (const auto& e : arr) {
         std::string fmt = e.value("format", "");
         std::string ext = e.value("extension", "");
@@ -1417,7 +1452,7 @@ static std::string formatKeyFromDisplay(const std::string& display)
 static std::vector<ConsoleField> exporterFieldsFor(const std::string& formatId)
 {
     std::vector<ConsoleField> out;
-    auto arr = scanMetaDir((fs::path(exeDir()) / "exporters").string());
+    auto arr = scanMetaDir((fs::u8path(exeDir()) / "exporters").u8string());
     for (const auto& e : arr) {
         if (e.value("format", "") != formatId) continue;
         if (!e.contains("fields") || !e["fields"].is_array()) return out;
@@ -1520,14 +1555,14 @@ int CliDispatcher::cmdFlowConsole(const CliCommand& cmd)
         if (d.repo.rfind("file://", 0) == 0) {
             d.repo = QUrl(QString::fromStdString(d.repo)).toLocalFile().toStdString();
         }
-        if (fs::exists(fs::path(d.repo) / ".git")) {
+        if (pathExists(fs::u8path(d.repo) / ".git")) {
             d.repoLocalPath = d.repo;
         } else if (d.repo.rfind("http", 0) == 0 || d.repo.rfind("git@", 0) == 0
             || d.repo.rfind("ssh://", 0) == 0) {
             std::string wd = ensureRepoCloned(d.repo, "");
             if (wd.empty()) return 1;
             d.repoLocalPath = wd;
-        } else if (fs::exists(d.repo)) {
+        } else if (pathExists(d.repo)) {
             d.repoLocalPath = d.repo;
         } else {
             CliOutput::error("Repository not found: " + d.repo);
@@ -1801,9 +1836,9 @@ int CliDispatcher::cmdInfoDebug(const CliCommand& cmd)
     data["git_path"] = gitPath_;
     data["use_system_git"] = useSystemGit_;
     data["git_version"] = gitVersion();
-    data["parser_count"] = scanMetaDir((fs::path(exeDir()) / "parsers").string()).size();
-    data["pointer_count"] = scanMetaDir((fs::path(exeDir()) / "pointers").string()).size();
-    data["exporter_count"] = scanMetaDir((fs::path(exeDir()) / "exporters").string()).size();
+    data["parser_count"] = scanMetaDir((fs::u8path(exeDir()) / "parsers").u8string()).size();
+    data["pointer_count"] = scanMetaDir((fs::u8path(exeDir()) / "pointers").u8string()).size();
+    data["exporter_count"] = scanMetaDir((fs::u8path(exeDir()) / "exporters").u8string()).size();
 
     if (cmd.json) {
         CliOutput::jsonBlock({{"category", "info"}, {"command", "debug"}, {"data", data}});
@@ -1832,12 +1867,12 @@ std::string CliDispatcher::resolveWorkDir(const std::string& repoUrl) const
 {
     std::string base = NeoBuild::getCacheDir();
     if (base.empty()) {
-        base = fs::temp_directory_path().string();
+        base = fs::temp_directory_path().u8string();
     }
-    fs::path dir = fs::path(base) / "repos" / slugifyRepo(repoUrl);
+    fs::path dir = fs::u8path(base) / "repos" / slugifyRepo(repoUrl);
     std::error_code ec;
     fs::create_directories(dir, ec);
-    return dir.string();
+    return dir.u8string();
 }
 
 // 本地存在的路径 (含 file:// 前缀) → 直接用该路径; 否则视为远程 URL → 缓存目录
@@ -1852,8 +1887,8 @@ std::string CliDispatcher::resolveRepoPath(const std::string& repoUrl) const
         }
     }
     std::error_code ec;
-    if (fs::is_directory(fs::u8path(path), ec)) {
-        return fs::path(path).lexically_normal().string();
+    if (pathIsDir(fs::u8path(path))) {
+        return fs::u8path(path).lexically_normal().u8string();
     }
     return resolveWorkDir(repoUrl);
 }
@@ -1915,9 +1950,9 @@ std::string CliDispatcher::ensureRepoCloned(const std::string& repoUrl,
 
 std::string CliDispatcher::findWorkspaceJson(const std::string& workDir) const
 {
-    fs::path wsPath = fs::path(workDir) / "workspace.json";
-    if (fs::exists(wsPath)) {
-        return wsPath.string();
+    fs::path wsPath = fs::u8path(workDir) / "workspace.json";
+    if (pathExists(wsPath)) {
+        return wsPath.u8string();
     }
     return {};
 }
@@ -1926,7 +1961,7 @@ std::string CliDispatcher::findBuildOutputDir(const std::string& workDir,
     const std::string& modpackBranch) const
 {
     // sync_target 已废弃 (2026-08-05)，输出目录固定 .minecraft/versions/<branch>
-    return (fs::path(workDir) / ".minecraft/versions" / modpackBranch).string();
+    return (fs::u8path(workDir) / ".minecraft/versions" / modpackBranch).u8string();
 }
 
 int CliDispatcher::cmdBuild(const CliCommand& cmd)
@@ -1972,7 +2007,7 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
     }
 
     NeoBuild::ModpackExporter exporter;
-    exporter.scanExporters((fs::path(exeDir()) / "exporters").string());
+    exporter.scanExporters((fs::u8path(exeDir()) / "exporters").u8string());
     NeoCore::IModpackExporter* plugin = exporter.exporterForFormat(fmt);
     if (!plugin) {
         CliOutput::error("Exporter plugin not found for format: " + fmt);
@@ -2005,7 +2040,7 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
             return 1;
         }
     } else {
-        target.output_path = (fs::path(workDir) / ".minecraft" / "versions").string();
+        target.output_path = (fs::u8path(workDir) / ".minecraft" / "versions").u8string();
     }
 
     CliBuildProgress progress(&cancelToken_);
@@ -2093,7 +2128,7 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
         }
 
         NeoBuild::ModpackExporter exporter;
-        exporter.scanExporters((fs::path(exeDir()) / "exporters").string());
+        exporter.scanExporters((fs::u8path(exeDir()) / "exporters").u8string());
         NeoCore::IModpackExporter* plugin = exporter.exporterForFormat(fmt);
         if (!plugin) {
             CliOutput::error("Exporter plugin not found for format: " + fmt);
@@ -2127,7 +2162,7 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
                 return 1;
             }
         } else {
-            target.output_path = (fs::path(workDir) / ".minecraft" / "versions").string();
+            target.output_path = (fs::u8path(workDir) / ".minecraft" / "versions").u8string();
         }
 
         CliBuildProgress progress(&cancelToken_);
@@ -2151,10 +2186,10 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
 
         if (!repoUrl.empty()) {
             workDir = resolveWorkDir(repoUrl);
-        } else if (fs::exists(fs::current_path() / "workspace.json")) {
-            workDir = fs::current_path().string();
-        } else if (fs::exists(fs::current_path().parent_path() / "workspace.json")) {
-            workDir = fs::current_path().parent_path().string();
+        } else if (pathExists(fs::current_path() / "workspace.json")) {
+            workDir = fs::current_path().u8string();
+        } else if (pathExists(fs::current_path().parent_path() / "workspace.json")) {
+            workDir = fs::current_path().parent_path().u8string();
         }
 
         if (workDir.empty()) {
@@ -2167,20 +2202,20 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
             buildOutputDir = findBuildOutputDir(workDir, modpackBranch);
         } else {
             CliOutput::warning("No --modpack specified. Searching for any built output...");
-            fs::path versionsDir = fs::path(workDir) / ".minecraft" / "versions";
-            if (fs::exists(versionsDir)) {
+            fs::path versionsDir = fs::u8path(workDir) / ".minecraft" / "versions";
+            if (pathExists(versionsDir)) {
                 for (const auto& entry : fs::directory_iterator(versionsDir)) {
                     if (entry.is_directory()
-                        && entry.path().filename().string().find(".cache") == std::string::npos
-                        && fs::exists(entry.path() / "mods")) {
-                        buildOutputDir = entry.path().string();
+                        && entry.path().filename().u8string().find(".cache") == std::string::npos
+                        && pathExists(entry.path() / "mods")) {
+                        buildOutputDir = entry.path().u8string();
                         break;
                     }
                 }
             }
         }
 
-        if (buildOutputDir.empty() || !fs::exists(buildOutputDir)) {
+        if (buildOutputDir.empty() || !pathExists(buildOutputDir)) {
             CliOutput::error("No previously-built output found. Build first with --repo --modpack.");
             return 1;
         }
@@ -2190,7 +2225,7 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
     }
 
     NeoBuild::ModpackExporter exporter;
-    std::string exportersDir = (fs::path(exeDir()) / "exporters").string();
+    std::string exportersDir = (fs::u8path(exeDir()) / "exporters").u8string();
     exporter.scanExporters(exportersDir);
 
     NeoCore::ExportMetadata meta;
@@ -2439,10 +2474,10 @@ int CliDispatcher::cmdStatus(const CliCommand& cmd)
             mb["modloader_version"] = bcfg.modloaderVersion;
         }
         std::string outputDir = findBuildOutputDir(workDir, modpackBranch);
-        if (!outputDir.empty() && fs::exists(outputDir)) {
+        if (!outputDir.empty() && pathExists(outputDir)) {
             mb["built_output"] = outputDir;
             int fileCount = 0;
-            for (const auto& e : fs::recursive_directory_iterator(outputDir)) {
+            for (const auto& e : fs::recursive_directory_iterator(fs::u8path(outputDir))) {
                 if (e.is_regular_file()) ++fileCount;
             }
             mb["output_files"] = fileCount;
@@ -2494,7 +2529,7 @@ int CliDispatcher::cmdStatus(const CliCommand& cmd)
         }
 
         std::string outputDir = findBuildOutputDir(workDir, modpackBranch);
-        if (!outputDir.empty() && fs::exists(outputDir)) {
+        if (!outputDir.empty() && pathExists(outputDir)) {
             CliOutput::success("Built output exists: " + outputDir);
             if (data.contains("modpack") && data["modpack"].contains("output_files")) {
                 CliOutput::info("Output files: "
@@ -2528,14 +2563,14 @@ int CliDispatcher::cmdSyncServerConfig(const CliCommand& cmd)
             CliOutput::error("Repository not cloned. Clone first.");
             return 1;
         }
-        savesDir = fs::path(workDir) / ".minecraft" / "saves";
+        savesDir = fs::u8path(workDir) / ".minecraft" / "saves";
     } else {
         fs::path cwd = fs::current_path();
         for (const auto& candidate : {
             cwd / ".minecraft" / "saves",
             cwd / "saves",
             cwd.parent_path() / ".minecraft" / "saves"}) {
-            if (fs::exists(candidate)) {
+            if (pathExists(candidate)) {
                 savesDir = candidate;
                 break;
             }
@@ -2546,8 +2581,8 @@ int CliDispatcher::cmdSyncServerConfig(const CliCommand& cmd)
     }
 
     fs::path worldPath = savesDir / saveWorld;
-    if (!fs::exists(worldPath)) {
-        CliOutput::error("Save world not found: " + worldPath.string());
+    if (!pathExists(worldPath)) {
+        CliOutput::error("Save world not found: " + worldPath.u8string());
         return 1;
     }
 
@@ -2569,7 +2604,7 @@ int CliDispatcher::cmdSyncServerConfig(const CliCommand& cmd)
         }
     }
 
-    if (!sync.init(savesDir.string(), repoConfigPath, branchName)) {
+    if (!sync.init(savesDir.u8string(), repoConfigPath, branchName)) {
         CliOutput::error("Failed to initialize server config sync.");
         return 1;
     }

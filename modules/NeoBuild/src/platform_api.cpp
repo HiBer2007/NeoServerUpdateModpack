@@ -1,5 +1,6 @@
 #include "platform_api.h"
 #include <logger.h>
+#include <path_utf8.h>
 #include <filesystem>
 #include <cstdlib>
 #include <sstream>
@@ -29,27 +30,27 @@ std::string getAppDataDir()
     char path[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_LOCAL_APPDATA, nullptr,
         SHGFP_TYPE_CURRENT, path))) {
-        return (fs::path(path) / "NeoServerUpdateModpack").string();
+        return (fsu8::path(path) / "NeoServerUpdateModpack").u8string();
     }
-    return (fs::path(QStandardPaths::writableLocation(
-        QStandardPaths::AppLocalDataLocation).toStdString())).string();
+    return (fsu8::path(QStandardPaths::writableLocation(
+        QStandardPaths::AppLocalDataLocation).toStdString())).u8string();
 #else
     const char* xdgData = std::getenv("XDG_DATA_HOME");
     if (xdgData && xdgData[0] != '\0') {
-        return (fs::path(xdgData) / "NeoServerUpdateModpack").string();
+        return (fsu8::path(xdgData) / "NeoServerUpdateModpack").u8string();
     }
     const char* home = std::getenv("HOME");
     if (home && home[0] != '\0') {
-        return (fs::path(home) / ".local" / "share" / "NeoServerUpdateModpack").string();
+        return (fsu8::path(home) / ".local" / "share" / "NeoServerUpdateModpack").u8string();
     }
-    return (fs::path(QStandardPaths::writableLocation(
-        QStandardPaths::AppLocalDataLocation).toStdString())).string();
+    return (fsu8::path(QStandardPaths::writableLocation(
+        QStandardPaths::AppLocalDataLocation).toStdString())).u8string();
 #endif
 }
 
 std::string getCacheDir()
 {
-    return (fs::path(getAppDataDir()) / "cache").string();
+    return (fsu8::path(getAppDataDir()) / "cache").u8string();
 }
 
 std::string getConfigDir()
@@ -58,21 +59,21 @@ std::string getConfigDir()
     char path[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_APPDATA, nullptr,
         SHGFP_TYPE_CURRENT, path))) {
-        return (fs::path(path) / "NeoServerUpdateModpack").string();
+        return (fsu8::path(path) / "NeoServerUpdateModpack").u8string();
     }
-    return (fs::path(QStandardPaths::writableLocation(
-        QStandardPaths::AppConfigLocation).toStdString())).string();
+    return (fsu8::path(QStandardPaths::writableLocation(
+        QStandardPaths::AppConfigLocation).toStdString())).u8string();
 #else
     const char* xdgConfig = std::getenv("XDG_CONFIG_HOME");
     if (xdgConfig && xdgConfig[0] != '\0') {
-        return (fs::path(xdgConfig) / "NeoServerUpdateModpack").string();
+        return (fsu8::path(xdgConfig) / "NeoServerUpdateModpack").u8string();
     }
     const char* home = std::getenv("HOME");
     if (home && home[0] != '\0') {
-        return (fs::path(home) / ".config" / "NeoServerUpdateModpack").string();
+        return (fsu8::path(home) / ".config" / "NeoServerUpdateModpack").u8string();
     }
-    return (fs::path(QStandardPaths::writableLocation(
-        QStandardPaths::AppConfigLocation).toStdString())).string();
+    return (fsu8::path(QStandardPaths::writableLocation(
+        QStandardPaths::AppConfigLocation).toStdString())).u8string();
 #endif
 }
 
@@ -87,16 +88,16 @@ std::string getDefaultWorkspaceDir()
 #ifdef _WIN32
     const char* userProfile = std::getenv("USERPROFILE");
     if (userProfile && userProfile[0] != '\0') {
-        return (fs::path(userProfile) / "NeoServerWorkspace").string();
+        return (fsu8::path(userProfile) / "NeoServerWorkspace").u8string();
     }
 #else
     const char* home = std::getenv("HOME");
     if (home && home[0] != '\0') {
-        return (fs::path(home) / "NeoServerWorkspace").string();
+        return (fsu8::path(home) / "NeoServerWorkspace").u8string();
     }
 #endif
-    return (fs::path(QDir::homePath().toStdString()) /
-        "NeoServerWorkspace").string();
+    return (fsu8::path(QDir::homePath().toStdString()) /
+        "NeoServerWorkspace").u8string();
 }
 
 bool isWindows()
@@ -181,9 +182,9 @@ std::string findGitExecutable()
             if (trimmed.isEmpty()) continue;
 
             fs::path candidate(trimmed.toStdString());
-            if (fs::exists(candidate)) {
-                CLogger::Info("platform_api: found git at {}", candidate.string());
-                return candidate.string();
+            if (fsu8::exists(candidate)) {
+                CLogger::Info("platform_api: found git at {}", candidate.u8string());
+                return candidate.u8string();
             }
         }
 
@@ -205,7 +206,7 @@ std::string findGitExecutable()
 #endif
 
     for (const auto& p : commonPaths) {
-        if (fs::exists(fs::path(p.toStdString()))) {
+        if (fsu8::exists(fsu8::path(p.toStdString()))) {
             CLogger::Info("platform_api: found git at {}", p.toStdString());
             return p.toStdString();
         }
@@ -270,9 +271,9 @@ uint64_t getFreeDiskBytes(const std::string& path)
         std::string rootPath;
 
         if (fsPath.has_root_path()) {
-            rootPath = fsPath.root_path().string();
+            rootPath = fsPath.root_path().u8string();
         } else {
-            rootPath = fs::current_path().root_path().string();
+            rootPath = fs::current_path().root_path().u8string();
         }
 
         if (rootPath.empty()) {

@@ -1,6 +1,7 @@
 #include "modpack_exporter.h"
 #include <logger.h>
 #include <plugin_log_sink.h>
+#include <path_utf8.h>
 #include <filesystem>
 #include <fstream>
 #include <QFile>
@@ -40,19 +41,19 @@ void ModpackExporter::unloadAll()
 
 void ModpackExporter::scanExporters(const std::string& exportersDir)
 {
-    if (!fs::exists(exportersDir) || !fs::is_directory(exportersDir)) {
+    if (!fsu8::exists(exportersDir) || !fsu8::is_directory(exportersDir)) {
         CLogger::Info("ModpackExporter: exporters dir not found: {}", exportersDir);
         return;
     }
 
     unloadAll();
 
-    for (const auto& entry : fs::directory_iterator(exportersDir,
+    for (const auto& entry : fs::directory_iterator(fsu8::path(exportersDir),
         fs::directory_options::skip_permission_denied)) {
 
 if (!entry.is_regular_file()) continue;
 
-const std::string fname = entry.path().filename().string();
+const std::string fname = entry.path().filename().u8string();
         const std::string metaSuffix = ".meta.json";
         if (fname.size() < metaSuffix.size()
             || fname.compare(fname.size() - metaSuffix.size(),
@@ -64,24 +65,24 @@ const std::string fname = entry.path().filename().string();
 #if defined(__linux__) || defined(__APPLE__)
         fs::path soPath = entry.path();
         soPath.replace_extension(".so");
-        if (!fs::exists(dllPath) && fs::exists(soPath)) {
+        if (!fsu8::exists(dllPath) && fsu8::exists(soPath)) {
             dllPath = soPath;
         }
 
         fs::path dylibPath = entry.path();
         dylibPath.replace_extension(".dylib");
-        if (!fs::exists(dllPath) && fs::exists(dylibPath)) {
+        if (!fsu8::exists(dllPath) && fsu8::exists(dylibPath)) {
             dllPath = dylibPath;
         }
 #endif
 
-        if (!fs::exists(dllPath)) {
+        if (!fsu8::exists(dllPath)) {
             CLogger::Warn("ModpackExporter: DLL not found for meta: {}",
-                entry.path().filename().string());
+                entry.path().filename().u8string());
             continue;
         }
 
-        loadExporter(dllPath.string(), entry.path().string());
+        loadExporter(dllPath.u8string(), entry.path().u8string());
     }
 
     CLogger::Info("ModpackExporter: loaded {} exporters", exporters_.size());
@@ -109,7 +110,15 @@ void ModpackExporter::loadExporter(const std::string& dllPath,
 
         void* handle = nullptr;
 #ifdef _WIN32
-        std::wstring widePath(dllPath.begin(), dllPath.end());
+        std::wstring widePath;
+        {
+            const int wlen = MultiByteToWideChar(CP_UTF8, 0, dllPath.c_str(), -1, nullptr, 0);
+            if (wlen > 0) {
+                widePath.resize(static_cast<size_t>(wlen - 1));
+                MultiByteToWideChar(CP_UTF8, 0, dllPath.c_str(), -1,
+                    widePath.data(), wlen);
+            }
+        }
         handle = LoadLibraryW(widePath.c_str());
         if (!handle) {
             DWORD err = GetLastError();
@@ -230,7 +239,7 @@ bool ModpackExporter::exportModpack(const std::string& format,
         return false;
     }
 
-    if (!fs::exists(buildDir)) {
+    if (!fsu8::exists(buildDir)) {
         CLogger::Error("ModpackExporter: build dir not found: {}", buildDir);
         return false;
     }

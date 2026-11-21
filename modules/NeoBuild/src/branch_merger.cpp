@@ -1,6 +1,7 @@
 #include "branch_merger.h"
 #include <logger.h>
 #include <workspace_manager.h>
+#include <path_utf8.h>
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
@@ -87,7 +88,7 @@ MergeResult BranchMerger::mergeDirectories(const std::string& parentDir,
         std::string overridesDir = childDir + "/.overrides";
         auto manifest = loadManifest(childDir);
 
-        if (fs::exists(parentDir) && fs::is_directory(parentDir)) {
+        if (fsu8::exists(parentDir) && fsu8::is_directory(parentDir)) {
             copyDirectoryWithManifest(parentDir, outputDir, "",
                 {}, false, result.mergedFiles,
                 result.overriddenFiles, result.deletedFiles, cancelToken);
@@ -99,7 +100,7 @@ MergeResult BranchMerger::mergeDirectories(const std::string& parentDir,
             return result;
         }
 
-        if (fs::exists(childDir) && fs::is_directory(childDir)) {
+        if (fsu8::exists(childDir) && fsu8::is_directory(childDir)) {
             std::vector<std::string> copied;
             copyDirectoryWithManifest(childDir, outputDir,
                 overridesDir, manifest, true,
@@ -152,7 +153,7 @@ void BranchMerger::copyDirectoryWithManifest(const std::string& srcDir,
     std::error_code ec;
     fs::create_directories(dstDir, ec);
 
-    for (const auto& entry : fs::recursive_directory_iterator(srcDir,
+    for (const auto& entry : fs::recursive_directory_iterator(fsu8::path(srcDir),
         fs::directory_options::skip_permission_denied)) {
         if (cancelToken && cancelToken->is_cancelled()) return;
         if (!entry.is_regular_file()) continue;
@@ -167,10 +168,10 @@ void BranchMerger::copyDirectoryWithManifest(const std::string& srcDir,
         NeoWorkspace::FileMarker marker = (it != manifest.markers.end())
             ? it->second : NeoWorkspace::FileMarker::None;
 
-        fs::path dst = fs::path(dstDir) / relStr;
+        fs::path dst = fsu8::path(dstDir) / relStr;
 
         if (marker == NeoWorkspace::FileMarker::Delete) {
-            if (fs::exists(dst)) {
+            if (fsu8::exists(dst)) {
                 fs::remove(dst, ec);
                 deletedFiles.push_back(relStr);
             }
@@ -179,19 +180,19 @@ void BranchMerger::copyDirectoryWithManifest(const std::string& srcDir,
 
         std::string srcPath;
         if (marker == NeoWorkspace::FileMarker::Override &&
-            !overridesDir.empty() && fs::exists(overridesDir)) {
+            !overridesDir.empty() && fsu8::exists(overridesDir)) {
             srcPath = overridesDir + "/" + relStr;
-            if (!fs::exists(srcPath)) srcPath = entry.path().string();
+            if (!fsu8::exists(srcPath)) srcPath = entry.path().u8string();
         } else {
-            srcPath = entry.path().string();
+            srcPath = entry.path().u8string();
         }
 
         fs::create_directories(dst.parent_path(), ec);
-        bool existed = fs::exists(dst);
+        bool existed = fsu8::exists(dst);
         bool forceOver = (marker == NeoWorkspace::FileMarker::Override)
             || (isRoot && existed);
 
-        if (copyFileSilent(srcPath, dst.string(), forceOver)) {
+        if (copyFileSilent(srcPath, dst.u8string(), forceOver)) {
             if (existed) overridden.push_back(relStr);
             else copiedFiles.push_back(relStr);
         }
