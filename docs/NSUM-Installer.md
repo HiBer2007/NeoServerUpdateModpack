@@ -27,6 +27,10 @@ NSUM 安装器 = 单文件可执行 **`NSUM_Installer_<version>.exe`**（当前 
 | `--flow <install\|uninstall\|repair\|upgrade\|file.json>` | 流程名/路径 | 默认 `install`；`repair`/`upgrade` 走修复/升级流程；外部 json 用于测试/调试 |
 | `--help`, `-h` | — | 打印用法，exit 0 |
 | `--version`, `-v` | — | 打印版本（显示 `Neo Server Update Modpack v<版本>` 品牌行），exit 0 |
+| `--download-threads <n>` | 1–16 | 每个下载任务的并行连接/分段数（默认 4；`1` = 单流）。仅 `hci_cli` 提供，GUI 壳不解析 |
+| `--external-download <dir>` | 目录 | **外部下载模式**：不联网下载，先列出待下载资源（`downloads.json`）并以 exit 10 退出；把文件放进 `<dir>/files/` 后重跑同一命令即可继续安装 |
+
+> `--download-threads` 也可写到流程步骤里：`{ "type": "download", "threads": 8, ... }`；单文件低于 1 MiB、服务器不支持 Range 时自动退回单流。
 
 ### 产品专属参数（由静态拓展提供：nsum_args_ext `--with-editor`；hci_git 三个 Git 参数）
 
@@ -44,6 +48,7 @@ NSUM 安装器 = 单文件可执行 **`NSUM_Installer_<version>.exe`**（当前 
 | 0 | 成功 |
 | 1 | 失败 / 用户取消（GUI 关窗取消亦为 1） |
 | 2 | 用法错误（未知参数、产品/流程缺失） |
+| 10 | 外部下载模式：已列出待下载资源，等待外部完成后再重跑（仅 `hci_cli`） |
 
 ## 3. GUI 向导流程（当前事实）
 
@@ -98,6 +103,43 @@ NSUM 安装器 = 单文件可执行 **`NSUM_Installer_<version>.exe`**（当前 
 
 **CreateProcessA / 无终端调用**：带参数运行即进入无窗口无头执行；无控制台时日志落到 `%TEMP%/hci_gui.log`，错误同步 stderr。
 **自动化钩子**：环境变量 `HCI_GUI_AUTOPILOT=1`（非空）等价静默语义，供冒烟测试。
+
+### 4.1 多线程下载（`--download-threads`）
+
+HCI 的下载步骤支持分段并发下载：先探测 `Content-Length` / `Accept-Ranges`，支持 Range 时把文件切成 N 段并行拉取再合并（段文件 `*.partN`，完成后校验总大小）。`--download-threads 1` 退回单流；`0`/缺省 = 4。cpr/OpenSSL 路径失败时自动换用 **PowerShell + SChannel** 后端，同样按 N 段并发（每段一个 `powershell` 进程），因此企业代理/只信任系统证书链的环境也能享受多线程。
+
+```powershell
+# 8 线程安装（下载 Git 等资源时生效）
+.\NSUM_Installer_1.0.0.exe --silent --path "D:\NSUM" --download-threads 8
+```
+
+阈值：单文件 < 1 MiB、服务器不支持 Range、或段数大于 `大小/1MiB` 时自动减少/退回单流；失败会清理段文件并回退到其它后端。
+
+### 4.2 外部下载模式（`hci_cli --external-download`，仅 CLI）
+
+用于「让 IDM / 浏览器 / aria2 等外部工具下载，再把文件交回 HIC」的场景：
+
+```powershell
+# 第 1 次：只列出待下载资源，exit 10
+hci_cli.exe --silent --path "D:\NSUM" --flow install.json --product product.json `
+    --external-download "D:\nsum_dl"
+# 输出示例：
+#   [!] External downloads required.
+#       MinGit-2.56.1-64-bit.zip
+#         url : https://github.com/.../MinGit-2.56.1-64-bit.zip
+#   manifest: D:\nsum_dl\downloads.json
+
+# 手动/外部工具下载后，把文件按 downloads.json 的 name 放进 files\
+# 第 2 次：同一命令，HIC 直接使用该文件并继续安装（若还有后续下载会再次 exit 10）
+hci_cli.exe --silent --path "D:\NSUM" --flow install.json --product product.json `
+    --external-download "D:\nsum_dl"
+```
+
+- 目录结构：`<dir>/downloads.json`（待下载清单：`step/name/url/size/threads`）、`<dir>/files/`（外部下载结果）、`<dir>/README.txt`（操作说明）
+- 命中规则：`files/<name>` 存在即使用并复制到步骤目标；清单含 `size` 时会校验大小，不符则报错
+- 支持 GitHub Release 资源（自动解析出真实下载地址并回退 PowerShell 解析）与直链；`size` 未知时也可用
+- `--json` 下 exit 10 时额外输出 `=====JSON-BEGIN=====` 块：`{"category":"hci","event":"downloads-required","exitCode":10,"manifest":"…","data":{…}}`
+- 仅 `hci_cli` 支持；GUI/TUI 壳忽略该参数。下载步骤标记为 `optional` 时，外部模式仍会**暂停**（exit 10），不会被可选逻辑吞掉
 
 ## 5. 提权（管理员）
 
