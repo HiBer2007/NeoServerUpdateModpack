@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant U as 玩家
+    participant H as HMCL
+    participant B as nsum-bridge
+    participant R as NSUM Runtime
+    U->>H: 点击启动实例
+    H->>B: checkGameState 注入
+    B->>B: 读取 .NSUM/instance.json
+    B->>U: 分支选择对话框（Git 分支/整合包分支）
+    B->>R: exec build --format hmcl --export <实例目录>
+    R->>R: clone/fetch → checkout → 合并 → 指针下载 → 同步
+    R-->>B: 进度/结果
+    alt 同步成功
+        B-->>H: 继续原启动任务
+        H->>U: 启动游戏
+    else 同步失败
+        B-->>U: 显示错误（默认中止启动）
+    end

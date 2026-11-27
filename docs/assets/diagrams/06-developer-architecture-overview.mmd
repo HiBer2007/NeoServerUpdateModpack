@@ -1,0 +1,18 @@
+flowchart TB
+    subgraph Client
+        HMCL[HMCL + FLFHMCL] --> Bridge[nsum-bridge]
+        Bridge --> Runtime[NSUM Runtime]
+        Runtime --> Plugins[(插件 DLL)]
+        Runtime --> Instance[实例目录]
+        Editor[NeoWorkspaceEditor] --> Repo[(Git 仓库)]
+        Editor --> Plugins2[(编辑器扩展)]
+    end
+    subgraph Server
+        MCDR[MCDR 插件] --> RuntimeS[Runtime]
+        RuntimeS --> ServerDir[服务器目录]
+    end
+    Repo --> Runtime
+    Repo --> RuntimeS
+    Metadata[metadata 站点] --> Bridge
+    Metadata --> HIC[HIC 安装器]
+    HIC --> Runtime

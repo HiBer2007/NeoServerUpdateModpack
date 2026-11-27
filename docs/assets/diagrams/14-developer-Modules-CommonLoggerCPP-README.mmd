@@ -1,0 +1,6 @@
+flowchart LR
+  CLogger[CommonLoggerCPP STATIC] --> spdlog[spdlog::spdlog]
+  Host[宿主 EXE/DLL] --> CLogger
+  Plugin[插件 DLL] --> CLogger
+  Plugin -. SetPluginLogSink .-> Host
+  CLogger -. spdlog default_logger 共享 .-> Plugin

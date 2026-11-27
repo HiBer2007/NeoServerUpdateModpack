@@ -78,7 +78,7 @@ flowchart LR
 - 头文件目录：`modules/GitIgnoreMarkup/include`（`PUBLIC`）；
 - 链接关系：`PUBLIC Qt6::Core`、`PRIVATE Qt6::Widgets` 与 `HiBerGUILibrary`——因此**只 include `gitignore_markup.h` 的宿主不会被动依赖 Qt Widgets**，用到 `GitIgnoreDialog` 才需要 Widgets；
 - 独立构建时若 `TARGET HiBerGUILibrary` 不存在，会 `add_subdirectory(HiBerGUILibCPP)` 并强制关掉其示例；在根工程内由 `add_subdirectory(modules/HiBerGUILibCPP)` 先行提供 target，故跳过；
-- 使用方：`NeoWorkspaceEditor`（`target_link_libraries(... GitIgnoreMarkup ...)`）经「工具 → .gitignore 编辑」打开对话框；
+- 使用方：`NeoWorkspaceEditor`（`target_link_libraries(... GitIgnoreMarkup ...)`）经「Git → 忽略文件 (.gitignore) → 图形化编辑/直接编辑」打开对话框；
 - 示例开关：`GITIGNOREMARKUP_BUILD_EXAMPLES`（默认 ON）。
 
 ## 公共符号概览

@@ -9,7 +9,20 @@ translation_of: /zh/user/launcher-guide.md
 
 # Launcher UI
 
-![Figure 1-1 Build wizard (repository source)](../../assets/screenshots/screen-main-wizard.png)
+![Figure 1-1 Choose repository source](../../assets/screenshots/screen-main-repo.png)
+
+![Figure 1-2 Choose Git branch](../../assets/screenshots/screen-main-branch.png)
+
+![Figure 1-3 Choose modpack branch](../../assets/screenshots/screen-main-modpack.png)
+
+![Figure 1-4 Choose export type](../../assets/screenshots/screen-main-export-type.png)
+
+![Figure 1-5 Choose export directory](../../assets/screenshots/screen-main-export-dir.png)
+
+![Figure 1-6 Fill extra info](../../assets/screenshots/screen-main-extra.png)
+
+![Figure 1-7 Build completed](../../assets/screenshots/screen-main-done.png)
+
 
 The NSUM main program (`NeoServerUpdateModpack.exe` without arguments) is the graphical build tool for pack authors; players mainly use the NSUM page inside HMCL. This page describes the common screens of the main program GUI.
 

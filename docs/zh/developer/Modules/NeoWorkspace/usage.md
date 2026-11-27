@@ -37,8 +37,9 @@ for (const auto& branch : manager.branches()) {
 | `GitOperations::fetch` | `GitResult fetch(const std::string& repoDir, const std::string& remote = "origin")` | 抓取 |
 | `GitOperations::checkout` | `GitResult checkout(const std::string& repoDir, const std::string& branch)` | 切换分支 |
 | `SyncEngine::init` | `bool init(const std::string& targetDir, const std::string& cacheDir)` | 初始化同步 |
-| `SyncEngine::syncFile` | `SyncResult syncFile(const std::string& sourcePath, const std::string& relativeTargetPath, const std::string& expectedSha256, bool hasCachedFile(const std::string& sha256) const)` | 同步单文件 |
-| `SyncEngine::syncConfig` | `SyncResult syncConfig(const std::string& configPath, const std::string& remoteContent, const std::string& localContent, const std::vector<std::string>& trackedKeys, const std::vector<int>& trackedLines)` | 配置合并 |
+| `SyncEngine::syncFile` | `SyncResult syncFile(const std::string& sourcePath, const std::string& relativeTargetPath, const std::string& expectedSha256, NeoCore::CancelToken* cancelToken = nullptr)` | 同步单文件 |
+| `SyncEngine::syncConfig` | `SyncResult syncConfig(const std::string& configPath, NeoCore::IConfigParser* parser, NeoCore::TrackingMode mode, const std::string& remoteContent, const std::string& localContent, const std::vector<std::string>& trackedKeys, const std::vector<int>& trackedLines, NeoCore::CancelToken* cancelToken = nullptr)` | 配置合并 |
+| `SyncEngine::hasCachedFile` | `bool hasCachedFile(const std::string& sha256) const` | 缓存查询 |
 
 ## 典型用法
 
@@ -64,7 +65,7 @@ auto branches = git.listRemoteBranches(repoDir);
 ```cpp
 NeoWorkspace::SyncEngine engine;
 engine.init(targetDir, cacheDir);
-auto r = engine.syncFile(source, "mods/a.jar", sha256, [&](const std::string& s){ return engine.hasCachedFile(s); });
+auto r = engine.syncFile(source, "mods/a.jar", sha256, &cancel);
 ```
 
 ## 注意事项

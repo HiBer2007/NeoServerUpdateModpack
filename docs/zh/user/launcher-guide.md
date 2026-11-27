@@ -8,7 +8,20 @@ updated: 2026-11-27
 
 # 主程序界面
 
-![图 1-1 主程序构建向导（选择仓库源）](../../assets/screenshots/screen-main-wizard.png)
+![图 1-1 选择仓库源](../../assets/screenshots/screen-main-repo.png)
+
+![图 1-2 选择 Git 分支](../../assets/screenshots/screen-main-branch.png)
+
+![图 1-3 选择整合包分支](../../assets/screenshots/screen-main-modpack.png)
+
+![图 1-4 选择导出类型](../../assets/screenshots/screen-main-export-type.png)
+
+![图 1-5 选择导出目录](../../assets/screenshots/screen-main-export-dir.png)
+
+![图 1-6 填写扩展信息](../../assets/screenshots/screen-main-extra.png)
+
+![图 1-7 构建完成](../../assets/screenshots/screen-main-done.png)
+
 
 NSUM 主程序（`NeoServerUpdateModpack.exe`，不带参数启动）是整合包作者的图形化构建工具；玩家侧主要使用 HMCL 的 NSUM 页面。本页说明主程序 GUI 的常用界面。
 

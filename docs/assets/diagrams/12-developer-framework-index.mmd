@@ -1,0 +1,9 @@
+flowchart LR
+    Host[宿主 EXE] --> Core[NeoCore]
+    Host --> Loader[PluginLoader / ExtensionLoader]
+    Loader --> P1[Parser DLL]
+    Loader --> P2[Pointer DLL]
+    Loader --> P3[Exporter DLL]
+    Loader --> P4[Editor Extension DLL]
+    Host --> Bus[HIC EventBus]
+    Host --> Svc[ServiceRegistry]

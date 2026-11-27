@@ -49,3 +49,7 @@ flowchart LR
 - **Zero-trust cache**: re-verify before every use;
 - **Manifest-only distribution**: `.nsumpack` carries an index, not the files;
 - **Explicit failure**: sync failure aborts launch.
+
+## Diagram sources
+
+- [Mermaid sources and SVG exports](../../../assets/diagrams/README.md)

@@ -1,6 +1,6 @@
 ---
 title: NeoBuild 使用
-description: BuildEngine 的初始化、构建、预览与指针/导出 API。
+description: BuildEngine 的初始化、构建、预览、导出与指针/策略 API。
 lang: zh
 status: complete
 updated: 2026-11-27
@@ -24,11 +24,13 @@ auto result = engine.build("base", &progress, &cancel, "main");
 |---|---|---|
 | `BuildEngine::init` | `bool init(const std::string& workspacePath, const std::string& cacheDir = "", const std::string& outputBaseDir = "", const std::string& exportersDir = "")` | 加载 workspace/插件 |
 | `BuildEngine::build` | `BuildResult build(const std::string& branchName, NeoCore::IBuildProgress* progress = nullptr, NeoCore::CancelToken* cancelToken = nullptr, const std::string& gitBranch = "")` | 构建 |
-| `BuildEngine::previewStructure` | `nlohmann::json previewStructure(const std::string& format, ...)` | 预览结构 |
-| `PointerDownloader::resolve` | 见 `pointer_downloader.h` | 解析指针 |
+| `BuildEngine::previewStructure` | `nlohmann::json previewStructure(const std::string& format, const NeoCore::ExportMetadata& metadata, const std::string& targetDir = "")` | 预览结构 |
+| `BuildEngine::exportModpack` | `bool exportModpack(const std::string& format, const std::string& outputPath, const NeoCore::ExportMetadata& metadata)` | 导出 |
+| `PointerDownloader::resolveUrl` | `ResolveResult resolveUrl(const NeoCore::PointerInfo& pointer) const` | 解析指针 |
+| `ServerConfigSync::syncConfig` | `bool syncConfig(const ServerConfigEntry& entry, ...)` | 单条 L3 同步 |
+| `ServerConfigSync::syncAll` | `bool syncAll(NeoCore::CancelToken* cancelToken = nullptr)` | 全部 L3 同步 |
+| `SyncPolicyExecutor::execute` | `Result execute(...)` | 策略执行 |
 | `ModpackExporter::scanExporters` | 见头文件 | 扫描导出器 |
-| `ServerConfigSync::sync` | 见头文件 | L3 同步 |
-| `SyncPolicyExecutor::apply` | 见头文件 | 策略应用 |
 
 ## 典型用法
 
@@ -38,7 +40,10 @@ auto result = engine.build("base", &progress, &cancel, "main");
 NeoBuild::BuildEngine engine;
 engine.init(repo, cache, buildBase, "exporters");
 auto r = engine.build("base", &progress, &cancel, "main");
-if (r.success) { exporter->export_modpack(buildDir, "out.nsumpack", meta); }
+if (r.success) {
+    NeoCore::ExportMetadata meta; // 由调用方填充
+    engine.exportModpack("nsum", "out.nsumpack", meta);
+}
 ```
 
 ### 只预览
@@ -46,7 +51,7 @@ if (r.success) { exporter->export_modpack(buildDir, "out.nsumpack", meta); }
 ```cpp
 engine.init(repo, cache, tempDir, "exporters");
 engine.build("base", nullptr, &cancel, "main");
-auto tree = engine.previewStructure("nsum");
+auto tree = engine.previewStructure("nsum", meta);
 ```
 
 ## 注意事项

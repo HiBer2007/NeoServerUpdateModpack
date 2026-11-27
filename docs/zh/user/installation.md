@@ -8,7 +8,7 @@ updated: 2026-11-27
 
 # 安装
 
-![图 1-2 NSUM 安装器欢迎页](../../assets/screenshots/screen-installer.png)
+![图 1-2 NSUM 安装器欢迎页](../../assets/screenshots/screen-installer-welcome.png)
 
 NSUM 在客户端由三部分组成：**HMCL**（启动器）、**nsum-bridge**（HMCL 扩展）、**NSUM Runtime**（同步引擎）。编辑器（Editor）是可选组件，只有整合包作者需要。
 

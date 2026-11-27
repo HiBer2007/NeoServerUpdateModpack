@@ -1,0 +1,8 @@
+stateDiagram-v2
+    [*] --> Probe
+    Probe --> Parallel: Range 支持且足够大
+    Probe --> Single: 不支持/太小
+    Parallel --> Verify: 全部完成
+    Parallel --> Single: 失败/取消
+    Single --> Verify
+    Verify --> [*]

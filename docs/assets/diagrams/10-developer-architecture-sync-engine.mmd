@@ -1,0 +1,9 @@
+stateDiagram-v2
+    [*] --> CollectL1
+    CollectL1 --> MergeL2: base 文件集合
+    MergeL2 --> ApplyPolicy: 合并父链 + 标记
+    ApplyPolicy --> SyncL3: 写入实例
+    SyncL3 --> Done: 存档配置
+    Done --> [*]
+    ApplyPolicy --> Failed: 写失败/校验失败
+    Failed --> [*]

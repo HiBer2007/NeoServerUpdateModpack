@@ -1,6 +1,6 @@
 ---
 title: CrashTrackerHandleLib 使用
-description: 崩溃兜底库的接入顺序、五个配置 API、产物目录结构与排查注意事项。
+description: 崩溃兜底库的接入顺序、六个公开 API（InstallCrashHandler / InstallCrtReportHook / SetCrashAppName / SetCrashHelpText / AddCrashTypeInfo / SetCrashCliMode）、产物目录结构与排查注意事项。
 lang: zh
 status: complete
 updated: 2026-11-27

@@ -1,0 +1,11 @@
+flowchart TD
+    Core[NeoCore] --> Logger[CommonLoggerCPP]
+    Workspace[NeoWorkspace] --> Core
+    Build[NeoBuild] --> Workspace
+    Build --> Core
+    CLI[NeoCLI] --> Build
+    GUI[GUIWorker] --> Build
+    Editor[NeoWorkspaceEditor] --> GUI
+    Editor --> Workspace
+    Plugins --> Core
+    HIC --> Core

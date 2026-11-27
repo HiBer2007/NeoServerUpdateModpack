@@ -95,7 +95,7 @@ flowchart LR
 - 依赖子模块：若 `TARGET CrashTrackerHandleLib` / `TARGET CommonLoggerCPP` 不存在，会 `add_subdirectory` 引入（宿主已提供时跳过）；
 - 部署：`PowerHelper` 的 POST_BUILD 把 `PowerHelperCore.dll` 与 `libcmark-gfm*.dll` 复制到自身输出目录，并执行 `windeployqt`（`--no-translations --no-opengl-sw --no-compiler-runtime --no-system-d3d-compiler`）；根 `neo_deploy` 再把 `PowerHelper.exe` + `PowerHelperCore.dll` 复制到 `deploy/` 并对 `deploy/PowerHelper.exe` 跑 `windeployqt`；
 - 桥接链：`NeoCore` **PUBLIC** 链接 `PowerHelperBridgeLib`，因此主程序/编辑器/GUIWorker 无需显式添加即可调用 `PowerHelper::Bridge::*`；
-- 独立发布：`POWERHELPER_STANDALONE_ONLY=ON` 走静态 Qt 单文件 EXE 模式（配套 preset）。
+- 独立发布：`POWERHELPER_STANDALONE_ONLY=ON` 走静态 Qt 单文件 EXE 模式（配套 preset 由独立 PowerHelper 仓库提供；本仓库默认走共享构建）。
 
 ## 公共符号概览
 

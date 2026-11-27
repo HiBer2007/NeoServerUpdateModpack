@@ -22,7 +22,7 @@ updated: 2026-11-27
 
 **做什么**
 
-- `WizardWindow` 及 8 个页面（repo/branch/modpack/export-type/export-dir/extra/checklist/build/done）；
+- `WizardWindow` 及 9 个页面（repo/branch/modpack/export-type/export-dir/extra/checklist/build/done）；
 - `BuildToolWindow`、`BuildPage`、`GuiBuildProgress`；
 - `RepoEditor`/`BranchEditor`/`ModpackContentIde`；
 - `PointerEditorPanel`、`ConfigFileEditor`、`SyncPoliciesEditor`、`ServerConfigRulesEditor`、`FolderPolicyEditor`、`BatchEditorPanel`；

@@ -9,7 +9,7 @@ translation_of: /zh/user/installation.md
 
 # Installation
 
-![Figure 1-2 NSUM installer welcome page](../../assets/screenshots/screen-installer.png)
+![Figure 1-2 NSUM installer welcome page](../../assets/screenshots/screen-installer-welcome.png)
 
 On the client, NSUM consists of **HMCL**, **nsum-bridge** (an HMCL extension) and **NSUM Runtime** (the sync engine). The Editor is optional and only needed by pack authors.
 

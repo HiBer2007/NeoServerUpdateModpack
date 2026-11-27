@@ -1,0 +1,6 @@
+stateDiagram-v2
+    [*] --> Repo: clone
+    Repo --> Merged: checkout + merge parents
+    Merged --> Resolved: pointers resolved
+    Resolved --> Instance: sync policies applied
+    Instance --> [*]

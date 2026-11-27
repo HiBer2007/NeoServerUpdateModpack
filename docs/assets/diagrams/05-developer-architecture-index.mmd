@@ -1,0 +1,8 @@
+flowchart LR
+    Server[Git 仓库] --> Runtime[NSUM Runtime]
+    Runtime --> Plugins[插件: parser/pointer/exporter]
+    Runtime --> Instance[游戏实例目录]
+    Bridge[nsum-bridge] --> Runtime
+    HIC[HIC 安装器] --> Runtime
+    MCDR[MCDR 插件] --> Runtime
+    Editor[NeoWorkspaceEditor] --> Server

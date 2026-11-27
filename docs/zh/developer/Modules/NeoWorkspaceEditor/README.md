@@ -60,7 +60,7 @@ flowchart LR
 
 | 依赖 | 类型 | 用途 |
 |---|---|---|
-| `GitIgnoreMarkup` | STATIC | 「工具 → .gitignore 编辑」对话框 |
+| `GitIgnoreMarkup` | STATIC | 「Git → 忽略文件 (.gitignore)」对话框 |
 | `NeoCore` | STATIC | 插件接口、取消、路径工具、进度 |
 | `NeoWorkspace` | STATIC | `WorkspaceManager`/`GitOperations`/同步策略模型 |
 | `NeoBuild` | STATIC | 构建产物预览（U/M/D 输出树） |

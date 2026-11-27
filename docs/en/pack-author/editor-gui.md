@@ -9,7 +9,12 @@ translation_of: /zh/pack-author/editor-gui.md
 
 # Editor UI
 
-![Figure 2-1 Editor (settings / branches / content)](../../assets/screenshots/screen-editor.png)
+![Figure 2-1 Repository settings](../../assets/screenshots/screen-editor-settings.png)
+
+![Figure 2-2 Branch management](../../assets/screenshots/screen-editor-branches.png)
+
+![Figure 2-3 Modpack content (output/repository trees)](../../assets/screenshots/screen-editor-content.png)
+
 
 `NeoWorkspaceEditor.exe` is a modpack content IDE: edit repository config and content, then commit changes with Git.
 

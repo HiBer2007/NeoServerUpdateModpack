@@ -8,7 +8,12 @@ updated: 2026-11-27
 
 # Editor 界面
 
-![图 2-1 Editor 主界面（仓库设置 / 分支管理 / 整合包内容）](../../assets/screenshots/screen-editor.png)
+![图 2-1 仓库设置](../../assets/screenshots/screen-editor-settings.png)
+
+![图 2-2 分支管理](../../assets/screenshots/screen-editor-branches.png)
+
+![图 2-3 整合包内容（输出树/仓库树）](../../assets/screenshots/screen-editor-content.png)
+
 
 `NeoWorkspaceEditor.exe` 是整合包内容 IDE：编辑仓库配置与内容，并把改动落回 Git。
 

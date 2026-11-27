@@ -1,0 +1,11 @@
+flowchart LR
+    NeoCore --> CommonLogger[CommonLoggerCPP]
+    NeoWorkspace --> NeoCore
+    NeoBuild --> NeoWorkspace
+    NeoBuild --> NeoCore
+    NeoCLI --> NeoBuild
+    GUIWorker --> NeoBuild
+    Editor[NeoWorkspaceEditor] --> NeoWorkspace
+    Editor --> GUIWorker
+    Plugins --> NeoCore
+    HIC --> NeoCore

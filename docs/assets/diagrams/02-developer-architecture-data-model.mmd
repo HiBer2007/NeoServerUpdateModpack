@@ -1,0 +1,9 @@
+erDiagram
+    WORKSPACE ||--o{ BRANCH : defines
+    BRANCH ||--|| BRANCH_CONFIG : has
+    BRANCH_CONFIG ||--o{ POINTER : references
+    BRANCH_CONFIG ||--|| FILE_MANIFEST : contains
+    WORKSPACE ||--|| SYNC_POLICY : configures
+    BRANCH ||--o{ CONTENT : stores
+    CACHE ||--o{ POINTER : caches
+    INSTANCE ||--|| INSTANCE_MARKER : records

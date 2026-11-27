@@ -15,8 +15,6 @@ updated: 2026-11-27
 #include <cancel_token.h>
 #include <PluginLoader.h>
 
-namespace fsu8 = NeoCore::fsu8;
-
 NeoCore::CancelToken token;
 auto path = fsu8::path(u8"config/example.json");
 if (fsu8::exists(path)) {
@@ -24,14 +22,17 @@ if (fsu8::exists(path)) {
 }
 ```
 
+> `fsu8` 是**全局命名空间**（`path_utf8.h`），不是 `NeoCore::fsu8`。
+
 ## 公共 API
 
 | API | 签名 | 说明 |
 |---|---|---|
 | `fsu8::path` | `std::filesystem::path path(const std::string&)` | UTF-8 → path |
 | `fsu8::exists` | `bool exists(const std::filesystem::path&)` | 带 error_code 重载 |
-| `CancelToken::cancel` | `void cancel()` | 请求取消 |
-| `CancelToken::cancelled` | `bool cancelled() const` | 查询 |
+| `CancelToken::request_cancel` | `void request_cancel()` | 请求取消 |
+| `CancelToken::is_cancelled` | `bool is_cancelled() const` | 查询取消 |
+| `CancelToken::reset` | `void reset()` | 复位 |
 | `PluginLoader::ScanDirectory` | `void ScanDirectory(const std::string& parsersDir)` | 扫描 parser |
 | `PluginLoader::FindParser` | `IConfigParser* FindParser(const std::string& filepath) const` | 按文件选择 |
 | `PluginLoader::ListParsers` | `std::vector<ParserCapability> ListParsers() const` | 列出能力 |
@@ -47,6 +48,15 @@ loader.ScanDirectory("parsers");
 if (auto* parser = loader.FindParser("config/a.json")) {
     for (auto& key : parser->list_keys("config/a.json")) { /* ... */ }
 }
+```
+
+### 取消
+
+```cpp
+NeoCore::CancelToken token;
+token.request_cancel();
+if (token.is_cancelled()) return;
+token.reset();
 ```
 
 ### 并行下载

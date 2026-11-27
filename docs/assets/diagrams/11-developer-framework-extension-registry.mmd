@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant H as 宿主
+    participant L as Loader
+    participant D as 插件 DLL
+    H->>L: ScanDirectory(dir)
+    L->>L: 枚举 *.meta.json
+    L->>D: LoadLibraryW(dll)
+    L->>D: GetProcAddress(CreateXxx)
+    D-->>L: 接口实例
+    L->>D: GetProcAddress(SetPluginLogSink)
+    L->>L: 注册到按类型索引的表

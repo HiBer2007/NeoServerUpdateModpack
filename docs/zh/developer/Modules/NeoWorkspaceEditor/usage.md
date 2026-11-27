@@ -144,7 +144,7 @@ git 失败时 JSON 仍带 `data.exit_code` / `data.stdout` / `data.stderr` 且 `
 
 ## 注意事项
 
-- **路径限定在仓库内**：`--path`/`--from`/`--to`/`--file` 拒绝绝对路径与 `..`；`info file` 需要 `--force` 才能读受保护文件。
+- **路径限定在仓库内**：`--path`/`--from`/`--to`/`--file` 拒绝绝对路径与 `..`；`info file` 默认拒绝二进制内容；`--base64` 以 base64 返回，`--force` 才允许直接返回原始二进制。
 - **CLI 的日志走 stderr**：`run()` 会把默认 logger 换成 stderr sink，stdout 仅含 JSON；解析失败也会保持这一约定。
 - **CLI 也要 QCoreApplication**：`install.conf` / 内置 git 的定位依赖 `applicationDirPath()`，所以 CLI 仍构造 `QCoreApplication`（但不建 GUI）。
 - **`--force` 不是 `--force` 推送**：`exec git-push --force` 实际走 `--force-with-lease`；`git-reset --mode hard` 必须显式 `--confirm-hard`。

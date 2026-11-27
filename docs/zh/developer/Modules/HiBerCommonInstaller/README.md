@@ -128,7 +128,7 @@ flowchart LR
 | `hci_core` | 库（默认 STATIC；`HCI_CORE_SHARED=ON` 加 `WINDOWS_EXPORT_ALL_SYMBOLS` 并按共享库构建） | `hci_core.lib` / `hci_core.dll` |
 | `hci_flow`、`hci_ext`、`hci_git`、`hci_winget`、`hci_apt` | STATIC 库 | 同名 `.lib`，不单独部署 |
 | `hci_cli` | EXE（控制台子系统） | `hci_cli.exe` |
-| `hci_gui` | EXE（`qt_add_executable`，**故意保持控制台子系统**，入口自行保持/释放终端） | 默认 `HCInstaller_Template_<HCI_VERSION>.exe`，可用 `HCI_GUI_OUTPUT_NAME` 覆盖 |
+| `hci_gui` | EXE（`qt_add_executable`；入口自行保持/释放终端；CMake 注释意图为控制台子系统，但未显式设置 `WIN32_EXECUTABLE`，以实际产物子系统为准） | 默认 `HCInstaller_Template_<HCI_VERSION>.exe`，可用 `HCI_GUI_OUTPUT_NAME` 覆盖 |
 | `hci_tui` | EXE（零 Qt） | `hci_tui.exe` |
 
 **构建选项**：`HCI_BUILD_CLI`（默认 ON）、`HCI_BUILD_GUI`（默认 OFF）、`HCI_BUILD_TUI`（默认 OFF）、`HCI_BUILD_EXAMPLES`（默认 ON）、`HCI_CORE_SHARED`（默认 OFF）。

@@ -1,0 +1,8 @@
+flowchart LR
+    FM[file_manifest<br/>path → sha256] --> PF[branch_config/&lt;sha&gt;.pointer]
+    PF --> R{resolver}
+    R -->|direct_url| U[URL]
+    R -->|modrinth| API[Modrinth API]
+    U --> D[下载]
+    API --> D
+    D --> C[(cache/&lt;sha&gt;)]
