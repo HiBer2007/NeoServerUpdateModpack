@@ -25,9 +25,16 @@
 #include <io.h>
 #endif
 
+#include <QCoreApplication>
+#include <QProcess>
+#include <QProcessEnvironment>
+#include <QString>
+#include <QStringList>
+
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include <install_config.h>
 #include <workspace_manager.h>
 
 namespace fs = std::filesystem;
@@ -668,6 +675,357 @@ json fileInfo(const fs::path& repo, const std::string& relative, bool base64, bo
     return data;
 }
 
+std::string gitExecutable()
+{
+    static std::string cached;
+    if (!cached.empty()) return cached;
+    InstallConfig config = InstallConfig::load();
+    cached = config.gitPath.empty() ? "git" : config.gitPath;
+    return cached;
+}
+
+struct GitOutcome {
+    int exitCode = -1;
+    bool timedOut = false;
+    std::string output;
+    std::string error;
+};
+
+GitOutcome runGit(const fs::path& repo, const std::vector<std::string>& arguments,
+                  int timeoutMs = 120000)
+{
+    GitOutcome outcome;
+    QProcess process;
+    process.setWorkingDirectory(QString::fromStdString(toU8(repo)));
+    process.setProcessChannelMode(QProcess::SeparateChannels);
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    environment.insert("GIT_TERMINAL_PROMPT", "0");
+    environment.insert("GCM_INTERACTIVE", "never");
+    environment.insert("GIT_ASKPASS", "");
+    process.setProcessEnvironment(environment);
+    QStringList argumentsQt;
+    for (const auto& argument : arguments)
+        argumentsQt << QString::fromStdString(argument);
+    process.start(QString::fromStdString(gitExecutable()), argumentsQt);
+    if (!process.waitForStarted(15000))
+        fail("cannot start git: " + gitExecutable());
+    if (!process.waitForFinished(timeoutMs)) {
+        outcome.timedOut = true;
+        process.kill();
+        process.waitForFinished(5000);
+    }
+    outcome.output = QString::fromUtf8(process.readAllStandardOutput()).toStdString();
+    outcome.error = QString::fromUtf8(process.readAllStandardError()).toStdString();
+    outcome.exitCode = process.exitStatus() == QProcess::NormalExit
+        ? process.exitCode() : -1;
+    return outcome;
+}
+
+std::string firstLine(const std::string& text)
+{
+    const size_t end = text.find_first_of("\r\n");
+    return end == std::string::npos ? text : text.substr(0, end);
+}
+
+std::vector<std::string> splitNul(const std::string& text)
+{
+    std::vector<std::string> records;
+    size_t start = 0;
+    while (start < text.size()) {
+        const size_t end = text.find('\0', start);
+        if (end == std::string::npos) {
+            records.push_back(text.substr(start));
+            break;
+        }
+        records.push_back(text.substr(start, end - start));
+        start = end + 1;
+    }
+    return records;
+}
+
+json gitStatusData(const fs::path& repo, bool& ok)
+{
+    const GitOutcome outcome = runGit(repo, {"status", "--porcelain=v1", "-z", "--branch"});
+    json data;
+    data["exit_code"] = outcome.exitCode;
+    data["git"] = gitExecutable();
+    if (outcome.exitCode != 0) {
+        ok = false;
+        data["stderr"] = outcome.error;
+        return data;
+    }
+    ok = true;
+
+    std::string branch;
+    std::string upstream;
+    int ahead = 0;
+    int behind = 0;
+    json staged = json::array();
+    json unstaged = json::array();
+    json untracked = json::array();
+    json conflicted = json::array();
+
+    const std::vector<std::string> records = splitNul(outcome.output);
+    for (size_t i = 0; i < records.size(); ++i) {
+        const std::string& record = records[i];
+        if (record.size() >= 2 && record[0] == '#' && record[1] == '#') {
+            const std::string header = record.substr(2);
+            size_t pos = 0;
+            while (pos < header.size() && header[pos] == ' ') ++pos;
+            size_t dots = header.find("...", pos);
+            if (dots == std::string::npos) dots = header.find(' ', pos);
+            branch = header.substr(pos, dots == std::string::npos ? std::string::npos : dots - pos);
+            if (dots != std::string::npos && header.compare(dots, 3, "...") == 0) {
+                size_t space = header.find(' ', dots + 3);
+                upstream = header.substr(dots + 3,
+                    space == std::string::npos ? std::string::npos : space - (dots + 3));
+            }
+            const size_t aheadPos = header.find("ahead ");
+            if (aheadPos != std::string::npos) ahead = std::atoi(header.c_str() + aheadPos + 6);
+            const size_t behindPos = header.find("behind ");
+            if (behindPos != std::string::npos) behind = std::atoi(header.c_str() + behindPos + 7);
+            continue;
+        }
+        if (record.size() < 3) continue;
+        const char x = record[0];
+        const char y = record[1];
+        std::string path = record.substr(3);
+        if ((x == 'R' || x == 'C') && i + 1 < records.size()) {
+            path += " <- " + records[++i];
+        }
+        if (x == '?' && y == '?') {
+            untracked.push_back(path);
+            continue;
+        }
+        if (x == '!') continue;
+        if (x == 'U' || y == 'U' || (x == 'A' && y == 'A') || (x == 'D' && y == 'D')) {
+            conflicted.push_back(path);
+            continue;
+        }
+        if (x != ' ' && x != '?') staged.push_back(path);
+        if (y != ' ' && y != '?') unstaged.push_back(path);
+    }
+
+    data["branch"] = branch;
+    data["upstream"] = upstream;
+    data["ahead"] = ahead;
+    data["behind"] = behind;
+    data["staged"] = staged;
+    data["unstaged"] = unstaged;
+    data["untracked"] = untracked;
+    data["conflicted"] = conflicted;
+    data["clean"] = staged.empty() && unstaged.empty() && untracked.empty()
+        && conflicted.empty();
+    return data;
+}
+
+int runGitVerb(const fs::path& repo, const ParsedArgs& args, json& outData)
+{
+    const std::string verb = args.verb;
+
+    if (verb == "git-status") {
+        bool ok = false;
+        outData = gitStatusData(repo, ok);
+        return ok ? 0 : 1;
+    }
+
+    if (verb == "git-add") {
+        std::vector<std::string> paths = args.positional;
+        if (args.has("path")) paths.push_back(args.get("path"));
+        const bool all = paths.empty() || args.flag("all");
+        std::vector<std::string> arguments{"add"};
+        if (all) {
+            arguments.push_back("-A");
+        } else {
+            arguments.push_back("--");
+            for (const auto& path : paths) arguments.push_back(path);
+        }
+        const GitOutcome outcome = runGit(repo, arguments, 300000);
+        outData = {{"exit_code", outcome.exitCode},
+                   {"all", all},
+                   {"paths", paths},
+                   {"stdout", outcome.output},
+                   {"stderr", outcome.error}};
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    if (verb == "git-commit") {
+        const std::string message = requireOption(args, "message");
+        std::vector<std::string> arguments{"commit", "-m", message};
+        if (args.flag("amend")) arguments.push_back("--amend");
+        if (args.flag("allow-empty")) arguments.push_back("--allow-empty");
+        if (args.flag("no-verify")) arguments.push_back("--no-verify");
+        if (args.has("author")) {
+            arguments.push_back("--author");
+            arguments.push_back(args.get("author"));
+        }
+
+        std::vector<std::string> paths = args.positional;
+        if (args.has("path")) paths.push_back(args.get("path"));
+        if (!paths.empty()) {
+            std::vector<std::string> addArguments{"add", "--"};
+            for (const auto& path : paths) addArguments.push_back(path);
+            const GitOutcome add = runGit(repo, addArguments, 300000);
+            if (add.exitCode != 0) {
+                outData = {{"exit_code", add.exitCode}, {"stderr", add.error},
+                           {"stage", "failed"}};
+                return 1;
+            }
+        } else if (args.flag("add")) {
+            const GitOutcome add = runGit(repo, {"add", "-A"}, 300000);
+            if (add.exitCode != 0) {
+                outData = {{"exit_code", add.exitCode}, {"stderr", add.error},
+                           {"stage", "failed"}};
+                return 1;
+            }
+        }
+
+        const GitOutcome outcome = runGit(repo, arguments, 300000);
+        json data;
+        data["exit_code"] = outcome.exitCode;
+        data["stdout"] = outcome.output;
+        data["stderr"] = outcome.error;
+        if (outcome.exitCode == 0) {
+            const GitOutcome hash = runGit(repo, {"rev-parse", "HEAD"}, 30000);
+            const GitOutcome subject = runGit(repo, {"log", "-1", "--pretty=%s"}, 30000);
+            data["hash"] = QString::fromStdString(hash.output).trimmed().toStdString();
+            data["subject"] = QString::fromStdString(subject.output).trimmed().toStdString();
+        }
+        outData = data;
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    if (verb == "git-push" || verb == "git-pull" || verb == "git-fetch") {
+        const std::string remote = args.get("remote", "origin");
+        std::string branch = args.get("branch", "");
+        std::vector<std::string> arguments{verb.substr(4)};
+        if (verb == "git-fetch") {
+            if (args.flag("prune")) arguments.push_back("--prune");
+            if (args.has("remote") || !args.get("remote", "").empty())
+                arguments.push_back(remote);
+            else
+                arguments.push_back(remote);
+        } else {
+            if (verb == "git-push" && args.flag("set-upstream")) arguments.push_back("-u");
+            if (verb == "git-push" && args.flag("force")) arguments.push_back("--force-with-lease");
+            if (verb == "git-pull" && args.flag("rebase")) arguments.push_back("--rebase");
+            if (verb == "git-pull" && args.flag("ff-only")) arguments.push_back("--ff-only");
+            if (branch.empty() && verb == "git-push") {
+                const GitOutcome current = runGit(repo, {"rev-parse", "--abbrev-ref", "HEAD"}, 30000);
+                branch = QString::fromStdString(current.output).trimmed().toStdString();
+            }
+            arguments.push_back(remote);
+            if (!branch.empty()) arguments.push_back(branch);
+        }
+        const GitOutcome outcome = runGit(repo, arguments, 600000);
+        outData = {{"exit_code", outcome.exitCode},
+                   {"remote", remote},
+                   {"branch", branch},
+                   {"stdout", outcome.output},
+                   {"stderr", outcome.error},
+                   {"timed_out", outcome.timedOut}};
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    if (verb == "git-log") {
+        const int limit = std::max(1, std::min(200, std::atoi(args.get("limit", "20").c_str())));
+        const GitOutcome outcome = runGit(repo,
+            {"log", "-n", std::to_string(limit), "--date=iso",
+             "--pretty=format:%h%x1f%an%x1f%ad%x1f%s"}, 60000);
+        json entries = json::array();
+        if (outcome.exitCode == 0) {
+            std::istringstream stream(outcome.output);
+            std::string line;
+            while (std::getline(stream, line)) {
+                if (line.empty()) continue;
+                std::vector<std::string> fields;
+                size_t start = 0;
+                while (start <= line.size()) {
+                    const size_t sep = line.find('\x1f', start);
+                    if (sep == std::string::npos) {
+                        fields.push_back(line.substr(start));
+                        break;
+                    }
+                    fields.push_back(line.substr(start, sep - start));
+                    start = sep + 1;
+                }
+                if (fields.size() < 4) continue;
+                entries.push_back({{"hash", fields[0]}, {"author", fields[1]},
+                                   {"date", fields[2]}, {"subject", fields[3]}});
+            }
+        }
+        outData = {{"exit_code", outcome.exitCode}, {"entries", entries},
+                   {"stderr", outcome.error}};
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    if (verb == "git-diff") {
+        std::vector<std::string> arguments{"diff"};
+        if (args.flag("cached")) arguments.push_back("--cached");
+        if (args.flag("stat")) arguments.push_back("--stat");
+        std::vector<std::string> paths = args.positional;
+        if (args.has("path")) paths.push_back(args.get("path"));
+        if (!paths.empty()) {
+            arguments.push_back("--");
+            for (const auto& path : paths) arguments.push_back(path);
+        }
+        const GitOutcome outcome = runGit(repo, arguments, 60000);
+        std::string text = outcome.output;
+        bool truncated = false;
+        constexpr size_t kMaxDiff = 200000;
+        if (text.size() > kMaxDiff) {
+            text = text.substr(0, kMaxDiff);
+            truncated = true;
+        }
+        outData = {{"exit_code", outcome.exitCode}, {"diff", text},
+                   {"truncated", truncated}, {"stderr", outcome.error}};
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    if (verb == "git-checkout") {
+        const std::string branch = requireOption(args, "branch");
+        std::vector<std::string> arguments{"checkout"};
+        if (args.flag("create")) arguments.push_back("-b");
+        arguments.push_back(branch);
+        if (args.has("start")) arguments.push_back(args.get("start"));
+        if (args.flag("force")) arguments.push_back("--force");
+        const GitOutcome outcome = runGit(repo, arguments, 120000);
+        outData = {{"exit_code", outcome.exitCode}, {"branch", branch},
+                   {"created", args.flag("create")},
+                   {"stdout", outcome.output}, {"stderr", outcome.error}};
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    if (verb == "git-reset") {
+        const std::string mode = args.get("mode", "mixed");
+        if (mode != "soft" && mode != "mixed" && mode != "hard")
+            fail("--mode must be soft|mixed|hard", 2);
+        if (mode == "hard" && !args.flag("confirm-hard"))
+            fail("hard reset requires --confirm-hard", 2);
+        const std::string reference = args.get("ref", "HEAD");
+        const GitOutcome outcome = runGit(repo,
+            {"reset", "--" + mode, reference}, 120000);
+        outData = {{"exit_code", outcome.exitCode}, {"mode", mode},
+                   {"ref", reference}, {"stdout", outcome.output},
+                   {"stderr", outcome.error}};
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    if (verb == "git-config") {
+        const std::string key = requireOption(args, "key");
+        std::vector<std::string> arguments{"config"};
+        if (args.flag("global")) arguments.push_back("--global");
+        arguments.push_back(key);
+        if (args.has("value")) arguments.push_back(args.get("value"));
+        const GitOutcome outcome = runGit(repo, arguments, 30000);
+        outData = {{"exit_code", outcome.exitCode}, {"key", key},
+                   {"value", args.get("value", "")},
+                   {"stdout", outcome.output}, {"stderr", outcome.error}};
+        return outcome.exitCode == 0 ? 0 : 1;
+    }
+
+    fail("unknown git command: " + verb, 2);
+}
 std::string commandJsonName(const ParsedArgs& args)
 {
     if (args.command == "info")
@@ -705,14 +1063,23 @@ void printUsage()
         "        [--url <url>] [--branch <name>] [--metadata-json <json>]\n"
         "  NeoWorkspaceEditor.exe exec pointer-remove --path <rel> [--branch <name>]\n"
         "  NeoWorkspaceEditor.exe exec validate [--repo <dir>]\n"
+        "  NeoWorkspaceEditor.exe exec git-status\n"
+        "  NeoWorkspaceEditor.exe exec git-add [<path>...] [--all]\n"
+        "  NeoWorkspaceEditor.exe exec git-commit --message <msg> [--add] [<path>...] [--amend] [--allow-empty] [--no-verify]\n"
+        "  NeoWorkspaceEditor.exe exec git-push [--remote <r>] [--branch <b>] [--set-upstream] [--force]\n"
+        "  NeoWorkspaceEditor.exe exec git-pull [--remote <r>] [--branch <b>] [--rebase] [--ff-only]\n"
+        "  NeoWorkspaceEditor.exe exec git-fetch [--remote <r>] [--prune]\n"
+        "  NeoWorkspaceEditor.exe exec git-log [--limit <n>]\n"
+        "  NeoWorkspaceEditor.exe exec git-diff [--cached] [--stat] [<path>]\n"
+        "  NeoWorkspaceEditor.exe exec git-checkout --branch <b> [--create] [--start <ref>] [--force]\n"
+        "  NeoWorkspaceEditor.exe exec git-reset --mode soft|mixed|hard --ref <ref> [--confirm-hard]\n"
+        "  NeoWorkspaceEditor.exe exec git-config --key <k> [--value <v>] [--global]\n"
+        "  NeoWorkspaceEditor.exe info git\n"
         "  NeoWorkspaceEditor.exe help\n"
         "\n"
         "All commands print one JSON object on stdout (ok/command/data or error).\n"
         "--repo defaults to the current directory; --text prints a short human summary.\n";
 }
-
-int execute(const ParsedArgs& args, const std::string& commandName,
-            json& outData, bool& textMode);
 
 int runInfo(const ParsedArgs& args, json& outData)
 {
@@ -774,6 +1141,18 @@ int runInfo(const ParsedArgs& args, json& outData)
         outData = syncInfo(repo, workspace);
         return 0;
     }
+    if (args.verb == "git") {
+        bool ok = false;
+        outData = gitStatusData(repo, ok);
+        const GitOutcome head = runGit(repo, {"log", "-1", "--pretty=format:%h%x1f%s"}, 30000);
+        if (head.exitCode == 0 && !head.output.empty()) {
+            const size_t sep = head.output.find('\x1f');
+            outData["head_hash"] = head.output.substr(0, sep);
+            if (sep != std::string::npos)
+                outData["head_subject"] = head.output.substr(sep + 1);
+        }
+        return ok ? 0 : 1;
+    }
     if (args.verb == "file") {
         if (args.positional.empty()) fail("info file requires a relative path", 2);
         outData = fileInfo(repo, args.positional[0], args.flag("base64"), args.flag("force"));
@@ -786,6 +1165,9 @@ int runExec(const ParsedArgs& args, json& outData)
 {
     const fs::path repo = resolveRepo(args);
     const std::string verb = args.verb;
+    if (verb.rfind("git-", 0) == 0) {
+        return runGitVerb(repo, args, outData);
+    }
 
     if (verb == "validate") {
         NeoWorkspace::WorkspaceManager manager;
@@ -1185,8 +1567,12 @@ int emitResult(bool ok, const std::string& command, const fs::path& repo,
     out["ok"] = ok;
     out["command"] = command;
     if (!repo.empty()) out["repo"] = toU8(repo);
-    if (ok) out["data"] = data;
-    else out["error"] = error;
+    if (ok) {
+        out["data"] = data;
+    } else {
+        out["error"] = error;
+        if (!data.is_null()) out["data"] = data;
+    }
     std::cout << out.dump() << std::endl;
     return exitCode;
 }
@@ -1236,6 +1622,14 @@ int run(int argc, char* argv[])
         auto sink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
         spdlog::set_default_logger(std::make_shared<spdlog::logger>("editor-cli", sink));
     }
+
+    int qtArgc = 1;
+    char programName[] = "NeoWorkspaceEditor";
+    char* qtArgv[] = { programName, nullptr };
+    QCoreApplication application(qtArgc, qtArgv);
+    application.setApplicationName("NSUMEditorCli");
+    application.setOrganizationName("HiBer2007");
+
 #ifdef _WIN32
     std::vector<std::string> tokens = wideArgsToUtf8();
     if (tokens.size() > 1) tokens.erase(tokens.begin());
@@ -1275,7 +1669,15 @@ int run(int argc, char* argv[])
             fs::path repo = resolveRepo(args);
             json data;
             const int code = runExec(args, data);
-            return emitResult(code == 0, commandName, repo, data, "", code, textMode);
+            std::string error;
+            if (code != 0) {
+                if (data.contains("stderr") && data["stderr"].is_string())
+                    error = firstLine(data["stderr"].get<std::string>());
+                if (error.empty() && data.contains("stdout") && data["stdout"].is_string())
+                    error = firstLine(data["stdout"].get<std::string>());
+                if (error.empty()) error = "command failed";
+            }
+            return emitResult(code == 0, commandName, repo, data, error, code, textMode);
         } catch (const CliFailure& failure) {
             return emitResult(false, commandName, fs::path(), json(),
                               failure.message, failure.code, textMode);

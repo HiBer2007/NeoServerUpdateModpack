@@ -155,5 +155,5 @@ NeoWorkspaceEditor.exe exec validate --repo K:\repo
 
 - 默认输出单行 JSON（`ok/command/repo/data` 或 `ok/command/error`），日志走 stderr；
 - `--text` 人类可读；`--repo` 缺省为当前目录；
-- 路径限定在仓库内（拒绝绝对路径与 `..`）；CLI 不执行 git 操作；
+- 路径限定在仓库内（拒绝绝对路径与 `..`）；内置 git 子命令（`git-status/add/commit/push/pull/fetch/log/diff/checkout/reset/config`）；
 - 完整命令与字段说明：`docs/editor-cli.md`。

@@ -4,7 +4,8 @@
 不创建 `QApplication`、不加载 Qt 平台插件、不显示窗口，只读写仓库文件并输出 JSON。
 
 > 与 GUI 共用同一份 `workspace.json` / `branch_config/<branch>.json` 格式；
-> CLI 本身**不执行 git 操作**（不 add/commit/push），需要提交时由调用方自行运行 git。
+> CLI 内置常用 git 操作（status/add/commit/push/pull/fetch/log/diff/checkout/reset/config），
+> 可直接完成「改文件 → 暂存 → 提交 → 推送」全流程。
 
 ## 调用方式
 
@@ -106,6 +107,26 @@ NeoWorkspaceEditor.exe exec validate
 - `errors`：分支重名、父分支缺失、父链成环 → `valid=false`，退出码 1；
 - `warnings`：缺少 `branches/<name>/` 或 `branch_config/<name>.json`（本地仓库常见，不算失败）。
 
+## git 子命令（exec）
+
+| 命令 | 说明 |
+|------|------|
+| `git-status` | 分支、upstream、ahead/behind、staged/unstaged/untracked/conflicted、clean |
+| `git-add [<path>...] [--all]` | 暂存指定路径；无路径或 `--all` = `git add -A` |
+| `git-commit --message <msg> [--add] [<path>...] [--amend] [--allow-empty] [--no-verify] [--author <a>]` | 提交；`--add` 先 `git add -A`，给路径则先暂存这些路径；返回 `hash`/`subject` |
+| `git-push [--remote <r>] [--branch <b>] [--set-upstream] [--force]` | 推送；`--force` 使用 `--force-with-lease`；缺省分支 = 当前分支 |
+| `git-pull [--remote <r>] [--branch <b>] [--rebase] [--ff-only]` | 拉取 |
+| `git-fetch [--remote <r>] [--prune]` | 抓取 |
+| `git-log [--limit <n>]` | 最近 n 条（默认 20）：hash/author/date/subject |
+| `git-diff [--cached] [--stat] [<path>]` | 差异文本（超过 200KB 截断并标记 `truncated`） |
+| `git-checkout --branch <b> [--create] [--start <ref>] [--force]` | 切换/创建分支 |
+| `git-reset --mode soft|mixed|hard --ref <ref> [--confirm-hard]` | 重置；`hard` 必须显式 `--confirm-hard` |
+| `git-config --key <k> [--value <v>] [--global]` | 读写 git 配置（省略 `--value` 为读取） |
+
+`info git`：分支、upstream、ahead/behind、status 清单与 HEAD 提交，适合改动前先看状态。
+
+git 命令失败时仍返回 `data`（含 `exit_code`/`stdout`/`stderr`）且 `ok:false`、退出码 1，便于 AI 读原因。
+
 ## AI 典型流程
 
 ```powershell
@@ -118,9 +139,11 @@ NeoWorkspaceEditor.exe exec branch-add --name client --parent base --type client
 NeoWorkspaceEditor.exe exec file-write --path branches/client/config/client.json --content "{}" --repo K:\repo
 NeoWorkspaceEditor.exe exec json-set --file workspace.json --pointer /branches/1/hidden --value false --repo K:\repo
 
-# 3. 校验后再自行提交
+# 3. 校验，然后暂存/提交/推送（也可自行用系统 git）
 NeoWorkspaceEditor.exe exec validate --repo K:\repo
-cd K:\repo; git add -A; git commit -m "feat: ..."
+NeoWorkspaceEditor.exe exec git-add --all --repo K:\repo
+NeoWorkspaceEditor.exe exec git-commit --message "feat: ..." --repo K:\repo
+NeoWorkspaceEditor.exe exec git-push --repo K:\repo
 ```
 
 ## 获取帮助
