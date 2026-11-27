@@ -789,8 +789,8 @@ int runExec(const ParsedArgs& args, json& outData)
 
     if (verb == "validate") {
         NeoWorkspace::WorkspaceManager manager;
-        const std::string path = toU8(workspacePath(repo));
-        const bool loaded = manager.loadFromFile(path);
+        json workspace = loadJson(workspacePath(repo));
+        const bool loaded = manager.loadFromJson(workspace);
         const bool managerValid = loaded && manager.validate();
         json data;
         data["loaded"] = loaded;
@@ -809,7 +809,6 @@ int runExec(const ParsedArgs& args, json& outData)
                 data["branches"].push_back(entry);
             }
         }
-        json workspace = loadJson(workspacePath(repo));
         json errors = json::array();
         json warnings = json::array();
         std::set<std::string> names;
