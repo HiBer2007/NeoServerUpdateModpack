@@ -13,6 +13,7 @@
 #include <windows.h>
 #endif
 
+#include "editor_cli.h"
 #include "editor_window.h"
 #include "editor_tui.h"
 
@@ -59,6 +60,10 @@ static void setupConsoleUtf8()
 
 int main(int argc, char* argv[])
 {
+    if (editor_cli::is_cli_invocation(argc, argv)) {
+        return editor_cli::run(argc, argv);
+    }
+
 #ifdef _WIN32
     // TUI 需要 UTF-8 代码页 + VT, 两种启动方式都设置 (双击的独占控制台随后释放)
     setupConsoleUtf8();

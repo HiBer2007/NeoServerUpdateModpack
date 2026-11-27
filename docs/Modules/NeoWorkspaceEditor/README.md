@@ -77,3 +77,6 @@ NeoWorkspaceEditor 是 NeoServerUpdateModpack 的**工作区编辑器 EXE 应用
 | `main(int, char**)` | main.cpp | 入口；`--help/--version` 由 QCommandLineParser 提供 |
 
 > 领域层符号（`GUIWorker::RepoEditor` 等）属 GUIWorker 模块，本模块仅消费；Git 领域符号（`NeoWorkspace::GitOperations`）属 NeoWorkspace 模块。
+## CLI 模式（AI / 自动化）
+
+首个参数为 `info`、`exec` 或 `help` 时不创建 `QApplication`，进入无界面 CLI：读写 `workspace.json` / `branch_config/<branch>.json` / 仓库文件并输出 JSON，供 AI 或脚本调用。实现见 `src/editor_cli.cpp`（`editor_cli::is_cli_invocation` / `editor_cli::run`），入口在 `src/main.cpp` 最前分流，完全不进入窗口/TUI/崩溃 UI 路径。命令参考见 `docs/editor-cli.md`。

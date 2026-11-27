@@ -138,3 +138,22 @@ public:
 - GitIgnoreMarkup — .gitignore 标记系统与 GitIgnoreDialog
 - PowerHelper — 帮助文档阅读器入口（`PowerHelper::Bridge::launchReader`）
 - CrashTrackerHandleLib — `HiBerCTM::` 崩溃捕获
+## CLI 模式（AI 自动化）
+
+```powershell
+# 只读
+NeoWorkspaceEditor.exe info workspace --repo K:\repo
+NeoWorkspaceEditor.exe info branches --repo K:\repo
+NeoWorkspaceEditor.exe info tree --depth 2 --repo K:\repo
+
+# 写入
+NeoWorkspaceEditor.exe exec branch-add --name client --parent base --type client --repo K:\repo
+NeoWorkspaceEditor.exe exec file-write --path branches/client/config/x.json --content "{}" --repo K:\repo
+NeoWorkspaceEditor.exe exec json-set --file workspace.json --pointer /workspace/name --value-string "New Name" --repo K:\repo
+NeoWorkspaceEditor.exe exec validate --repo K:\repo
+```
+
+- 默认输出单行 JSON（`ok/command/repo/data` 或 `ok/command/error`），日志走 stderr；
+- `--text` 人类可读；`--repo` 缺省为当前目录；
+- 路径限定在仓库内（拒绝绝对路径与 `..`）；CLI 不执行 git 操作；
+- 完整命令与字段说明：`docs/editor-cli.md`。
