@@ -1,5 +1,7 @@
 #include <path_utf8.h>
 #include "pointer_downloader.h"
+
+#include "parallel_downloader.h"
 #include <logger.h>
 #include <plugin_log_sink.h>
 #include <filesystem>
@@ -412,6 +414,34 @@ bool PointerDownloader::downloadToPath(const std::string& url,
     std::function<void(const DownloadProgress&)> progressCallback,
     NeoCore::CancelToken* cancelToken)
 {
+    const NeoCore::ParallelDownloadOptions parallelOptions =
+        NeoCore::ParallelDownloadOptions::fromEnvironment();
+    if (parallelOptions.threads > 1) {
+        NeoCore::ParallelDownloadResult parallel = NeoCore::ParallelDownloader::download(
+            QUrl(QString::fromStdString(url)), QString::fromStdString(outputPath),
+            parallelOptions,
+            [&progressCallback](qint64 received, qint64 total) {
+                if (!progressCallback) return;
+                DownloadProgress dp;
+                dp.bytesDownloaded = received;
+                dp.totalBytes = total;
+                dp.completed = false;
+                progressCallback(dp);
+            },
+            cancelToken);
+        if (parallel.success) {
+            CLogger::Info("PointerDownloader: multi-thread download complete ({} threads)",
+                parallel.threadsUsed);
+            return true;
+        }
+        if (parallel.cancelled) {
+            CLogger::Info("PointerDownloader: download cancelled");
+            return false;
+        }
+        CLogger::Info("PointerDownloader: multi-thread download skipped ({}), "
+                      "fallback to single stream", parallel.message.toStdString());
+    }
+
     QNetworkAccessManager mgr;
     mgr.setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
     mgr.setTransferTimeout(300000);

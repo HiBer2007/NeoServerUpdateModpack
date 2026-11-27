@@ -15,6 +15,7 @@
 #include <modpack_exporter.h>
 #include <serverconfig_sync.h>
 #include <pointer_downloader.h>
+#include <parallel_downloader.h>
 #include <IPluginPointer.h>
 #include <platform_api.h>
 
@@ -656,10 +657,37 @@ int CliDispatcher::cmdGitUpdate(const CliCommand& cmd)
         return dl.exitCode() == 0 && QFileInfo::exists(dest) && QFileInfo(dest).size() > 0;
     };
 
+    auto tryParallel = [](const QString& link, const QString& dest) -> bool {
+        NeoCore::ParallelDownloadOptions options =
+            NeoCore::ParallelDownloadOptions::fromEnvironment();
+        if (options.threads <= 1) return false;
+        NeoCore::ParallelDownloadResult r = NeoCore::ParallelDownloader::download(
+            QUrl(link), dest, options,
+            [](qint64 received, qint64 total) {
+                if (total <= 0) return;
+                static int lastPercent = -1;
+                const int percent = static_cast<int>(received * 100 / total);
+                if (percent != lastPercent && percent % 10 == 0) {
+                    lastPercent = percent;
+                    CliOutput::info("  " + std::to_string(percent) + "%");
+                }
+            });
+        if (r.success) {
+            CliOutput::info("Multi-thread download complete ("
+                + std::to_string(r.threadsUsed) + " threads)");
+            return true;
+        }
+        if (!r.message.isEmpty())
+            CliOutput::info("Parallel download skipped: " + r.message.toStdString());
+        QFile::remove(dest);
+        return false;
+    };
+
     bool downloaded = false;
     for (const auto& link : urls) {
         CliOutput::info("Downloading " + link.toStdString());
         QFile::remove(zip);
+        if (tryParallel(link, zip)) { downloaded = true; break; }
         if (tryCurl(link, zip)) { downloaded = true; break; }
         CliOutput::warning("curl 下载失败，尝试下一个源");
     }
