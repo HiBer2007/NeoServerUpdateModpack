@@ -57,9 +57,7 @@ If automatic update fails, download `NSUM_Runtime_CLI_<version>.zip` manually, p
 
 ## FLFHMCL updates
 
-<!-- slot:FLFHMCL_UPDATE -->
-
-> **TBD**: a link will be added once the FLFHMCL update page is ready.
+> **FLFHMCL docs**: Agent/HMCL/FLF API version alignment and update steps: [FLFHMCL settings and updates](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/settings-updates.mdx).
 
 ## Version numbers
 

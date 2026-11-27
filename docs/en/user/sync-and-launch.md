@@ -87,9 +87,7 @@ java -jar <runtime>/tools/mclhr/mclhr.jar mc mods sync --instance <instance> --m
 
 The launcher injection layer (FLFHMCL) behavior is described in its own docs.
 
-<!-- slot:FLFHMCL_LAUNCH -->
-
-> **TBD**: a link will be added once the FLFHMCL launcher page is ready.
+> **FLFHMCL docs**: Agent launch flow, Early Display and instance selection: [FLFHMCL first launch](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/first-launch.mdx).
 
 ## Related
 

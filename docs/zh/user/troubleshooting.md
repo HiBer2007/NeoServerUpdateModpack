@@ -103,9 +103,7 @@ flowchart TD
 
 ## FLFHMCL 兼容
 
-<!-- slot:FLFHMCL_COMPAT -->
-
-> **待补**：FLFHMCL/HMCL 版本兼容矩阵完成后在此补充链接。
+> **FLFHMCL 文档**：版本兼容、启动失败与日志排查见 [FLFHMCL FAQ](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/faq.mdx) 与 [诊断指南](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/diagnostics.mdx)。
 
 ## 反馈模板
 

@@ -7,10 +7,10 @@
 
 | 槽位 ID | 使用位置 | 预期目标 | 状态 |
 |---|---|---|---|
-| `FLFHMCL_INSTALL` | `user/installation`、`user/quick-start` | FLFHMCL 安装与运行时注入 | 待补 |
-| `FLFHMCL_UPDATE` | `user/updates` | FLFHMCL 升级方式 | 待补 |
-| `FLFHMCL_COMPAT` | `user/faq`、`user/troubleshooting` | FLFHMCL/HMCL 版本兼容矩阵 | 待补 |
-| `FLFHMCL_LAUNCH` | `user/sync-and-launch` | FLFHMCL 启动器侧行为 | 待补 |
+| `FLFHMCL_INSTALL` | `user/installation`、`user/quick-start` | FLFHMCL 安装与运行时注入 | 已回填（2026-11-27，FLFHMCL docs/bilingual） |
+| `FLFHMCL_UPDATE` | `user/updates` | FLFHMCL 升级方式 | 已回填（2026-11-27，FLFHMCL docs/bilingual） |
+| `FLFHMCL_COMPAT` | `user/faq`、`user/troubleshooting` | FLFHMCL/HMCL 版本兼容矩阵 | 已回填（2026-11-27，FLFHMCL docs/bilingual） |
+| `FLFHMCL_LAUNCH` | `user/sync-and-launch` | FLFHMCL 启动器侧行为 | 已回填（2026-11-27，FLFHMCL docs/bilingual） |
 | `MCDR_PLUGIN_REPO` | `extensions/server-plugin/*` | MCDR 插件仓库与发布页 | 待补 |
 | `ONLINE_DOCS` | 发布包内跨板块引用 | 线上文档站根地址 | 待补 |
 

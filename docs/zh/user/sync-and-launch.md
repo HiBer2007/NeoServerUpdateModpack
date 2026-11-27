@@ -86,9 +86,7 @@ java -jar <runtime>/tools/mclhr/mclhr.jar mc mods sync --instance <实例> --mod
 
 启动器注入层（FLFHMCL）的行为见其文档。
 
-<!-- slot:FLFHMCL_LAUNCH -->
-
-> **待补**：FLFHMCL 启动器侧说明完成后在此补充链接。
+> **FLFHMCL 文档**：Agent 启动流程、Early Display 与实例选择见 [FLFHMCL 首次启动](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/first-launch.mdx)。
 
 ## 相关
 

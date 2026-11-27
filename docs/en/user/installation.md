@@ -17,9 +17,7 @@ On the client, NSUM consists of **HMCL**, **nsum-bridge** (an HMCL extension) an
 
 1. Install the FLFHMCL runtime (Fabric injection layer); see the FLFHMCL docs.
 
-<!-- slot:FLFHMCL_INSTALL -->
-
-> **TBD**: a link will be added once the FLFHMCL installation page is ready.
+> **FLFHMCL docs**: installation steps, system requirements and the HMCL compatibility matrix: [FLFHMCL installation guide](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/install.mdx).
 
 2. Put `nsum-bridge-<version>.jar` into the `mods/` folder of your HMCL working directory.
 3. Start HMCL; the **NSUM** page appears in the left sidebar.
@@ -86,3 +84,10 @@ In HMCL:
 | Install stuck at 0 B/s | Network/proxy stalls large downloads | Retry, or download the zip manually into `.hmcl/nsum/downloads/` and use "Install from downloads" |
 | SHA-256 mismatch | Incomplete or tampered download | Delete the file and retry |
 | `git` unavailable | Bundled Git missing and no system Git | Run `exec git-update` or check `install.conf` |
+## FLF ecosystem repositories
+
+| Project | Description | Links |
+|---|---|---|
+| FLFHMCL | Fabric runtime for HMCL (Agent + Fabric Loader) | [GitHub](https://github.com/HiBer2007/FLFHMCL) · [Docs](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/index.mdx) |
+| FLF API | Fabric-API-style extension layer for HMCL (events/registries/UI/accounts/downloads/modpacks) | [GitHub](https://github.com/HiBer2007/FLFAPI) · [Docs](https://github.com/HiBer2007/FLFAPI/blob/main/docs/en/index.mdx) |
+| FLFHMCLauncher | Shell/high-level entry for FLFHMCL (environment, quick launch, version isolation, cache) | [GitHub](https://github.com/HiBer2007/FLFHMCLauncher) |

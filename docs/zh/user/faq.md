@@ -56,9 +56,7 @@ A：检查网络；也可手动运行 `exec git-update` 重试。
 
 ## FLFHMCL 兼容
 
-<!-- slot:FLFHMCL_COMPAT -->
-
-> **待补**：FLFHMCL/HMCL 版本兼容矩阵完成后在此补充链接。
+> **FLFHMCL 文档**：版本兼容、启动失败与日志排查见 [FLFHMCL FAQ](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/faq.mdx) 与 [诊断指南](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/diagnostics.mdx)。
 
 **Q：HMCL 版本有要求吗？**
 A：bridge 0.4.x 面向 HMCL 3.17.2 / FLF API 2.x；旧 bridge 可能要求更低版本，见 Release 说明。

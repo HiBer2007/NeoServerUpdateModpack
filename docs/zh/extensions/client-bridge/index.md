@@ -52,3 +52,7 @@ updated: 2026-11-27
 
 - [同步与启动](../../user/sync-and-launch.md)
 - [故障排查](../../user/troubleshooting.md)
+## 相关 FLF 仓库
+
+- [FLF API](https://github.com/HiBer2007/FLFAPI)：HMCL 的 Fabric API 式扩展层（事件/注册表/UI/账号/下载/整合包接口），bridge 依赖其 API。
+- [FLFHMCLauncher](https://github.com/HiBer2007/FLFHMCLauncher)：FLFHMCL 的外壳/高阶入口，可用于安装与环境配置。

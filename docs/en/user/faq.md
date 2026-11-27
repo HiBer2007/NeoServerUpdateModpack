@@ -57,9 +57,7 @@ A: Check the network and retry with `exec git-update`.
 
 ## FLFHMCL compatibility
 
-<!-- slot:FLFHMCL_COMPAT -->
-
-> **TBD**: a link will be added once the FLFHMCL/HMCL compatibility matrix is ready.
+> **FLFHMCL docs**: compatibility, launch failures and log diagnostics: [FLFHMCL FAQ](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/faq.mdx) and [diagnostics](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/diagnostics.mdx).
 
 **Q: Which HMCL version is required?**
 A: bridge 0.4.x targets HMCL 3.17.2 / FLF API 2.x; older bridges may target lower versions, see release notes.

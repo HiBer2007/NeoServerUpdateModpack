@@ -15,9 +15,7 @@ Goal: import the server's `.nsumpack`, finish the first sync, and join the game.
 
 - HMCL, FLFHMCL and nsum-bridge are installed (see [Installation](./installation.md)).
 
-<!-- slot:FLFHMCL_INSTALL -->
-
-> **TBD**: a link will be added once the FLFHMCL installation page is ready.
+> **FLFHMCL docs**: installation steps, system requirements and the HMCL compatibility matrix: [FLFHMCL installation guide](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/install.mdx).
 
 - Runtime is installed (HMCL → NSUM page shows a version).
 

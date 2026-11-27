@@ -14,9 +14,7 @@ updated: 2026-11-27
 
 - 已安装 HMCL、FLFHMCL 与 nsum-bridge（见 [安装](./installation.md)）。
 
-<!-- slot:FLFHMCL_INSTALL -->
-
-> **待补**：FLFHMCL 安装说明完成后在此补充链接。
+> **FLFHMCL 文档**：安装步骤、系统要求与 HMCL 版本兼容矩阵见 [FLFHMCL 安装指南](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/install.mdx)。
 
 - Runtime 已安装（HMCL → NSUM 页面应显示版本）。
 

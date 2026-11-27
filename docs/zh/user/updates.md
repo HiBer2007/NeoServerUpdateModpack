@@ -56,9 +56,7 @@ NSUM 的版本由 metadata 站点（`https://metadata.hibernet.top`）发布，b
 
 ## FLFHMCL 更新
 
-<!-- slot:FLFHMCL_UPDATE -->
-
-> **待补**：FLFHMCL 升级说明完成后在此补充链接。
+> **FLFHMCL 文档**：Agent/HMCL/FLF API 的版本对应与更新步骤见 [FLFHMCL 设置与更新](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/settings-updates.mdx)。
 
 ## 版本号说明
 

@@ -104,9 +104,7 @@ If it still fails, check `git_path` in `install.conf`, or install system Git as 
 
 ## FLFHMCL compatibility
 
-<!-- slot:FLFHMCL_COMPAT -->
-
-> **TBD**: a link will be added once the FLFHMCL/HMCL compatibility matrix is ready.
+> **FLFHMCL docs**: compatibility, launch failures and log diagnostics: [FLFHMCL FAQ](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/faq.mdx) and [diagnostics](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/en/users/flfhmcl/diagnostics.mdx).
 
 ## Report template
 

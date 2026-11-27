@@ -53,3 +53,7 @@ translation_of: /zh/extensions/client-bridge/index.md
 
 - [Sync and launch](../../user/sync-and-launch.md)
 - [Troubleshooting](../../user/troubleshooting.md)
+## Related FLF repositories
+
+- [FLF API](https://github.com/HiBer2007/FLFAPI): Fabric-API-style extension layer for HMCL (events/registries/UI/accounts/downloads/modpacks). bridge depends on its API.
+- [FLFHMCLauncher](https://github.com/HiBer2007/FLFHMCLauncher): shell/high-level entry for FLFHMCL, usable for installation and environment setup.

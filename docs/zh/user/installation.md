@@ -16,9 +16,7 @@ NSUM 在客户端由三部分组成：**HMCL**（启动器）、**nsum-bridge**�
 
 1. 安装 FLFHMCL 运行时（Fabric 注入层），详见 FLFHMCL 文档。
 
-<!-- slot:FLFHMCL_INSTALL -->
-
-> **待补**：FLFHMCL 安装说明完成后在此补充链接。
+> **FLFHMCL 文档**：安装步骤、系统要求与 HMCL 版本兼容矩阵见 [FLFHMCL 安装指南](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/install.mdx)。
 
 2. 把 `nsum-bridge-<版本>.jar` 放进 HMCL 工作目录的 `mods/`；
 3. 启动 HMCL，左侧出现 **NSUM** 页面；
@@ -87,3 +85,10 @@ HMCL 侧：
 | 安装卡在下载 0 B/s | 网络/代理导致大文件下载停滞 | 重试；或手动下载 Runtime 包放入 `.hmcl/nsum/downloads/` 后点「从 downloads 安装」 |
 | 提示 SHA-256 校验失败 | 下载不完整或被篡改 | 删除下载文件重试 |
 | `git` 不可用 | 内置 Git 未安装且系统无 Git | 运行 `exec git-update`，或检查 `install.conf` |
+## FLF 生态仓库
+
+| 项目 | 说明 | 链接 |
+|---|---|---|
+| FLFHMCL | HMCL 的 Fabric 运行时（Agent + Fabric Loader） | [GitHub](https://github.com/HiBer2007/FLFHMCL) · [文档](https://github.com/HiBer2007/FLFHMCL/blob/docs/bilingual/docs/zh/users/flfhmcl/index.mdx) |
+| FLF API | HMCL 的 Fabric API 式扩展层（事件/注册表/UI/账号/下载/整合包接口） | [GitHub](https://github.com/HiBer2007/FLFAPI) · [文档](https://github.com/HiBer2007/FLFAPI/blob/main/docs/zh/index.mdx) |
+| FLFHMCLauncher | FLFHMCL 的外壳/高阶入口（环境配置、快速启动、版本隔离、缓存） | [GitHub](https://github.com/HiBer2007/FLFHMCLauncher) |
