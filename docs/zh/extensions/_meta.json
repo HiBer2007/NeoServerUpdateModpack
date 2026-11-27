@@ -1,0 +1,12 @@
+{
+  "index": "拓展总览",
+  "parsers": "配置解析器",
+  "pointers": "指针解析器",
+  "exporters": "导出器",
+  "editor": "编辑器扩展",
+  "installer": "安装器拓展",
+  "client-bridge": "客户端 bridge",
+  "server-plugin": "服务端插件",
+  "libraries": "基础库",
+  "mclhr": "MCLHR 集成"
+}

@@ -1,0 +1,13 @@
+{
+  "index": "ADRs",
+  "0001-pointer-cache": "0001 · Pointer files and content-addressed cache",
+  "0002-l1-l2-l3-sync": "0002 · Three-tier sync (L1/L2/L3)",
+  "0003-mclhr-store": "0003 · MCLHR mod store and hard-link projection",
+  "0004-hic-flow": "0004 · Declarative HIC install flow",
+  "0005-bridge-injection": "0005 · Launch injection (bridge)",
+  "0006-nsumpack-v2": "0006 · Manifest-only .nsumpack (pack_format 2)",
+  "0007-parallel-download": "0007 · HTTP Range parallel downloads",
+  "0008-editor-cli": "0008 · Headless editor CLI",
+  "0009-bilingual-docs": "0009 · Bilingual docs",
+  "0010-module-boundaries": "0010 · Module boundaries and standalone repos"
+}

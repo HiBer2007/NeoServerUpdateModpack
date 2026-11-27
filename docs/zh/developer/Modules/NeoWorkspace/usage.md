@@ -1,0 +1,80 @@
+---
+title: NeoWorkspace 使用
+description: 工作区引擎 API：加载 workspace、分支查询、Git 操作与同步。
+lang: zh
+status: complete
+updated: 2026-11-27
+---
+
+# NeoWorkspace 使用
+
+## 快速开始
+
+```cpp
+#include <workspace_manager.h>
+
+NeoWorkspace::WorkspaceManager manager;
+if (!manager.loadFromFile("workspace.json")) {
+    // 处理错误
+}
+for (const auto& branch : manager.branches()) {
+    // branch.name / branch.parent / branch.type / branch.core
+}
+```
+
+> Windows 中文路径请用 `loadFromJson(nlohmann::json::parse(...))`，避免 ANSI 路径问题。
+
+## 公共 API
+
+| API | 签名 | 说明 |
+|---|---|---|
+| `loadFromFile` | `bool loadFromFile(const std::string& configPath)` | 加载 workspace.json |
+| `loadFromJson` | `bool loadFromJson(const nlohmann::json& config)` | 从 JSON 加载 |
+| `branches` | `std::vector<BranchConfig> branches() const` | 分支列表（按值返回） |
+| `findBranch` | `BranchConfig findBranch(const std::string& name) const` | 查找分支（按值返回） |
+| `defaultBranch` | `std::string defaultBranch() const` | Git 默认分支 |
+| `GitOperations::clone` | `GitResult clone(const std::string& url, const std::string& targetDir, int timeoutMs = 120000)` | 克隆 |
+| `GitOperations::fetch` | `GitResult fetch(const std::string& repoDir, const std::string& remote = "origin")` | 抓取 |
+| `GitOperations::checkout` | `GitResult checkout(const std::string& repoDir, const std::string& branch)` | 切换分支 |
+| `SyncEngine::init` | `bool init(const std::string& targetDir, const std::string& cacheDir)` | 初始化同步 |
+| `SyncEngine::syncFile` | `SyncResult syncFile(const std::string& sourcePath, const std::string& relativeTargetPath, const std::string& expectedSha256, bool hasCachedFile(const std::string& sha256) const)` | 同步单文件 |
+| `SyncEngine::syncConfig` | `SyncResult syncConfig(const std::string& configPath, const std::string& remoteContent, const std::string& localContent, const std::vector<std::string>& trackedKeys, const std::vector<int>& trackedLines)` | 配置合并 |
+
+## 典型用法
+
+### 列出分支
+
+```cpp
+for (const auto& b : manager.branches()) {
+    // b.name / b.parent / b.type / b.core
+}
+auto base = manager.findBranch("base");
+```
+
+### Git 操作
+
+```cpp
+NeoWorkspace::GitOperations git;
+auto head = git.revParse(repoDir);
+auto branches = git.listRemoteBranches(repoDir);
+```
+
+### 同步
+
+```cpp
+NeoWorkspace::SyncEngine engine;
+engine.init(targetDir, cacheDir);
+auto r = engine.syncFile(source, "mods/a.jar", sha256, [&](const std::string& s){ return engine.hasCachedFile(s); });
+```
+
+## 注意事项
+
+- 分支父链不允许成环；
+- `sync_policies.files.<path>.mode` 取 `full`/`partial`/`ignore`；
+- `mirror` 删除前有保护清单；
+- 中文路径必须 UTF-8（`fsu8`）。
+
+## 相关
+
+- [README.md](./README.md)
+- [同步规则](../../../pack-author/sync-rules.md)

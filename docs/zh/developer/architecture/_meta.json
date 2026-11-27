@@ -1,0 +1,11 @@
+{
+  "index": "概览",
+  "overview": "overview",
+  "design-goals": "design-goals",
+  "data-model": "data-model",
+  "build-pipeline": "build-pipeline",
+  "sync-engine": "sync-engine",
+  "pointer-system": "pointer-system",
+  "downloader": "downloader",
+  "security": "security"
+}

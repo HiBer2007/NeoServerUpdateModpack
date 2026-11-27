@@ -373,11 +373,17 @@ if(TARGET PowerHelper AND NOT POWERHELPER_STANDALONE_ONLY)
     )
 endif()
 
-add_custom_command(TARGET neo_deploy POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/docs/deploy" "${DEPLOY_DIR}/docs"
-    COMMENT "Deploy: docs/deploy/ -> deploy/docs/"
-)
+find_program(NSUM_PWSH NAMES pwsh powershell)
+if(NSUM_PWSH)
+    add_custom_command(TARGET neo_deploy POST_BUILD
+        COMMAND "${NSUM_PWSH}" -NoProfile -ExecutionPolicy Bypass -File
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/build_docs.ps1" -Profile with-editor
+            -Out "${DEPLOY_DIR}/docs"
+        COMMENT "Deploy: bilingual docs -> deploy/docs (Editor payload hidden in _editor/)"
+    )
+else()
+    message(WARNING "pwsh/powershell not found: docs will not be deployed")
+endif()
 
 # windeployqt: 对 deploy 目录中的 EXE 执行 (Qt DLL 直接进入 deploy/)
 if(WIN32)

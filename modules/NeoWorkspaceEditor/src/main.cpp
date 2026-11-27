@@ -22,6 +22,70 @@
 #include <git_operations.h>
 #include <install_config.h>
 
+#include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
+
+namespace fs = std::filesystem;
+
+static std::string exeDirUtf8()
+{
+#ifdef _WIN32
+    wchar_t buffer[MAX_PATH * 4];
+    const DWORD length = GetModuleFileNameW(nullptr, buffer, static_cast<DWORD>(std::size(buffer)));
+    if (length > 0) {
+        const int bytes = WideCharToMultiByte(CP_UTF8, 0, buffer, static_cast<int>(length),
+            nullptr, 0, nullptr, nullptr);
+        if (bytes > 0) {
+            std::string result(static_cast<size_t>(bytes), '\0');
+            WideCharToMultiByte(CP_UTF8, 0, buffer, static_cast<int>(length),
+                result.data(), bytes, nullptr, nullptr);
+            return (fs::u8path(result).parent_path()).u8string();
+        }
+    }
+#endif
+    return fs::current_path().u8string();
+}
+
+/// 安装器选择 Editor 时，把随包隐藏的 `docs/_editor/<lang>/pack-author` 提升到正式文档树；
+/// 未安装 Editor 时该函数不会执行（EXE 不存在），从而满足「板块 2 仅 Editor 释放」。
+static void promoteEditorDocs()
+{
+    try {
+        const fs::path docsDir = fs::u8path(exeDirUtf8()) / "docs";
+        const fs::path editorDir = docsDir / "_editor";
+        if (!fs::is_directory(editorDir)) return;
+
+        int promoted = 0;
+        for (const auto& lang : {"zh", "en"}) {
+            const fs::path source = editorDir / lang / "pack-author";
+            if (!fs::is_directory(source)) continue;
+            const fs::path target = docsDir / lang / "pack-author";
+            std::error_code ec;
+            fs::create_directories(target, ec);
+            for (const auto& entry : fs::recursive_directory_iterator(source)) {
+                if (!entry.is_regular_file()) continue;
+                const fs::path rel = fs::relative(entry.path(), source, ec);
+                if (ec) continue;
+                const fs::path destination = target / rel;
+                fs::create_directories(destination.parent_path(), ec);
+                fs::copy_file(entry.path(), destination, fs::copy_options::overwrite_existing, ec);
+                if (!ec) ++promoted;
+            }
+            const fs::path metaSource = editorDir / (std::string("_meta.") + lang + ".json");
+            if (fs::is_regular_file(metaSource)) {
+                fs::copy_file(metaSource, docsDir / lang / "_meta.json",
+                    fs::copy_options::overwrite_existing, ec);
+            }
+        }
+        std::error_code ec;
+        fs::remove_all(editorDir, ec);
+        CLogger::Info("Editor docs promoted: {} file(s)", promoted);
+    } catch (const std::exception& e) {
+        CLogger::Warn("Editor docs promotion failed: {}", e.what());
+    }
+}
+
 static void heapCheckPoint(const char* where)
 {
     int bad = _CrtCheckMemory() ? 0 : 1;
@@ -60,6 +124,8 @@ static void setupConsoleUtf8()
 
 int main(int argc, char* argv[])
 {
+    promoteEditorDocs();
+
     if (editor_cli::is_cli_invocation(argc, argv)) {
         return editor_cli::run(argc, argv);
     }
