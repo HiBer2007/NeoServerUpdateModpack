@@ -75,6 +75,32 @@
 
 不打包成单一文件——导出目录即目标工作目录，适合直接指向 HMCL 版本目录。
 
+## NSUM 整合包（.nsumpack）
+
+供 HMCL + `nsum-bridge` 使用的**清单型**整合包：默认只登记仓库与文件索引，不内嵌模组/配置，包体约 1 KB，客户端由 NSUM Runtime 按仓库/分支同步。
+
+```
+<name>.nsumpack
+  ├── nsum.index.json     # 仓库/整合包信息、pack_format、默认分支、来源 commit、files[] 登记
+  └── overrides/**         # 可选：仅在 --embed-patterns 显式声明时出现的附带文件
+```
+
+- `pack_format` = 文件结构版本（当前 `2`），不是整合包自身版本；
+- `repository` = `url` / `default_branch` / `branch` / `git_branch` / `commit`；
+- `files[]` = 构建产物清单（`path/size/sha256/commit/git_branch`），只登记不含字节；
+- `embedded[]` = 实际内嵌的附带文件（含 `pattern` 与来源 `commit/git_branch`），同时写入 `overrides/`；
+- `embed_patterns[]` = 导出时显式声明的正则（每行一个，ECMAScript，对仓库相对路径 `search`）；
+- 客户端把 `embedded[]` 文件按 SHA-256 缓存到 `.hmcl/nsum/cache/files/`，跨整合包复用。
+
+```powershell
+# 只登记（推荐，体积最小）
+NeoServerUpdateModpack.exe exec build --repo <仓库> --modpack base --git-branch main `
+    --format nsum --export out.nsumpack
+
+# 额外内嵌 config 下的 json（显式声明）
+NeoServerUpdateModpack.exe exec build --repo <仓库> --modpack base --git-branch main `
+    --format nsum --embed-patterns '^config/.*\.json$' --export out.nsumpack
+```
 ## 格式选择建议
 
 | 场景 | 推荐格式 |

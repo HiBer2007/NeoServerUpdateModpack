@@ -395,6 +395,33 @@ static std::string branchCoreOf(const std::string& wsJson, const std::string& br
     return "";
 }
 
+static std::string defaultBranchOf(const std::string& wsJson)
+{
+    if (wsJson.empty()) return "main";
+    try {
+        std::ifstream f(wsJson);
+        if (!f.is_open()) return "main";
+        nlohmann::json j;
+        f >> j;
+        if (j.contains("git") && j["git"].is_object()) {
+            return j["git"].value("default_branch", "main");
+        }
+    } catch (...) {
+    }
+    return "main";
+}
+
+static std::string gitHeadOf(const std::string& workDir, const std::string& gitPath)
+{
+    QProcess ps;
+    ps.setWorkingDirectory(QString::fromStdString(workDir));
+    ps.start(QString::fromStdString(gitPath), {"rev-parse", "HEAD"});
+    if (!ps.waitForFinished(15000)) {
+        ps.kill();
+        return "";
+    }
+    return QString::fromUtf8(ps.readAllStandardOutput()).trimmed().toStdString();
+}
 CliDispatcher::CliDispatcher()
 {
     auto prev = std::signal(SIGINT, signalHandler);
@@ -2056,6 +2083,13 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
     target.metadata.extra["core"] = branchCoreOf(wsJson, modpackBranch);
     // 包内记录用户给定的仓库地址（而不是本地缓存路径），否则客户端会同步到过期缓存。
     target.metadata.extra["repo"] = repoUrl.empty() ? workDir : repoUrl;
+target.metadata.extra["git_commit"] = gitHeadOf(workDir, gitPath_);
+    target.metadata.extra["default_branch"] = defaultBranchOf(wsJson);
+    {
+        std::string embed = cmd.get("embed-patterns");
+        if (embed.empty()) embed = cmd.get("embed");
+        if (!embed.empty()) target.metadata.extra["embed_patterns"] = embed;
+    }
 
     if (target.sync_to_directory) {
         if (!exportPath.empty()) {
@@ -2177,6 +2211,13 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
         target.metadata.extra["core"] = branchCoreOf(wsJson, modpackBranch);
         if (!target.metadata.extra.contains("repo")) {
             target.metadata.extra["repo"] = workDir;
+        }
+        target.metadata.extra["git_commit"] = gitHeadOf(workDir, gitPath_);
+        target.metadata.extra["default_branch"] = defaultBranchOf(wsJson);
+        {
+            std::string embed = cmd.get("embed-patterns");
+        if (embed.empty()) embed = cmd.get("embed");
+            if (!embed.empty()) target.metadata.extra["embed_patterns"] = embed;
         }
 
         if (target.sync_to_directory) {

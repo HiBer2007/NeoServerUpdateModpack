@@ -13,6 +13,10 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <regex>
+#include <sstream>
+#include <stdexcept>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -45,72 +49,11 @@ void addFileToZip(libzippp::ZipArchive& zf,
     }
 }
 
-void addEmptyDirToZip(libzippp::ZipArchive& zf, const std::string& entryName) {
-    std::string e = entryName;
-    if (e.empty()) return;
-    if (e.back() != '/') e += '/';
-    if (!zf.addEntry(e)) {
-        throw std::runtime_error("Failed to add directory entry '" + e + "' to zip");
-    }
-}
-
 std::string fullPathForRel(const std::string& base, const std::string& rel) {
     std::string path = base;
     if (!path.empty() && path.back() != '/' && path.back() != '\\') path += '/';
     path += rel;
     return path;
-}
-
-void scanAndPackDirectory(libzippp::ZipArchive& zf,
-                          const std::string& buildDir,
-                          const std::string& overridePrefix) {
-    std::string normBuildDir = buildDir;
-    while (!normBuildDir.empty() &&
-           (normBuildDir.back() == '/' || normBuildDir.back() == '\\')) {
-        normBuildDir.pop_back();
-    }
-    if (normBuildDir.empty()) return;
-
-    QDirIterator it(QString::fromStdString(normBuildDir),
-        QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot,
-        QDirIterator::Subdirectories);
-
-    std::vector<std::string> emptyDirs;
-
-    while (it.hasNext()) {
-        it.next();
-        QFileInfo fi = it.fileInfo();
-        std::string fullPath = fi.absoluteFilePath().toStdString();
-        std::string rel = relativePath(normBuildDir, fullPath);
-        if (rel.empty()) continue;
-
-        // save/ 是 L3 存档同步的规则与源，不属于整合包内容
-        if (rel == "save" || rel.rfind("save/", 0) == 0
-            || rel.rfind("save\\", 0) == 0) {
-            continue;
-        }
-
-        if (fi.isDir()) {
-            emptyDirs.push_back(rel);
-            continue;
-        }
-        if (fi.isFile()) {
-            std::string entryName = overridePrefix + "/" + rel;
-            std::replace(entryName.begin(), entryName.end(), '\\', '/');
-            addFileToZip(zf, fullPath, entryName);
-        }
-    }
-
-    for (const auto& d : emptyDirs) {
-        std::string checkPath = fullPathForRel(normBuildDir, d);
-        QDirIterator childCheck(QString::fromStdString(checkPath),
-            QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-        if (!childCheck.hasNext()) {
-            std::string entryName = overridePrefix + "/" + d;
-            std::replace(entryName.begin(), entryName.end(), '\\', '/');
-            addEmptyDirToZip(zf, entryName);
-        }
-    }
 }
 
 std::string extraString(const json& extra, const char* key, const std::string& fallback = "") {
@@ -120,7 +63,58 @@ std::string extraString(const json& extra, const char* key, const std::string& f
     return fallback;
 }
 
-json collectFileIndex(const std::string& buildDir) {
+std::vector<std::string> splitPatterns(const std::string& raw) {
+    std::vector<std::string> patterns;
+    std::string current;
+    for (char c : raw) {
+        if (c == '\n' || c == '\r' || c == ';') {
+            const size_t begin = current.find_first_not_of(" \t");
+            if (begin != std::string::npos) {
+                const size_t end = current.find_last_not_of(" \t");
+                patterns.push_back(current.substr(begin, end - begin + 1));
+            }
+            current.clear();
+        } else {
+            current.push_back(c);
+        }
+    }
+    const size_t begin = current.find_first_not_of(" \t");
+    if (begin != std::string::npos) {
+        const size_t end = current.find_last_not_of(" \t");
+        patterns.push_back(current.substr(begin, end - begin + 1));
+    }
+    return patterns;
+}
+
+void validatePatterns(const std::vector<std::string>& patterns) {
+    for (const auto& pattern : patterns) {
+        try {
+            std::regex re(pattern, std::regex::ECMAScript);
+            (void)re;
+        } catch (const std::regex_error& error) {
+            throw std::runtime_error("invalid embed pattern '" + pattern + "': "
+                + error.what());
+        }
+    }
+}
+
+bool matchPattern(const std::vector<std::string>& patterns, const std::string& path,
+                  std::string& matched) {
+    for (const auto& pattern : patterns) {
+        try {
+            if (std::regex_search(path, std::regex(pattern, std::regex::ECMAScript))) {
+                matched = pattern;
+                return true;
+            }
+        } catch (const std::regex_error&) {
+            return false;
+        }
+    }
+    return false;
+}
+
+json collectFileIndex(const std::string& buildDir, const std::string& commit,
+                      const std::string& gitBranch) {
     json files = json::array();
     std::string root = buildDir;
     while (!root.empty() && (root.back() == '/' || root.back() == '\\')) root.pop_back();
@@ -143,14 +137,24 @@ json collectFileIndex(const std::string& buildDir) {
         }
         files.push_back({{"path", rel},
                          {"size", static_cast<long long>(fi.size())},
-                         {"sha256", hash}});
+                         {"sha256", hash},
+                         {"commit", commit},
+                         {"git_branch", gitBranch}});
     }
     return files;
 }
 
-json buildManifest(const NeoCore::ExportMetadata& meta, const json& files) {
+json buildManifest(const NeoCore::ExportMetadata& meta, const json& files,
+                   const json& embedded, const std::vector<std::string>& patterns) {
+    const json& extra = meta.extra;
+    const std::string commit = extraString(extra, "git_commit");
+    const std::string gitBranch = extraString(extra, "git_branch");
+    const std::string defaultBranch = extraString(extra, "default_branch");
+    const std::string repo = extraString(extra, "repo");
+
     json j;
-    j["schema"] = 1;
+    j["pack_format"] = 2;
+    j["schema"] = 2;
     j["type"] = "nsum";
 
     j["name"] = meta.name.empty() ? "NSUM" : meta.name;
@@ -159,17 +163,25 @@ json buildManifest(const NeoCore::ExportMetadata& meta, const json& files) {
     j["gameVersion"] = meta.game_version;
     j["modloader"] = meta.modloader;
     j["modloaderVersion"] = meta.modloader_version;
-    j["core"] = extraString(meta.extra, "core");
+    j["core"] = extraString(extra, "core");
     j["description"] = meta.description.empty() ? meta.summary : meta.description;
 
-    const json& extra = meta.extra;
-    j["instance"] = {
-        {"repo", extraString(extra, "repo")},
+    j["repository"] = {
+        {"url", repo},
+        {"default_branch", defaultBranch},
         {"branch", extraString(extra, "branch", "base")},
-        {"gitBranch", extraString(extra, "git_branch")},
+        {"git_branch", gitBranch},
+        {"commit", commit}
+    };
+    j["instance"] = {
+        {"repo", repo},
+        {"branch", extraString(extra, "branch", "base")},
+        {"gitBranch", gitBranch},
         {"branchType", extraString(extra, "branch_type", "universal")}
     };
     j["files"] = files;
+    j["embedded"] = embedded;
+    j["embed_patterns"] = patterns;
     j["runtime"] = {
         {"minVersion", extraString(extra, "runtime_min_version", "1.0.0")}
     };
@@ -241,15 +253,39 @@ public:
         }
 
         try {
-            json manifest = buildManifest(metadata, collectFileIndex(build_dir));
+            const std::string commit = extraString(metadata.extra, "git_commit");
+            const std::string gitBranch = extraString(metadata.extra, "git_branch");
+            const std::vector<std::string> patterns =
+                splitPatterns(extraString(metadata.extra, "embed_patterns"));
+            validatePatterns(patterns);
+
+            const json files = collectFileIndex(build_dir, commit, gitBranch);
+            json embedded = json::array();
+            if (!patterns.empty()) {
+                for (const auto& file : files) {
+                    const std::string rel = file.value("path", "");
+                    std::string matched;
+                    if (rel.empty() || !matchPattern(patterns, rel, matched)) continue;
+                    addFileToZip(zf, fullPathForRel(build_dir, rel), "overrides/" + rel);
+                    embedded.push_back({{"path", rel},
+                                        {"size", file.value("size", 0LL)},
+                                        {"sha256", file.value("sha256", "")},
+                                        {"commit", commit},
+                                        {"git_branch", gitBranch},
+                                        {"pattern", matched}});
+                }
+            }
+
+            json manifest = buildManifest(metadata, files, embedded, patterns);
             std::string manifestStr = manifest.dump(2);
             zf.addData("nsum.index.json", manifestStr.data(), manifestStr.size());
-            scanAndPackDirectory(zf, build_dir, "overrides");
 
             if (zf.close() != LIBZIPPP_OK) {
                 CLogger::Error("NSUM export: failed to close zip archive");
                 return false;
             }
+            CLogger::Info("NSUM export: embedded {} file(s) of {}, patterns={}",
+                embedded.size(), files.size(), patterns.size());
         } catch (const std::exception& e) {
             zf.close();
             CLogger::Error("NSUM export: exception during packaging: {}", e.what());
@@ -264,10 +300,13 @@ public:
                                      const NeoCore::ExportMetadata& metadata,
                                      const std::string& target_dir = "") override
     {
-        (void)metadata;
         (void)target_dir;
         nlohmann::json entries = nlohmann::json::array();
         entries.push_back({{"path", "nsum.index.json"}, {"dir", false}, {"umd", ""}});
+
+        const std::vector<std::string> patterns =
+            splitPatterns(extraString(metadata.extra, "embed_patterns"));
+        if (patterns.empty()) return entries;
 
         std::string normBuildDir = build_dir;
         while (!normBuildDir.empty()
@@ -277,8 +316,7 @@ public:
         if (!normBuildDir.empty()
             && QFileInfo::exists(QString::fromStdString(normBuildDir))) {
             QDirIterator it(QString::fromStdString(normBuildDir),
-                QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot,
-                QDirIterator::Subdirectories);
+                QDir::Files, QDirIterator::Subdirectories);
             while (it.hasNext()) {
                 it.next();
                 QFileInfo fi = it.fileInfo();
@@ -286,9 +324,11 @@ public:
                     fi.absoluteFilePath().toStdString());
                 if (rel.empty()) continue;
                 std::replace(rel.begin(), rel.end(), '\\', '/');
+                std::string matched;
+                if (!matchPattern(patterns, rel, matched)) continue;
                 entries.push_back({
                     {"path", "overrides/" + rel},
-                    {"dir", fi.isDir()},
+                    {"dir", false},
                     {"umd", ""}
                 });
             }

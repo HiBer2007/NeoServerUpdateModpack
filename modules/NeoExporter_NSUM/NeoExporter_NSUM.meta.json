@@ -9,6 +9,7 @@
     { "key": "name", "label": "整合包名称", "required": true, "group": "基本信息", "placeholder": "例如: NeoServer" },
     { "key": "version", "label": "版本号", "required": true, "group": "基本信息", "placeholder": "例如: 1.0.0" },
     { "key": "author", "label": "作者", "required": false, "group": "基本信息", "placeholder": "作者名称" },
-    { "key": "description", "label": "整合包描述", "required": false, "group": "可选信息", "type": "multiline", "placeholder": "整合包描述 (可选)" }
+    { "key": "description", "label": "整合包描述", "required": false, "group": "可选信息", "type": "multiline", "placeholder": "整合包描述 (可选)" },
+    { "key": "embed_patterns", "label": "内嵌文件正则", "required": false, "group": "高级", "type": "multiline", "placeholder": "每行一个正则；留空 = 只登记仓库/文件清单，不内嵌文件（推荐）。例如：^config/.*\\.json$" }
   ]
 }
