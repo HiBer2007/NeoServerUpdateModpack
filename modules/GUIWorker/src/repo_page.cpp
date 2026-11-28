@@ -1,4 +1,5 @@
 #include "repo_page.h"
+#include "ssh_key_dialog.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -115,7 +116,12 @@ RepoPage::RepoPage(QWidget* parent)
     remoteEdit_->setPlaceholderText(
         QStringLiteral("\u8f93\u5165 Git \u4ed3\u5e93\u5730\u5740 (\u4f8b\u5982: https://github.com/user/repo.git)"));
     remoteEdit_->setMinimumHeight(30);
-    remoteLayout->addWidget(remoteEdit_);
+    auto* remoteRow = new QHBoxLayout();
+    sshKeyBtn_ = new QPushButton(QStringLiteral("SSH \u5bc6\u94a5..."), remotePage);
+    sshKeyBtn_->setMinimumHeight(30);
+    remoteRow->addWidget(remoteEdit_, 1);
+    remoteRow->addWidget(sshKeyBtn_);
+    remoteLayout->addLayout(remoteRow);
     inputStack_->addWidget(remotePage);
 
     auto* localPage = new QWidget(this);
@@ -164,6 +170,7 @@ RepoPage::RepoPage(QWidget* parent)
         });
     connect(localBrowse_, &QPushButton::clicked, this, &RepoPage::onBrowseLocal);
     connect(cacheBrowse_, &QPushButton::clicked, this, &RepoPage::onBrowseCache);
+    connect(sshKeyBtn_, &QPushButton::clicked, this, &RepoPage::onSshKey);
     connect(remoteEdit_, &QLineEdit::textChanged, this, &RepoPage::onUrlChanged);
     connect(localEdit_, &QLineEdit::textChanged, this, &RepoPage::onUrlChanged);
     connect(cacheEdit_, &QLineEdit::textChanged, this, &RepoPage::onUrlChanged);
@@ -487,6 +494,12 @@ void RepoPage::saveRecentRepo(const QString& url, const QString& cachePath)
         cachePath.toStdString());
 
     loadRecentRepos(true);
+}
+
+void RepoPage::onSshKey()
+{
+    SshKeyDialog dialog(this);
+    dialog.exec();
 }
 
 } // namespace GUIWorker

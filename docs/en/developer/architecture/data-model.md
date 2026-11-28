@@ -27,6 +27,20 @@ erDiagram
 
 Workspace-level config: workspace (mc/modloader), git (remote/default_branch), branches[], sync_policies, export.metadata.
 
+`git.remotes` records every access URL for the same repository in priority order; `git.remote` remains the primary legacy field. RepoEditor saves, branch writes and `exec repo-remotes` keep all three address types:
+
+```json
+"git": {
+  "remote": "git@github.com:owner/repo.git",
+  "remotes": [
+    { "type": "ssh",   "url": "git@github.com:owner/repo.git" },
+    { "type": "https", "url": "https://github.com/owner/repo.git" },
+    { "type": "http",  "url": "http://github.com/owner/repo.git" }
+  ],
+  "default_branch": "main"
+}
+```
+
 - `branches[].parent` forms an inheritance chain (cycles rejected);
 - `branches[].type` decides client/server use;
 - Branch-level policies can override workspace policies.

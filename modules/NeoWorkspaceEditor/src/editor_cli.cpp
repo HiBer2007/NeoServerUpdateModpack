@@ -36,6 +36,8 @@
 
 #include <install_config.h>
 #include <workspace_manager.h>
+#include <repo_urls.h>
+#include <ssh_key.h>
 
 namespace fs = std::filesystem;
 using nlohmann::json;
@@ -1074,6 +1076,8 @@ void printUsage()
         "  NeoWorkspaceEditor.exe exec git-checkout --branch <b> [--create] [--start <ref>] [--force]\n"
         "  NeoWorkspaceEditor.exe exec git-reset --mode soft|mixed|hard --ref <ref> [--confirm-hard]\n"
         "  NeoWorkspaceEditor.exe exec git-config --key <k> [--value <v>] [--global]\n"
+        "  NeoWorkspaceEditor.exe exec repo-remotes [--ssh <u>] [--https <u>] [--http <u>] [--primary ssh|https|http]\n"
+        "  NeoWorkspaceEditor.exe exec git-ssh-key [--list|--generate|--public-key|--test|--configure] [--path <p>] [--host <h>]\n"
         "  NeoWorkspaceEditor.exe info git\n"
         "  NeoWorkspaceEditor.exe help\n"
         "\n"
@@ -1165,8 +1169,49 @@ int runExec(const ParsedArgs& args, json& outData)
 {
     const fs::path repo = resolveRepo(args);
     const std::string verb = args.verb;
+    json wsRoot = loadJson(workspacePath(repo));
+    if (!wsRoot.is_object()) wsRoot = json::object();
     if (verb.rfind("git-", 0) == 0) {
         return runGitVerb(repo, args, outData);
+    }
+
+    if (verb == "repo-remotes") {
+        std::vector<NeoWorkspace::RepoUrl> urls = NeoWorkspace::workspaceRepoUrls(wsRoot);
+        if (urls.empty()) {
+            urls = NeoWorkspace::inferRepoUrls(wsRoot.value("git", json::object())
+                .value("remote", ""));
+        }
+        const auto applyOverride = [&urls](const std::string& type, const std::string& value) {
+            urls.erase(std::remove_if(urls.begin(), urls.end(),
+                [&type](const NeoWorkspace::RepoUrl& item) { return item.type == type; }), urls.end());
+            if (value.empty()) return;
+            urls.push_back({type, value});
+            for (const auto& inferred : NeoWorkspace::inferRepoUrls(value)) {
+                const bool exists = std::any_of(urls.begin(), urls.end(),
+                    [&inferred](const NeoWorkspace::RepoUrl& item) { return item.url == inferred.url; });
+                if (!exists) urls.push_back(inferred);
+            }
+        };
+        if (args.has("ssh")) applyOverride("ssh", args.get("ssh"));
+        if (args.has("https")) applyOverride("https", args.get("https"));
+        if (args.has("http")) applyOverride("http", args.get("http"));
+        const std::string primary = args.get("primary", "");
+        if (!primary.empty()) {
+            const auto it = std::find_if(urls.begin(), urls.end(),
+                [&primary](const NeoWorkspace::RepoUrl& item) { return item.type == primary; });
+            if (it == urls.end()) fail("primary type not present in remotes: " + primary);
+            std::rotate(urls.begin(), it, it + 1);
+        }
+        if (urls.empty()) fail("no repository URLs available");
+        NeoWorkspace::ensureWorkspaceRepoUrls(wsRoot);
+        wsRoot["git"]["remotes"] = NeoWorkspace::repoUrlsJson(urls);
+        wsRoot["git"]["remote"] = urls.front().url;
+        writeJson(workspacePath(repo), wsRoot);
+        outData = {
+            {"remote", urls.front().url},
+            {"remotes", NeoWorkspace::repoUrlsJson(urls)}
+        };
+        return 0;
     }
 
     if (verb == "validate") {
@@ -1271,6 +1316,7 @@ int runExec(const ParsedArgs& args, json& outData)
         if (!workspace.contains("branches") || !workspace["branches"].is_array())
             workspace["branches"] = json::array();
         workspace["branches"].push_back(branch);
+        NeoWorkspace::ensureWorkspaceRepoUrls(workspace);
         writeJson(workspacePath(repo), workspace);
 
         std::error_code ec;
@@ -1314,6 +1360,7 @@ int runExec(const ParsedArgs& args, json& outData)
             branch["hidden"] = (value == "true" || value == "1" || value == "yes");
         }
 
+        NeoWorkspace::ensureWorkspaceRepoUrls(workspace);
         writeJson(workspacePath(repo), workspace);
         outData = branchSummary(repo, workspace, branch);
         return 0;
@@ -1331,6 +1378,7 @@ int runExec(const ParsedArgs& args, json& outData)
         for (auto& branch : workspace["branches"]) {
             if (branch.value("parent", "") == name) branch["parent"] = to;
         }
+        NeoWorkspace::ensureWorkspaceRepoUrls(workspace);
         writeJson(workspacePath(repo), workspace);
 
         std::error_code ec;
@@ -1364,6 +1412,7 @@ int runExec(const ParsedArgs& args, json& outData)
             }
         }
         workspace["branches"].erase(index);
+        NeoWorkspace::ensureWorkspaceRepoUrls(workspace);
         writeJson(workspacePath(repo), workspace);
 
         std::error_code ec;
@@ -1615,6 +1664,90 @@ bool is_cli_invocation(int argc, char* argv[])
     return first == "info" || first == "exec" || first == "help";
 }
 
+int runSshKeyVerb(const ParsedArgs& args, json& outData)
+{
+    NeoWorkspace::SshConfig config = NeoWorkspace::loadSshConfig();
+    if (args.has("ssh")) config.sshPath = args.get("ssh");
+    if (args.has("host")) config.host = args.get("host");
+    if (args.has("path")) config.keyPath = args.get("path");
+    if (config.keyPath.empty()) config.keyPath = NeoWorkspace::defaultSshKeyPath();
+    if (config.host.empty()) config.host = "github.com";
+
+    std::string action = "list";
+    if (args.flag("generate")) action = "generate";
+    else if (args.flag("public-key")) action = "public-key";
+    else if (args.flag("test")) action = "test";
+    else if (args.flag("configure")) action = "configure";
+
+    outData = {
+        {"host", config.host},
+        {"key_path", config.keyPath},
+        {"ssh_path", config.sshPath.empty() ? NeoWorkspace::defaultSshPath() : config.sshPath},
+        {"config_path", NeoWorkspace::sshConfigPath()}
+    };
+
+    std::string error;
+    if (action == "generate") {
+        if (!NeoWorkspace::generateSshKey(config.keyPath, args.get("comment", ""), error)) {
+            outData["error"] = error;
+            return 1;
+        }
+        config.sshPath = outData["ssh_path"];
+        config.gitSshCommand = NeoWorkspace::effectiveSshCommand(config);
+        std::string saveError;
+        if (!NeoWorkspace::saveSshConfig(config, saveError)) {
+            outData["error"] = saveError;
+            return 1;
+        }
+        outData["public_key"] = NeoWorkspace::readSshPublicKey(config.keyPath);
+        return 0;
+    }
+    if (action == "public-key") {
+        outData["public_key"] = NeoWorkspace::readSshPublicKey(config.keyPath);
+        if (outData["public_key"].get<std::string>().empty()) {
+            outData["error"] = "public key not found: " + config.keyPath;
+            return 1;
+        }
+        return 0;
+    }
+    if (action == "configure") {
+        if (!NeoWorkspace::configureSshHost(config.host, config.keyPath, error)) {
+            outData["error"] = error;
+            return 1;
+        }
+        config.gitSshCommand = NeoWorkspace::effectiveSshCommand(config);
+        std::string saveError;
+        if (!NeoWorkspace::saveSshConfig(config, saveError)) {
+            outData["error"] = saveError;
+            return 1;
+        }
+        outData["identity_file"] = config.keyPath;
+        return 0;
+    }
+    if (action == "test") {
+        std::string output;
+        if (!NeoWorkspace::testSshConnection(config.host, config.sshPath, config.keyPath, output, error)) {
+            outData["output"] = output;
+            outData["error"] = error;
+            return 1;
+        }
+        outData["output"] = output;
+        return 0;
+    }
+
+    json keys = json::array();
+    for (const auto& key : NeoWorkspace::listSshKeys()) {
+        keys.push_back({
+            {"path", key.path},
+            {"public_key", key.publicKey},
+            {"comment", key.comment},
+            {"fingerprint", key.fingerprint}
+        });
+    }
+    outData["keys"] = keys;
+    return 0;
+}
+
 int run(int argc, char* argv[])
 {
     setupConsole();
@@ -1666,6 +1799,14 @@ int run(int argc, char* argv[])
     }
     if (args.command == "exec") {
         try {
+            if (args.verb == "git-ssh-key") {
+                json data;
+                const int code = runSshKeyVerb(args, data);
+                std::string error;
+                if (code != 0 && data.contains("error") && data["error"].is_string())
+                    error = data["error"].get<std::string>();
+                return emitResult(code == 0, commandName, fs::path(), data, error, code, textMode);
+            }
             fs::path repo = resolveRepo(args);
             json data;
             const int code = runExec(args, data);

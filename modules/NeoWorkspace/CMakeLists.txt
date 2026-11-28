@@ -4,6 +4,8 @@ add_library(NeoWorkspace STATIC
     src/sync_engine.cpp
     src/file_scanner.cpp
     src/history_store.cpp
+    src/repo_urls.cpp
+    src/ssh_key.cpp
 )
 target_include_directories(NeoWorkspace
     PUBLIC  include

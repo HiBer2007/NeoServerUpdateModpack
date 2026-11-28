@@ -8,6 +8,8 @@
 #include <IModpackExporter.h>
 
 #include <workspace_manager.h>
+#include <repo_urls.h>
+#include <ssh_key.h>
 #include <git_operations.h>
 #include <history_store.h>
 
@@ -411,6 +413,39 @@ static std::string defaultBranchOf(const std::string& wsJson)
     return "main";
 }
 
+static std::string workspaceRemoteOf(const std::string& wsJson)
+{
+    if (wsJson.empty()) return {};
+    try {
+        std::ifstream f(wsJson);
+        if (!f.is_open()) return {};
+        nlohmann::json j;
+        f >> j;
+        if (j.contains("git") && j["git"].is_object()) {
+            return j["git"].value("remote", "");
+        }
+    } catch (...) {
+    }
+    return {};
+}
+
+static std::string repoUrlsOf(const std::string& wsJson, const std::string& primary)
+{
+    std::vector<NeoWorkspace::RepoUrl> urls;
+    if (!wsJson.empty()) {
+        try {
+            std::ifstream f(wsJson);
+            if (f.is_open()) {
+                nlohmann::json j;
+                f >> j;
+                urls = NeoWorkspace::workspaceRepoUrls(j);
+            }
+        } catch (...) {
+        }
+    }
+    if (urls.empty()) urls = NeoWorkspace::inferRepoUrls(primary);
+    return NeoWorkspace::repoUrlsJson(urls).dump();
+}
 static std::string gitHeadOf(const std::string& workDir, const std::string& gitPath)
 {
     QProcess ps;
@@ -508,6 +543,8 @@ int CliDispatcher::dispatchExec(const CliCommand& cmd)
     if (cmd.verb == "git-update")         return cmdGitUpdate(cmd);
     if (cmd.verb == "repo-trust")         return cmdRepoTrust(cmd);
     if (cmd.verb == "repo-trust-check")   return cmdRepoTrustCheck(cmd);
+    if (cmd.verb == "repo-remotes")       return cmdRepoRemotes(cmd);
+    if (cmd.verb == "git-ssh-key")        return cmdGitSshKey(cmd);
     return notImplemented(cmd);
 }
 
@@ -1918,6 +1955,187 @@ int CliDispatcher::cmdInfoDebug(const CliCommand& cmd)
 bool CliDispatcher::isCancelled() const { return cancelToken_.is_cancelled(); }
 void CliDispatcher::cancel() { cancelToken_.request_cancel(); }
 
+int CliDispatcher::cmdRepoRemotes(const CliCommand& cmd)
+{
+    std::string repo = cmd.get("repo");
+    if (repo.empty()) repo = fs::current_path().u8string();
+    const fs::path repoPath = fs::u8path(resolveRepoPath(repo));
+    const fs::path wsPath = repoPath / "workspace.json";
+    if (!pathExists(wsPath)) {
+        CliOutput::error("workspace.json not found: " + wsPath.u8string());
+        return 1;
+    }
+
+    nlohmann::json workspace;
+    try {
+        std::ifstream input(wsPath);
+        input >> workspace;
+    } catch (const std::exception& ex) {
+        CliOutput::error(std::string("failed to read workspace.json: ") + ex.what());
+        return 1;
+    }
+
+    std::vector<NeoWorkspace::RepoUrl> urls = NeoWorkspace::workspaceRepoUrls(workspace);
+    if (urls.empty()) {
+        urls = NeoWorkspace::inferRepoUrls(workspace.value("git", nlohmann::json::object())
+            .value("remote", ""));
+    }
+
+    const auto applyOverride = [&urls](const std::string& type, const std::string& value) {
+        urls.erase(std::remove_if(urls.begin(), urls.end(),
+            [&type](const NeoWorkspace::RepoUrl& item) { return item.type == type; }), urls.end());
+        if (value.empty()) return;
+        urls.push_back({type, value});
+        for (const auto& inferred : NeoWorkspace::inferRepoUrls(value)) {
+            const bool exists = std::any_of(urls.begin(), urls.end(),
+                [&inferred](const NeoWorkspace::RepoUrl& item) {
+                    return item.url == inferred.url;
+                });
+            if (!exists) urls.push_back(inferred);
+        }
+    };
+    if (cmd.has("ssh")) applyOverride("ssh", cmd.get("ssh"));
+    if (cmd.has("https")) applyOverride("https", cmd.get("https"));
+    if (cmd.has("http")) applyOverride("http", cmd.get("http"));
+
+    const std::string primary = cmd.get("primary");
+    if (!primary.empty()) {
+        const auto it = std::find_if(urls.begin(), urls.end(),
+            [&primary](const NeoWorkspace::RepoUrl& item) { return item.type == primary; });
+        if (it == urls.end()) {
+            CliOutput::error("primary type not present in remotes: " + primary);
+            return 1;
+        }
+        std::rotate(urls.begin(), it, it + 1);
+    }
+    if (urls.empty()) {
+        CliOutput::error("no repository URLs available");
+        return 1;
+    }
+
+    NeoWorkspace::ensureWorkspaceRepoUrls(workspace);
+    auto& git = workspace["git"];
+    git["remotes"] = NeoWorkspace::repoUrlsJson(urls);
+    git["remote"] = urls.front().url;
+
+    try {
+        std::ofstream output(wsPath);
+        output << workspace.dump(2) << "\n";
+    } catch (const std::exception& ex) {
+        CliOutput::error(std::string("failed to write workspace.json: ") + ex.what());
+        return 1;
+    }
+
+    CliOutput::jsonBlock({
+        {"category", "exec"},
+        {"command", "repo-remotes"},
+        {"data", {
+            {"repo", repoPath.u8string()},
+            {"remote", urls.front().url},
+            {"remotes", NeoWorkspace::repoUrlsJson(urls)}
+        }}
+    });
+    return 0;
+}
+
+int CliDispatcher::cmdGitSshKey(const CliCommand& cmd)
+{
+    NeoWorkspace::SshConfig config = NeoWorkspace::loadSshConfig();
+    if (cmd.has("ssh")) config.sshPath = cmd.get("ssh");
+    if (cmd.has("host")) config.host = cmd.get("host");
+    if (cmd.has("path")) config.keyPath = cmd.get("path");
+    if (config.keyPath.empty()) config.keyPath = NeoWorkspace::defaultSshKeyPath();
+    if (config.host.empty()) config.host = "github.com";
+
+    std::string error;
+    std::string action = "list";
+    if (cmd.has("generate")) action = "generate";
+    else if (cmd.has("public-key")) action = "public-key";
+    else if (cmd.has("test")) action = "test";
+    else if (cmd.has("configure")) action = "configure";
+    else if (cmd.has("list")) action = "list";
+
+    nlohmann::json data;
+    data["host"] = config.host;
+    data["key_path"] = config.keyPath;
+    data["ssh_path"] = config.sshPath.empty() ? NeoWorkspace::defaultSshPath() : config.sshPath;
+    data["config_path"] = NeoWorkspace::sshConfigPath();
+
+    bool ok = true;
+    if (action == "generate") {
+        if (config.keyPath.empty()) {
+            error = "cannot resolve default key path";
+            ok = false;
+        } else {
+            ok = NeoWorkspace::generateSshKey(config.keyPath, cmd.get("comment"), error);
+            if (ok) {
+                config.keyPath = cmd.get("path").empty() ? config.keyPath : cmd.get("path");
+                config.sshPath = data["ssh_path"];
+                config.gitSshCommand = NeoWorkspace::effectiveSshCommand(config);
+                std::string saveError;
+                if (!NeoWorkspace::saveSshConfig(config, saveError)) {
+                    ok = false;
+                    error = saveError;
+                }
+                data["public_key"] = NeoWorkspace::readSshPublicKey(config.keyPath);
+            }
+        }
+    } else if (action == "public-key") {
+        data["public_key"] = NeoWorkspace::readSshPublicKey(config.keyPath);
+        if (data["public_key"].get<std::string>().empty()) {
+            ok = false;
+            error = "public key not found: " + config.keyPath;
+        }
+    } else if (action == "configure") {
+        ok = NeoWorkspace::configureSshHost(config.host, config.keyPath, error);
+        if (ok) {
+            config.gitSshCommand = NeoWorkspace::effectiveSshCommand(config);
+            std::string saveError;
+            if (!NeoWorkspace::saveSshConfig(config, saveError)) {
+                ok = false;
+                error = saveError;
+            }
+            data["ssh_config"] = config.host;
+            data["identity_file"] = config.keyPath;
+        }
+    } else if (action == "test") {
+        std::string output;
+        ok = NeoWorkspace::testSshConnection(config.host, config.sshPath, config.keyPath, output, error);
+        data["output"] = output;
+    } else {
+        nlohmann::json keys = nlohmann::json::array();
+        for (const auto& key : NeoWorkspace::listSshKeys()) {
+            keys.push_back({
+                {"path", key.path},
+                {"public_key", key.publicKey},
+                {"comment", key.comment},
+                {"fingerprint", key.fingerprint}
+            });
+        }
+        data["keys"] = keys;
+    }
+
+    if (!ok) {
+        data["error"] = error;
+        CliOutput::jsonBlock({
+            {"category", "exec"},
+            {"command", "git-ssh-key"},
+            {"ok", false},
+            {"data", data}
+        });
+        CliOutput::error(error);
+        return 1;
+    }
+    data["ok"] = true;
+    CliOutput::jsonBlock({
+        {"category", "exec"},
+        {"command", "git-ssh-key"},
+        {"ok", true},
+        {"data", data}
+    });
+    return 0;
+}
+
 std::string CliDispatcher::resolveWorkDir(const std::string& repoUrl) const
 {
     std::string base = NeoBuild::getCacheDir();
@@ -2082,7 +2300,14 @@ int CliDispatcher::cmdBuild(const CliCommand& cmd)
     target.metadata.extra["branch_type"] = branchTypeOf(wsJson, modpackBranch);
     target.metadata.extra["core"] = branchCoreOf(wsJson, modpackBranch);
     // 包内记录用户给定的仓库地址（而不是本地缓存路径），否则客户端会同步到过期缓存。
-    target.metadata.extra["repo"] = repoUrl.empty() ? workDir : repoUrl;
+    std::string exportRepo = repoUrl;
+    if (exportRepo.empty() || pathIsDir(fs::u8path(exportRepo))) {
+        const std::string remote = workspaceRemoteOf(wsJson);
+        if (!remote.empty()) exportRepo = remote;
+    }
+    if (exportRepo.empty()) exportRepo = workDir;
+    target.metadata.extra["repo"] = exportRepo;
+    target.metadata.extra["repo_urls"] = repoUrlsOf(wsJson, exportRepo);
 target.metadata.extra["git_commit"] = gitHeadOf(workDir, gitPath_);
     target.metadata.extra["default_branch"] = defaultBranchOf(wsJson);
     {
@@ -2173,6 +2398,8 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
 
     std::string workDir;
     std::string buildOutputDir;
+    NeoCore::ExportMetadata builtMeta;
+    bool hasBuiltMeta = false;
 
     if (!repoUrl.empty() && !modpackBranch.empty()) {
         workDir = ensureRepoCloned(repoUrl, gitBranch);
@@ -2209,8 +2436,13 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
         target.metadata.extra["git_branch"] = gitBranch;
         target.metadata.extra["branch_type"] = branchTypeOf(wsJson, modpackBranch);
         target.metadata.extra["core"] = branchCoreOf(wsJson, modpackBranch);
-        if (!target.metadata.extra.contains("repo")) {
-            target.metadata.extra["repo"] = workDir;
+        if (!target.metadata.extra.contains("repo")
+            || !target.metadata.extra["repo"].is_string()
+            || target.metadata.extra["repo"].get<std::string>().empty()) {
+            std::string exportRepo = workspaceRemoteOf(wsJson);
+        if (exportRepo.empty()) exportRepo = workDir;
+        target.metadata.extra["repo"] = exportRepo;
+        target.metadata.extra["repo_urls"] = repoUrlsOf(wsJson, exportRepo);
         }
         target.metadata.extra["git_commit"] = gitHeadOf(workDir, gitPath_);
         target.metadata.extra["default_branch"] = defaultBranchOf(wsJson);
@@ -2249,6 +2481,8 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
         }
 
         buildOutputDir = buildResult.outputDir;
+        builtMeta = target.metadata;
+        hasBuiltMeta = true;
         CliOutput::success("Build complete. Exporting...");
     } else {
         CliOutput::info("Standalone export mode. Searching for workspace...");
@@ -2298,9 +2532,13 @@ int CliDispatcher::cmdExport(const CliCommand& cmd)
     exporter.scanExporters(exportersDir);
 
     NeoCore::ExportMetadata meta;
-    meta.name = "NeoServer";
-    meta.version = "1.0";
-    meta.game_version = "1.21.4";
+    if (hasBuiltMeta) {
+        meta = builtMeta;
+    } else {
+        meta.name = "NeoServer";
+        meta.version = "1.0";
+        meta.game_version = "1.21.4";
+    }
 
     if (!workDir.empty()) {
         fillExportMetadata(meta, findWorkspaceJson(workDir));

@@ -53,6 +53,8 @@ flowchart LR
 | `include/sync_policy.h` | `SyncPolicy`、文件/目录策略 |
 | `include/file_scanner.h` | `FileScanner`、`FileEntry`、`DiffResult` |
 | `include/history_store.h` | `HistoryStore`、`RecentRepo` |
+| `include/repo_urls.h` | `RepoUrl`、多协议地址推导/读写 |
+| `include/ssh_key.h` | `SshConfig`、密钥生成/测试/ssh config |
 | `src/*.cpp` | 实现 |
 
 ## 构建集成

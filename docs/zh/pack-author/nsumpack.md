@@ -32,7 +32,12 @@ updated: 2026-11-27
   "modloader": "neoforge",
   "modloaderVersion": "21.1.209",
   "repository": {
-    "url": "https://github.com/owner/repo.git",
+    "url": "git@github.com:owner/repo.git",
+    "urls": [
+      { "type": "ssh", "url": "git@github.com:owner/repo.git" },
+      { "type": "https", "url": "https://github.com/owner/repo.git" },
+      { "type": "http", "url": "http://github.com/owner/repo.git" }
+    ],
     "default_branch": "main",
     "branch": "base",
     "git_branch": "main",
@@ -52,7 +57,8 @@ updated: 2026-11-27
 | 字段 | 说明 |
 |---|---|
 | `pack_format` / `schema` | 文件结构版本（当前 2），与整合包版本无关 |
-| `repository.url` | 仓库地址 |
+| `repository.url` | 主仓库地址（旧字段，仍写入；新客户端优先 `urls`） |
+| `repository.urls` | 仓库地址列表：`ssh` / `https` / `http` 三种，保序；客户端按顺序回退 |
 | `repository.default_branch` | 默认 Git 分支 |
 | `repository.branch` | 整合包分支 |
 | `repository.git_branch` / `commit` | 构建所用 Git 分支与提交 |

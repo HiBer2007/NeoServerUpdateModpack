@@ -33,7 +33,12 @@ translation_of: /zh/pack-author/nsumpack.md
   "modloader": "neoforge",
   "modloaderVersion": "21.1.209",
   "repository": {
-    "url": "https://github.com/owner/repo.git",
+    "url": "git@github.com:owner/repo.git",
+    "urls": [
+      { "type": "ssh", "url": "git@github.com:owner/repo.git" },
+      { "type": "https", "url": "https://github.com/owner/repo.git" },
+      { "type": "http", "url": "http://github.com/owner/repo.git" }
+    ],
     "default_branch": "main",
     "branch": "base",
     "git_branch": "main",
@@ -53,7 +58,8 @@ translation_of: /zh/pack-author/nsumpack.md
 | Field | Description |
 |---|---|
 | `pack_format` / `schema` | File structure version (2), unrelated to pack version |
-| `repository.url` | Repository URL |
+| `repository.url` | Primary repository URL (legacy field, still written; clients prefer `urls`) |
+| `repository.urls` | Ordered URL list: `ssh` / `https` / `http`; clients fall back in order |
 | `repository.default_branch` | Default Git branch |
 | `repository.branch` | Modpack branch |
 | `repository.git_branch` / `commit` | Git branch and commit used to build |

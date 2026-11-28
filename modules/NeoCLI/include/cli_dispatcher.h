@@ -49,6 +49,8 @@ private:
     int cmdGitUpdate(const CliCommand& cmd);
     int cmdRepoTrust(const CliCommand& cmd);
     int cmdRepoTrustCheck(const CliCommand& cmd);
+    int cmdRepoRemotes(const CliCommand& cmd);
+    int cmdGitSshKey(const CliCommand& cmd);
 
     int notImplemented(const CliCommand& cmd);
 

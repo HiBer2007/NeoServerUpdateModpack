@@ -8,6 +8,7 @@
 #include <QSplitter>
 
 #include <logger.h>
+#include <repo_urls.h>
 
 namespace GUIWorker {
 
@@ -179,6 +180,7 @@ nlohmann::json RepoEditor::saveToJson() const
 
     config["git"]["remote"] = remoteEdit_->text().toStdString();
     config["git"]["default_branch"] = defaultBranchEdit_->text().toStdString();
+    NeoWorkspace::ensureWorkspaceRepoUrls(config);
 
     config["custom_mods"]["enabled"] = !customModsPathEdit_->text().isEmpty();
     config["custom_mods"]["path"] = customModsPathEdit_->text().toStdString();

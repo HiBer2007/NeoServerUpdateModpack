@@ -63,6 +63,7 @@
 #include "git_panel.h"
 #include "branch_meta_dialog.h"
 #include <gitignore_dialog.h>
+#include <ssh_key_dialog.h>
 
 namespace {
 
@@ -491,6 +492,12 @@ void EditorWindow::buildMenus()
     auto* textEditAct = ignoreMenu->addAction("\u76f4\u63a5\u7f16\u8f91(&T)...");
     connect(textEditAct, &QAction::triggered, this, [this]() {
         openGitIgnoreDialog(1);
+    });
+
+    auto* sshKeyAct = gitMenu->addAction("SSH \u5bc6\u94a5(&K)...");
+    connect(sshKeyAct, &QAction::triggered, this, [this]() {
+        GUIWorker::SshKeyDialog dialog(this);
+        dialog.exec();
     });
 
     auto* editMenu = menuBar()->addMenu("编辑(&E)");

@@ -116,6 +116,35 @@ const NeoWorkspace::SyncPolicy policy = manager.syncPolicy("server-prod");
 
 `NeoBuild::SyncPolicyExecutor` consumes exactly this structure, so a GUI preview and a real build see the same merged policy.
 
+## Repository URLs and SSH keys
+
+```cpp
+#include <repo_urls.h>
+#include <ssh_key.h>
+
+auto urls = NeoWorkspace::inferRepoUrls("git@github.com:owner/repo.git");
+nlohmann::json workspace = NeoWorkspace::repoUrlsJson(urls);
+NeoWorkspace::ensureWorkspaceRepoUrls(workspace);
+
+const std::string key = NeoWorkspace::defaultSshKeyPath();
+std::string error;
+NeoWorkspace::generateSshKey(key, "nsum", error);
+NeoWorkspace::configureSshHost("github.com", key, error);
+NeoWorkspace::applySshEnvironment(); // process-wide GIT_SSH_COMMAND
+```
+
+| API | Signature | Description |
+|---|---|---|
+| `inferRepoUrls` | `std::vector<RepoUrl> inferRepoUrls(const std::string& primary)` | Derives ssh/https/http from a primary URL |
+| `workspaceRepoUrls` | `std::vector<RepoUrl> workspaceRepoUrls(const nlohmann::json&)` | Reads `git.remotes`, falls back to `git.remote` |
+| `ensureWorkspaceRepoUrls` | `void ensureWorkspaceRepoUrls(nlohmann::json&)` | Writes `git.remotes` |
+| `repoUrlsJson` / `repoUrlsFromJson` | JSON <-> URL list | Shared by the exporter and the bridge |
+| `SshConfig::load/save` | Reads/writes `~/.nsum/git_ssh.json` | `ssh_path` / `key_path` / `host` |
+| `generateSshKey` | `bool generateSshKey(path, comment, error)` | Runs `ssh-keygen -t ed25519` |
+| `configureSshHost` | `bool configureSshHost(host, key, error)` | Writes the marked block in `~/.ssh/config` |
+| `testSshConnection` | `bool testSshConnection(host, ssh, key, output, error)` | `ssh -T` with a 30s timeout |
+| `applySshEnvironment` | `void applySshEnvironment()` | Sets `GIT_SSH_COMMAND` when unset |
+
 ## Notes
 
 - **Parent chains must be acyclic**: `branchInheritanceChain` stops at depth 100 and returns an empty chain when it detects a cycle; duplicate names and missing parents are caught by `exec validate`, not by `WorkspaceManager::validate()`, which only checks the required sections.

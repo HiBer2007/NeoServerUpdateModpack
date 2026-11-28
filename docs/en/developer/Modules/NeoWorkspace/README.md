@@ -65,6 +65,8 @@ flowchart LR
 | `include/sync_policy.h` | `SyncPolicy`, `SyncPolicyFile`, `SyncPolicyFolder` |
 | `include/file_scanner.h` | `FileScanner`, `FileEntry`, `DiffResult` |
 | `include/history_store.h` | `HistoryStore`, `RecentRepo`, `RepoType` |
+| `include/repo_urls.h` | `RepoUrl`, multi-protocol URL helper |
+| `include/ssh_key.h` | `SshConfig`, key generation/test/ssh config |
 | `src/workspace_manager.cpp` | JSON model, branch resolution, policy merge, manifest IO |
 | `src/git_operations.cpp` | Git command execution, output parsing, trust handling |
 | `src/sync_engine.cpp` | hash cache, safe copy/write, config merge plumbing |
@@ -73,7 +75,7 @@ flowchart LR
 
 ## Build integration
 
-- target: `NeoWorkspace`, library type **STATIC** (`add_library(NeoWorkspace STATIC src/workspace_manager.cpp src/git_operations.cpp src/sync_engine.cpp src/file_scanner.cpp src/history_store.cpp)`);
+- target: `NeoWorkspace`, library type **STATIC** (`add_library(NeoWorkspace STATIC src/workspace_manager.cpp src/git_operations.cpp src/sync_engine.cpp src/file_scanner.cpp src/history_store.cpp src/repo_urls.cpp src/ssh_key.cpp)`);
 - include directory: `modules/NeoWorkspace/include` (PUBLIC) plus `../NeoCore/include` (PRIVATE);
 - links `NeoCore`, `Qt6::Core` and `nlohmann_json` **PUBLIC**, so consumers of `NeoWorkspace` get the whole set;
 - consumed by `NeoBuild` (PUBLIC, and therefore transitively by `NeoCLI` and `GUIWorker`), by `NeoCLI` directly, and by `NeoWorkspaceEditor`.

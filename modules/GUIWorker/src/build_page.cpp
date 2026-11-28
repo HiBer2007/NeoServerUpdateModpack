@@ -4,6 +4,7 @@
 #include <modpack_exporter.h>
 #include <platform_api.h>
 #include <workspace_manager.h>
+#include <repo_urls.h>
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -240,6 +241,9 @@ void BuildPage::runBuildWorker()
             if (!remote.empty()) {
                 target.metadata.extra["repo"] = remote;
             }
+            auto urls = NeoWorkspace::workspaceRepoUrls(wm.config());
+            if (urls.empty()) urls = NeoWorkspace::inferRepoUrls(remote);
+            target.metadata.extra["repo_urls"] = NeoWorkspace::repoUrlsJson(urls).dump();
             for (const auto& b : wm.branches()) {
                 if (b.name == modpackBranch_.toStdString()) {
                     branchType = b.type.empty() ? "universal" : b.type;

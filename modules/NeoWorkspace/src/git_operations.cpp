@@ -1,5 +1,6 @@
 #include "git_operations.h"
 #include <QProcess>
+#include <ssh_key.h>
 #include <QFileInfo>
 #include <QDir>
 #include <QFile>
@@ -251,6 +252,7 @@ GitResult GitOperations::executeProgram(const std::string& program,
     }
     process.setArguments(qArgs);
 
+    applySshEnvironment();
     process.setProcessChannelMode(QProcess::SeparateChannels);
 
     try {

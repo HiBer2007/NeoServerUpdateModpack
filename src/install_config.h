@@ -86,6 +86,23 @@ struct InstallConfig {
             confGitPath = kv["git_path"];
         }
 
+        // use_system_git=true 表示用户明确要求系统 Git：跳过内置 Git（git_path / tools/git）
+        if (confUseSystemGit) {
+            QProcess test;
+            test.start("git", { "--version" });
+            test.waitForFinished(15000);
+            if (test.exitCode() == 0) {
+                cfg.gitPath = "git";
+                cfg.gitVersion = QString::fromUtf8(test.readAllStandardOutput()).trimmed().toStdString();
+                cfg.useSystemGit = true;
+                cfg.valid = true;
+                return cfg;
+            }
+            cfg.valid = false;
+            cfg.errorMsg = "FATAL: install.conf 要求 use_system_git=true，但系统 PATH 中找不到可用的 git。";
+            return cfg;
+        }
+
         // 1. install.conf 里记录的内置 git
         if (!confGitPath.empty() && confGitPath != "git"
             && QFileInfo::exists(QString::fromStdString(confGitPath))) {
@@ -115,10 +132,10 @@ struct InstallConfig {
             return cfg;
         }
 
-        // 4. 回退系统 Git（仅当确实没有内置 Git，且用户没有明确要求内置）
-        if (!confUseSystemGit) {
+        // 4. 回退系统 Git（没有内置 Git 时）
+        {
             QProcess test;
-            test.start("git", {"--version"});
+            test.start("git", { "--version" });
             test.waitForFinished(15000);
             if (test.exitCode() == 0) {
                 cfg.gitPath = "git";

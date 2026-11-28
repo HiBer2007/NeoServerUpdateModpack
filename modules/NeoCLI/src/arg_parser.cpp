@@ -83,7 +83,8 @@ static std::vector<std::string> execVerbs()
     return {
         "build", "export", "sync-serverconfig", "verify-repo",
         "resolve-pointer", "crash-test", "git-update",
-        "repo-trust", "repo-trust-check"
+        "repo-trust", "repo-trust-check",
+        "repo-remotes", "git-ssh-key"
     };
 }
 
@@ -230,7 +231,9 @@ void ArgParser::printHelp() const
         << "  crash-test                  Trigger a test crash (crash handler validation)\n"
         << "  git-update                  Install bundled Git and write install config\n"
         << "  repo-trust --repo <path>    Trust a repository (safe.directory)\n"
-        << "  repo-trust-check --repo <path>   Check whether a repository is trusted\n\n"
+        << "  repo-trust-check --repo <path>   Check whether a repository is trusted\n"
+  << "  repo-remotes --repo <path> [--ssh <u>] [--https <u>] [--http <u>] [--primary <type>]\n"
+  << "  git-ssh-key [--list|--generate|--public-key|--test|--configure] [--path <p>] [--host <h>]\n\n"
         << "Global options:\n"
         << "  --json                  Emit result as a JSON block (BEGIN/END markers)\n"
         << "  --verbose               Verbose output\n"
@@ -285,7 +288,9 @@ void ArgParser::printHelp(CliCategory category) const
             << "  crash-test                  Trigger a test crash (crash handler validation)\n"
             << "  git-update                  Install bundled Git and write install config\n"
             << "  repo-trust --repo <path>    Trust a repository (safe.directory)\n"
-            << "  repo-trust-check --repo <path>   Check whether a repository is trusted\n\n"
+            << "  repo-trust-check --repo <path>   Check whether a repository is trusted\n"
+  << "  repo-remotes --repo <path> [--ssh <u>] [--https <u>] [--http <u>] [--primary <type>]\n"
+  << "  git-ssh-key [--list|--generate|--public-key|--test|--configure] [--path <p>] [--host <h>]\n\n"
             << "See docs/CLI/ for details.\n"
             << std::endl;
     } else {

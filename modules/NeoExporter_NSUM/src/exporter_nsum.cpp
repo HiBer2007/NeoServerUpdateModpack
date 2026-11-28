@@ -144,6 +144,29 @@ json collectFileIndex(const std::string& buildDir, const std::string& commit,
     return files;
 }
 
+json repositoryUrls(const json& extra, const std::string& repo) {
+    json urls = json::array();
+    if (extra.is_object()) {
+        urls = extra.value("repo_urls", json::array());
+        if (urls.is_string()) {
+            try {
+                urls = json::parse(urls.get<std::string>());
+            } catch (...) {
+                urls = json::array();
+            }
+        }
+    }
+    if (!urls.is_array()) urls = json::array();
+    if (urls.empty() && !repo.empty()) {
+        std::string type = "ssh";
+        if (repo.rfind("https://", 0) == 0) type = "https";
+        else if (repo.rfind("http://", 0) == 0) type = "http";
+        else if (repo.rfind("git@", 0) != 0 && repo.rfind("ssh://", 0) != 0) type = "local";
+        urls.push_back({{"type", type}, {"url", repo}});
+    }
+    return urls;
+}
+
 json buildManifest(const NeoCore::ExportMetadata& meta, const json& files,
                    const json& embedded, const std::vector<std::string>& patterns) {
     const json& extra = meta.extra;
@@ -168,6 +191,7 @@ json buildManifest(const NeoCore::ExportMetadata& meta, const json& files,
 
     j["repository"] = {
         {"url", repo},
+        {"urls", repositoryUrls(extra, repo)},
         {"default_branch", defaultBranch},
         {"branch", extraString(extra, "branch", "base")},
         {"git_branch", gitBranch},

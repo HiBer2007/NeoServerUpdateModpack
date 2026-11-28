@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <ssh_key.h>
 #include <QCoreApplication>
 #include <QTimer>
 #include <QProcess>

@@ -37,6 +37,7 @@ private slots:
     void onUrlChanged(const QString& text);
     void onUrlReturnPressed();
     void onRecentSelected(int index);
+    void onSshKey();
 
 private:
     struct RecentEntry {
@@ -50,6 +51,7 @@ private:
     QLineEdit*   cacheEdit_   = nullptr;
     QPushButton* localBrowse_ = nullptr;
     QPushButton* cacheBrowse_ = nullptr;
+    QPushButton* sshKeyBtn_ = nullptr;
     QStackedWidget* inputStack_ = nullptr;
     QComboBox* recentCombo_ = nullptr;
     QLabel*      hintLabel_  = nullptr;

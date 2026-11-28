@@ -24,6 +24,7 @@ add_library(GUIWorker STATIC
     src/sync_policies_editor.cpp
     src/batch_editor_panel.cpp
     src/editor_extension_registry.cpp
+    src/ssh_key_dialog.cpp
         include/build_checklist_page.h
         include/extra_info_page.h
         include/done_page.h
@@ -50,6 +51,7 @@ add_library(GUIWorker STATIC
         include/sync_policy_display.h
         include/batch_editor_panel.h
         include/editor_extension_registry.h
+        include/ssh_key_dialog.h
 )
 target_include_directories(GUIWorker
     PUBLIC  include

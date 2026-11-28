@@ -70,7 +70,22 @@ NeoServerUpdateModpack.exe <category> <verb> [options]
 .\NeoServerUpdateModpack.exe exec verify-repo --repo <仓库>
 .\NeoServerUpdateModpack.exe exec resolve-pointer <file.pointer>
 .\NeoServerUpdateModpack.exe exec git-update
+
+# 维护仓库的多协议地址（写回 workspace.json 的 git.remotes）
+.\NeoServerUpdateModpack.exe exec repo-remotes --repo <仓库> `
+    --ssh git@github.com:owner/repo.git `
+    --https https://github.com/owner/repo.git `
+    --http http://github.com/owner/repo.git --primary ssh
+
+# SSH 密钥管理（内置 Git 自动使用 GIT_SSH_COMMAND）
+.\NeoServerUpdateModpack.exe exec git-ssh-key --list
+.\NeoServerUpdateModpack.exe exec git-ssh-key --generate --comment nsum
+.\NeoServerUpdateModpack.exe exec git-ssh-key --public-key
+.\NeoServerUpdateModpack.exe exec git-ssh-key --test --host github.com
+.\NeoServerUpdateModpack.exe exec git-ssh-key --configure --host github.com
 ```
+
+GUI 中：主程序「选择仓库源」页输入框右侧 **SSH 密钥...**；编辑器 **Git → SSH 密钥...**。
 
 ## JSON 输出
 

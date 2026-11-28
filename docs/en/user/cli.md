@@ -71,7 +71,22 @@ Global options:
 .\NeoServerUpdateModpack.exe exec verify-repo --repo <repository>
 .\NeoServerUpdateModpack.exe exec resolve-pointer <file.pointer>
 .\NeoServerUpdateModpack.exe exec git-update
+
+# Maintain multi-protocol repository URLs (writes git.remotes in workspace.json)
+.\NeoServerUpdateModpack.exe exec repo-remotes --repo <repository> `
+    --ssh git@github.com:owner/repo.git `
+    --https https://github.com/owner/repo.git `
+    --http http://github.com/owner/repo.git --primary ssh
+
+# SSH key management (bundled Git is given GIT_SSH_COMMAND automatically)
+.\NeoServerUpdateModpack.exe exec git-ssh-key --list
+.\NeoServerUpdateModpack.exe exec git-ssh-key --generate --comment nsum
+.\NeoServerUpdateModpack.exe exec git-ssh-key --public-key
+.\NeoServerUpdateModpack.exe exec git-ssh-key --test --host github.com
+.\NeoServerUpdateModpack.exe exec git-ssh-key --configure --host github.com
 ```
+
+GUI: main program **SSH Key...** next to the repository input; editor **Git → SSH Key...**.
 
 ## JSON output
 

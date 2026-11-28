@@ -21,6 +21,7 @@
 #include <crash_reporter.h>
 #include <git_operations.h>
 #include <install_config.h>
+#include <ssh_key.h>
 
 #include <filesystem>
 #include <fstream>
@@ -124,6 +125,7 @@ static void setupConsoleUtf8()
 
 int main(int argc, char* argv[])
 {
+    NeoWorkspace::applySshEnvironment();
     promoteEditorDocs();
 
     if (editor_cli::is_cli_invocation(argc, argv)) {

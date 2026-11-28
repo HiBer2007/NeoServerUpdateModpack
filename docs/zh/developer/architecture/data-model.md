@@ -26,6 +26,20 @@ erDiagram
 
 工作区级配置：workspace（mc/modloader）、git（remote/default_branch）、branches[]、sync_policies、export.metadata。
 
+`git.remotes` 记录同一仓库的多种访问地址，按优先级排序；`git.remote` 仍是主地址（旧字段）。仓库编辑器保存、分支写回时自动补齐三种地址，`exec repo-remotes` 可显式维护：
+
+```json
+"git": {
+  "remote": "git@github.com:owner/repo.git",
+  "remotes": [
+    { "type": "ssh",   "url": "git@github.com:owner/repo.git" },
+    { "type": "https", "url": "https://github.com/owner/repo.git" },
+    { "type": "http",  "url": "http://github.com/owner/repo.git" }
+  ],
+  "default_branch": "main"
+}
+```
+
 - `branches[].parent` 形成继承链（禁止环）；
 - `branches[].type` 决定客户端/服务端用途；
 - `sync_policies` 可被分支级策略覆盖。
