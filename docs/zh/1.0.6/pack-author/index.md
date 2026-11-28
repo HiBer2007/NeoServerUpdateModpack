@@ -20,7 +20,7 @@ updated: 2026-11-27
 | 父分支 | 子分支继承父分支文件 |
 | 指针文件 | 以 SHA-256 占位的大文件（模组），按需下载 |
 | 同步层级 | L1 基础、L2 整合包分支、L3 存档 serverconfig |
-| `.nsumpack` | 导出的清单型整合包（pack_format 2） |
+| `.nsumpack` | 导出的清单型整合包（pack_format 3） |
 
 ## 工作流
 

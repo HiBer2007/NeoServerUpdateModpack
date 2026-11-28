@@ -1,6 +1,6 @@
 ---
 title: The .nsumpack Format
-description: pack_format 2 manifest-only packs: fields, embed rules, import sequence and caching.
+description: pack_format 3 manifest-only packs: fields, embed rules, import sequence and caching.
 lang: en
 status: complete
 updated: 2026-11-27
@@ -25,8 +25,8 @@ translation_of: /zh/1.0.6/pack-author/nsumpack.md
 
 ```json
 {
-  "pack_format": 2,
-  "schema": 2,
+  "pack_format": 3,
+  "schema": 3,
   "type": "nsum",
   "name": "My Pack",
   "version": "1.0.0",

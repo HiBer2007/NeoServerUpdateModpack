@@ -1,6 +1,6 @@
 ---
 title: NSUM Exporter
-description: NeoExporter_NSUM generates manifest-only .nsumpack (pack_format 2) files.
+description: NeoExporter_NSUM generates manifest-only .nsumpack (pack_format 3) files.
 lang: en
 status: complete
 updated: 2026-11-27
@@ -28,15 +28,16 @@ translation_of: /zh/1.0.6/extensions/exporters/nsum.md
 └─ overrides/**             # only with embed_patterns matches
 ```
 
-`nsum.index.json` (`pack_format: 2`) fields:
+`nsum.index.json` (`pack_format: 3`) fields:
 
 | Field | Description |
 |---|---|
-| `pack_format` / `schema` | `2` (file structure version) |
+| `pack_format` / `schema` | `3` (file structure version, since 1.0.6) |
 | `type` | `nsum` |
 | `name` / `version` / `author` / `description` | Pack metadata |
 | `gameVersion` / `modloader` / `modloaderVersion` | Game and loader |
-| `repository.url` | Repository URL |
+| `repository.url` | Primary repository URL (legacy) |
+| `repository.urls` | SSH/HTTPS/HTTP URL list (since 1.0.6) |
 | `repository.default_branch` | Default Git branch |
 | `repository.branch` | Modpack branch |
 | `repository.git_branch` | Git branch used to build |

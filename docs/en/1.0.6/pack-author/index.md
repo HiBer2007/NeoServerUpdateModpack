@@ -21,7 +21,7 @@ This section is for **modpack authors and server maintainers**: maintain an NSUM
 | Parent branch | Child branches inherit files from their parent |
 | Pointer file | A SHA-256 placeholder for large files (mods), downloaded on demand |
 | Sync tiers | L1 base, L2 modpack branch, L3 per-save serverconfig |
-| `.nsumpack` | The manifest-only exported pack (pack_format 2) |
+| `.nsumpack` | The manifest-only exported pack (pack_format 3) |
 
 ## Workflow
 

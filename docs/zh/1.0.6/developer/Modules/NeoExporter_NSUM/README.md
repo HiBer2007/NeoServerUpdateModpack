@@ -1,6 +1,6 @@
 ---
 title: NeoExporter_NSUM 说明
-description: 清单型 NSUM 整合包（pack_format 2） 的导出器插件。
+description: 清单型 NSUM 整合包（pack_format 3） 的导出器插件。
 lang: zh
 status: complete
 updated: 2026-11-27

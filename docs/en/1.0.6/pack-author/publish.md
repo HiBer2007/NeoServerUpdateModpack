@@ -56,7 +56,7 @@ NeoServerUpdateModpack.exe exec build --repo <repository> --modpack base --git-b
 | Item | Requirement |
 |---|---|
 | Runtime | `runtime.minVersion` |
-| bridge | Compatible pack format (pack_format 2 needs ≥0.4.4.17) |
+| bridge | Compatible pack format (pack_format 3 needs ≥0.4.4.17) |
 | HMCL/FLF | Per bridge release notes |
 | Java | Per loader/mod requirements |
 

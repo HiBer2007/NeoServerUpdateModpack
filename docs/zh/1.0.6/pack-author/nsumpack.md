@@ -1,6 +1,6 @@
 ---
 title: .nsumpack 格式
-description: pack_format 2 清单型整合包：字段、内嵌规则、导入时序与缓存。
+description: pack_format 3 清单型整合包：字段、内嵌规则、导入时序与缓存。
 lang: zh
 status: complete
 updated: 2026-11-27
@@ -24,8 +24,8 @@ updated: 2026-11-27
 
 ```json
 {
-  "pack_format": 2,
-  "schema": 2,
+  "pack_format": 3,
+  "schema": 3,
   "type": "nsum",
   "name": "My Pack",
   "version": "1.0.0",
@@ -58,7 +58,7 @@ updated: 2026-11-27
 
 | 字段 | 说明 |
 |---|---|
-| `pack_format` / `schema` | 文件结构版本（当前 2），与整合包版本无关 |
+| `pack_format` / `schema` | 文件结构版本（当前 3），与整合包版本无关 |
 | `repository.url` | 主仓库地址（旧字段，仍写入；新客户端优先 `urls`） |
 | `repository.urls` | 仓库地址列表：`ssh` / `https` / `http` 三种，保序；客户端按顺序回退（自 1.0.6 / pack_format 3） |
 | `repository.default_branch` | 默认 Git 分支 |

@@ -9,6 +9,8 @@ translation_of: /zh/1.0.6/developer/adr/0006-nsumpack-v2.md
 
 # ADR 0006 · Manifest-only .nsumpack (pack_format 2)
 
+> **Update**: since 1.0.6 `pack_format` / `schema` are 3 with `repository.urls`; the manifest-only decision still stands, see [.nsumpack format](../../pack-author/nsumpack.md).
+
 ## Status
 
 Accepted (2026-11-27).

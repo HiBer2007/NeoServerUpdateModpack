@@ -1,6 +1,6 @@
 ---
 title: NSUM 导出器
-description: NeoExporter_NSUM：生成清单型 .nsumpack（pack_format 2），默认不内嵌文件。
+description: NeoExporter_NSUM：生成清单型 .nsumpack（pack_format 3），默认不内嵌文件。
 lang: zh
 status: complete
 updated: 2026-11-27
@@ -27,15 +27,16 @@ updated: 2026-11-27
 └─ overrides/**             # 仅 embed_patterns 命中时存在
 ```
 
-`nsum.index.json`（`pack_format: 2`）核心字段：
+`nsum.index.json`（`pack_format: 3`）核心字段：
 
 | 字段 | 说明 |
 |---|---|
-| `pack_format` / `schema` | `2`，文件结构版本 |
+| `pack_format` / `schema` | `3`，文件结构版本（自 1.0.6） |
 | `type` | `nsum` |
 | `name` / `version` / `author` / `description` | 整合包元数据 |
 | `gameVersion` / `modloader` / `modloaderVersion` | 游戏与加载器 |
-| `repository.url` | 仓库地址 |
+| `repository.url` | 主仓库地址（旧字段） |
+| `repository.urls` | SSH/HTTPS/HTTP 地址列表（自 1.0.6） |
 | `repository.default_branch` | 默认 Git 分支 |
 | `repository.branch` | 整合包分支 |
 | `repository.git_branch` | 构建使用的 Git 分支 |
@@ -91,7 +92,8 @@ sequenceDiagram
 | 版本 | 行为 |
 |---|---|
 | pack_format 1（旧） | 无条件把构建产物写入 `overrides/`，包体积大 |
-| pack_format 2（当前） | 默认清单型；内嵌需显式声明并登记来源 |
+| pack_format 2（1.0.5） | 默认清单型；内嵌需显式声明并登记来源 |
+| pack_format 3（1.0.6，当前） | 清单型 + `repository.urls` 多地址 |
 
 ## 相关
 
