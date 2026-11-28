@@ -11,6 +11,7 @@
 #include "toast_notification.h"
 #include <build_engine.h>
 #include <git_operations.h>
+#include <repo_urls.h>
 #include <QDesktopServices>
 #include <QUrl>
 
@@ -575,9 +576,17 @@ void WizardWindow::onCloneFinished(int exitCode, QProcess::ExitStatus status)
         cloneProcess_ = nullptr;
     }
 
+    if (cloneTimeout_) cloneTimeout_->stop();
     if (status == QProcess::CrashExit || exitCode != 0) {
-        hideProgressDialog();
         CLogger::Error("Clone failed: exit={} {}", exitCode, err.left(200).toUtf8().constData());
+        if (cloneAttempt_ + 1 < cloneCandidates_.size()) {
+            cloneAttempt_++;
+            progressStatusLabel_->setText(
+                QStringLiteral("\u5f53\u524d\u5730\u5740\u5931\u8d25\uff0c\u5c1d\u8bd5\u4e0b\u4e00\u4e2a..."));
+            startCloneAttempt();
+            return;
+        }
+        hideProgressDialog();
         branchPage_->showLoading(
             QStringLiteral("\u514b\u9686\u5931\u8d25: %1").arg(err.left(120)), -1);
         branchPage_->stopLoading();
@@ -822,8 +831,54 @@ void WizardWindow::startClone(const QString& url)
     showProgressDialog(QString::fromUtf8("\u6b63\u5728\u514b\u9686\u8fdc\u7a0b\u4ed3\u5e93..."), true, true);
     progressSubLabel_->setText(QString::fromUtf8("\u6b63\u5728\u4e0b\u8f7d\u5386\u53f2\u6570\u636e..."));
 
+    cloneCandidates_.clear();
+    const auto inferred = NeoWorkspace::inferRepoUrls(url.toStdString());
+    for (const auto& item : inferred) {
+        cloneCandidates_ << QString::fromStdString(item.url);
+    }
+    if (cloneCandidates_.isEmpty()) {
+        cloneCandidates_ << url;
+    }
+    const QString preference = repoPage_ ? repoPage_->repoPreference() : QStringLiteral("auto");
+    if (preference == QStringLiteral("ssh") || preference == QStringLiteral("https")
+        || preference == QStringLiteral("http")) {
+        QStringList reordered;
+        for (const auto& candidate : cloneCandidates_) {
+            if (QString::fromStdString(NeoWorkspace::detectedUrlType(candidate.toStdString())) == preference) {
+                reordered << candidate;
+            }
+        }
+        for (const auto& candidate : cloneCandidates_) {
+            if (!reordered.contains(candidate)) reordered << candidate;
+        }
+        cloneCandidates_ = reordered;
+    }
+    cloneAttempt_ = 0;
+    startCloneAttempt();
+}
+
+void WizardWindow::startCloneAttempt()
+{
+    if (cloneAttempt_ >= cloneCandidates_.size()) {
+        hideProgressDialog();
+        branchPage_->showLoading(
+            QStringLiteral("\u6240\u6709\u4ed3\u5e93\u5730\u5740\u90fd\u5931\u8d25"), -1);
+        branchPage_->stopLoading();
+        emit branchPage_->branchesLoaded(false);
+        return;
+    }
+    if (cloneAttempt_ > 0) {
+        QDir(repoLocalPath_).removeRecursively();
+    }
+    const QString candidate = cloneCandidates_[cloneAttempt_];
+    CLogger::Info("Clone attempt {}/{}: {}", cloneAttempt_ + 1,
+        cloneCandidates_.size(), candidate.toUtf8().constData());
+    progressStatusLabel_->setText(
+        QStringLiteral("\u6b63\u5728\u514b\u9686 (%1/%2): %3")
+            .arg(cloneAttempt_ + 1).arg(cloneCandidates_.size()).arg(candidate));
+
     cloneProcess_ = new QProcess(this);
-    cloneProcess_->setWorkingDirectory(cacheRoot);
+    cloneProcess_->setWorkingDirectory(QFileInfo(repoLocalPath_).absolutePath());
     connect(cloneProcess_,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this, &WizardWindow::onCloneFinished);
@@ -841,11 +896,26 @@ void WizardWindow::startClone(const QString& url)
             parseGitProgress(line, false);
         }
     });
+
+    if (!cloneTimeout_) {
+        cloneTimeout_ = new QTimer(this);
+        cloneTimeout_->setSingleShot(true);
+        connect(cloneTimeout_, &QTimer::timeout, this, &WizardWindow::onCloneTimeout);
+    }
+    cloneTimeout_->start(60000);
     cloneProcess_->start(QStringLiteral("git"),
         { QStringLiteral("clone"),
           QStringLiteral("--no-single-branch"),
-          url,
-          cacheDir });
+          candidate,
+          repoLocalPath_ });
+}
+
+void WizardWindow::onCloneTimeout()
+{
+    if (!cloneProcess_) return;
+    CLogger::Warn("Clone timeout after 60s: {}", cloneProcess_->program().toUtf8().constData());
+    progressStatusLabel_->setText(QStringLiteral("\u8fde\u63a5\u8d85\u65f6\uff0c\u5c1d\u8bd5\u4e0b\u4e00\u4e2a\u5730\u5740..."));
+    cloneProcess_->kill();
 }
 
 void WizardWindow::buildProgressCard()

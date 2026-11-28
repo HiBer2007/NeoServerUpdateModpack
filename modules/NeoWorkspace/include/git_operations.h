@@ -21,6 +21,7 @@ public:
     static std::string GetDefaultGitPath() { return defaultGitPath_.empty() ? "git" : defaultGitPath_; }
 
     GitResult clone(const std::string& url, const std::string& targetDir, int timeoutMs = 120000);
+    GitResult lsRemote(const std::string& url, int timeoutMs = 8000);
     GitResult pull(const std::string& repoDir, int timeoutMs = 60000);
     GitResult fetch(const std::string& repoDir, const std::string& remote = "origin");
     GitResult checkout(const std::string& repoDir, const std::string& branch);

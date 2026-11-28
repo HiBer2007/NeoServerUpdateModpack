@@ -1,0 +1,12 @@
+{
+  "index": "Overview",
+  "parsers": "Parsers",
+  "pointers": "Pointer Resolvers",
+  "exporters": "Exporters",
+  "editor": "Editor Extensions",
+  "installer": "Installer Extensions",
+  "client-bridge": "Client Bridge",
+  "server-plugin": "Server Plugin",
+  "libraries": "Libraries",
+  "mclhr": "MCLHR Integration"
+}

@@ -38,6 +38,7 @@
 #include <chrono>
 
 #include <QProcess>
+#include <QElapsedTimer>
 #include <QDir>
 #include <QFileInfo>
 #include <QFile>
@@ -534,6 +535,18 @@ int CliDispatcher::dispatchFlow(const CliCommand& cmd)
 
 int CliDispatcher::dispatchExec(const CliCommand& cmd)
 {
+    repoPreference_ = cmd.get("repo-preference");
+    if (repoPreference_.empty()) {
+        const char* env = std::getenv("NSUM_REPO_PREFERENCE");
+        repoPreference_ = env ? env : "auto";
+    }
+    if (cmd.has("repo-timeout")) {
+        const int seconds = std::atoi(cmd.get("repo-timeout").c_str());
+        if (seconds > 0) {
+            repoProbeTimeoutMs_ = seconds * 1000;
+            repoCloneTimeoutMs_ = seconds * 1000;
+        }
+    }
     if (cmd.verb == "build")              return cmdBuild(cmd);
     if (cmd.verb == "export")             return cmdExport(cmd);
     if (cmd.verb == "sync-serverconfig")  return cmdSyncServerConfig(cmd);
@@ -2166,6 +2179,53 @@ std::string CliDispatcher::resolveRepoPath(const std::string& repoUrl) const
     return resolveWorkDir(repoUrl);
 }
 
+static std::vector<std::string> orderedRepoCandidates(const std::string& primary,
+    const std::string& preference, NeoWorkspace::GitOperations& git, int probeTimeoutMs)
+{
+    std::vector<std::string> result;
+    if (preference == "manual") {
+        result.push_back(primary);
+        return result;
+    }
+    auto inferred = NeoWorkspace::inferRepoUrls(primary);
+    std::vector<std::string> all;
+    for (const auto& item : inferred) {
+        if (std::find(all.begin(), all.end(), item.url) == all.end()) all.push_back(item.url);
+    }
+    if (all.empty()) all.push_back(primary);
+
+    const bool typed = preference == "ssh" || preference == "https" || preference == "http";
+    if (typed) {
+        for (const auto& url : all) {
+            if (NeoWorkspace::detectedUrlType(url) == preference) result.push_back(url);
+        }
+        for (const auto& url : all) {
+            if (std::find(result.begin(), result.end(), url) == result.end()) result.push_back(url);
+        }
+        return result;
+    }
+
+    struct Probe { std::string url; qint64 latencyMs; };
+    std::vector<Probe> probes;
+    for (const auto& url : all) {
+        QElapsedTimer timer;
+        timer.start();
+        const auto probe = git.lsRemote(url, probeTimeoutMs);
+        probes.push_back({url, probe.exitCode == 0 ? timer.elapsed() : -1});
+    }
+    std::stable_sort(probes.begin(), probes.end(), [](const Probe& a, const Probe& b) {
+        if (a.latencyMs < 0 && b.latencyMs < 0) return false;
+        if (a.latencyMs < 0) return false;
+        if (b.latencyMs < 0) return true;
+        return a.latencyMs < b.latencyMs;
+    });
+    for (const auto& probe : probes) {
+        result.push_back(probe.url);
+        CLogger::Info("Repository probe: {} -> {}", probe.url,
+            probe.latencyMs >= 0 ? std::to_string(probe.latencyMs) + "ms" : "unreachable");
+    }
+    return result;
+}
 std::string CliDispatcher::ensureRepoCloned(const std::string& repoUrl,
     const std::string& gitBranch)
 {
@@ -2183,19 +2243,36 @@ std::string CliDispatcher::ensureRepoCloned(const std::string& repoUrl,
     bool isRepo = gitOps.isGitRepository(workDir);
 
     if (!isRepo) {
+        const auto candidates = orderedRepoCandidates(repoUrl, repoPreference_, gitOps,
+            repoProbeTimeoutMs_);
         CliOutput::info("Cloning repository: " + repoUrl);
-        if (cancelToken_.is_cancelled()) return {};
-        auto result = gitOps.clone(repoUrl, workDir, 300000);
-        if (result.exitCode != 0) {
-            // 本地路径源仓库为陌生仓库时 clone 同样失败, 给出明确提示
-            if (result.stderrOutput.find("detected dubious ownership") != std::string::npos) {
+        std::string lastError;
+        bool cloned = false;
+        for (const auto& candidate : candidates) {
+            if (cancelToken_.is_cancelled()) return {};
+            CliOutput::info("Trying repository address: " + candidate);
+            std::error_code ec;
+            fs::remove_all(fs::u8path(workDir), ec);
+            auto result = gitOps.clone(candidate, workDir, repoCloneTimeoutMs_);
+            if (result.exitCode == 0) {
+                cloned = true;
+                if (candidate != repoUrl) {
+                    CliOutput::warning("Primary repository address failed, using: " + candidate);
+                }
+                break;
+            }
+            lastError = result.stderrOutput;
+            if (lastError.find("detected dubious ownership") != std::string::npos) {
                 CliOutput::warning("Source repository ownership is dubious (untrusted repository).");
                 CliOutput::error("Run 'exec repo-trust --repo <path>' to trust it, then retry.");
                 CLogger::Error("Dubious ownership detected for source of {}", repoUrl);
                 return {};
             }
-            CliOutput::error("Failed to clone repository: " + result.stderrOutput);
-            CLogger::Error("Clone failed for {}: {}", repoUrl, result.stderrOutput);
+            CliOutput::warning("Address failed: " + candidate + " (" + lastError + ")");
+        }
+        if (!cloned) {
+            CliOutput::error("Failed to clone repository: " + lastError);
+            CLogger::Error("Clone failed for {}: {}", repoUrl, lastError);
             return {};
         }
         CliOutput::success("Repository cloned.");

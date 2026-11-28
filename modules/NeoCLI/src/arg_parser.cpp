@@ -234,6 +234,7 @@ void ArgParser::printHelp() const
         << "  repo-trust-check --repo <path>   Check whether a repository is trusted\n"
   << "  repo-remotes --repo <path> [--ssh <u>] [--https <u>] [--http <u>] [--primary <type>]\n"
   << "  git-ssh-key [--list|--generate|--public-key|--test|--configure] [--path <p>] [--host <h>]\n\n"
+  << "  global exec options: --repo-preference auto|ssh|https|http|manual, --repo-timeout <seconds>\n\n"
         << "Global options:\n"
         << "  --json                  Emit result as a JSON block (BEGIN/END markers)\n"
         << "  --verbose               Verbose output\n"
@@ -291,6 +292,7 @@ void ArgParser::printHelp(CliCategory category) const
             << "  repo-trust-check --repo <path>   Check whether a repository is trusted\n"
   << "  repo-remotes --repo <path> [--ssh <u>] [--https <u>] [--http <u>] [--primary <type>]\n"
   << "  git-ssh-key [--list|--generate|--public-key|--test|--configure] [--path <p>] [--host <h>]\n\n"
+  << "  global exec options: --repo-preference auto|ssh|https|http|manual, --repo-timeout <seconds>\n\n"
             << "See docs/CLI/ for details.\n"
             << std::endl;
     } else {

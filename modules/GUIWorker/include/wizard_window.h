@@ -8,6 +8,7 @@
 #include <QString>
 #include <QStringList>
 #include <QProcess>
+#include <QTimer>
 #include <QScopedPointer>
 #include <QProgressBar>
 #include <QLabel>
@@ -93,6 +94,9 @@ private:
     QLabel* progressSubLabel_ = nullptr;
 
     QProcess* cloneProcess_ = nullptr;
+    QStringList cloneCandidates_;
+    int cloneAttempt_ = 0;
+    QTimer* cloneTimeout_ = nullptr;
     QProcess* syncProcess_  = nullptr;
 
     int currentPage_;
@@ -125,6 +129,8 @@ private:
     void adjustWindowSize(bool animate);
     void fadeTransition();
     void startClone(const QString& url);
+    void startCloneAttempt();
+    void onCloneTimeout();
     void startSyncCache(const QString& dir);
     void cleanupTempRepo();
     void showProgressDialog(const QString& text, bool indeterminate, bool withSub);

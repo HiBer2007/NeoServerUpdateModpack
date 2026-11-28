@@ -122,6 +122,12 @@ RepoPage::RepoPage(QWidget* parent)
     remoteRow->addWidget(remoteEdit_, 1);
     remoteRow->addWidget(sshKeyBtn_);
     remoteLayout->addLayout(remoteRow);
+    preferenceCombo_ = new QComboBox(remotePage);
+    preferenceCombo_->addItem(QStringLiteral("\u5730\u5740\u4f18\u5148\u7ea7\uff1a\u81ea\u52a8\u6700\u5feb"), "auto");
+    preferenceCombo_->addItem(QStringLiteral("\u4f18\u5148 SSH"), "ssh");
+    preferenceCombo_->addItem(QStringLiteral("\u4f18\u5148 HTTPS"), "https");
+    preferenceCombo_->addItem(QStringLiteral("\u4f18\u5148 HTTP"), "http");
+    remoteLayout->addWidget(preferenceCombo_);
     inputStack_->addWidget(remotePage);
 
     auto* localPage = new QWidget(this);
@@ -213,6 +219,11 @@ void RepoPage::setUrl(const QString& url)
 bool RepoPage::isValid() const
 {
     return !repoUrl().isEmpty();
+}
+
+QString RepoPage::repoPreference() const
+{
+    return preferenceCombo_ ? preferenceCombo_->currentData().toString() : QStringLiteral("auto");
 }
 
 QString RepoPage::currentInput() const

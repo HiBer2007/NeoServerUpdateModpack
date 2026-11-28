@@ -20,6 +20,9 @@ private:
     NeoCore::CancelToken cancelToken_;
     std::string gitPath_;
     bool useSystemGit_ = false;
+    std::string repoPreference_ = "auto";
+    int repoProbeTimeoutMs_ = 8000;
+    int repoCloneTimeoutMs_ = 120000;
 
     int dispatchInfo(const CliCommand& cmd);
     int dispatchFlow(const CliCommand& cmd);

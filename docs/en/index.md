@@ -10,5 +10,6 @@ updated: 2026-11-28
 
 Choose a version:
 
-- [1.0.6 (latest)](./1.0.6/index.md)
+- [1.0.7 (latest)](./1.0.7/index.md)
+- [1.0.6](./1.0.6/index.md)
 - [1.0.5](./1.0.5/index.md)

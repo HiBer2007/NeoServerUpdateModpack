@@ -46,6 +46,11 @@ GitResult GitOperations::clone(const std::string& url, const std::string& target
     return r;
 }
 
+GitResult GitOperations::lsRemote(const std::string& url, int timeoutMs)
+{
+    return execute({"ls-remote", url}, "", timeoutMs);
+}
+
 GitResult GitOperations::pull(const std::string& repoDir, int timeoutMs)
 {
     CLogger::Info("GitOperations: Pulling in {}", repoDir);

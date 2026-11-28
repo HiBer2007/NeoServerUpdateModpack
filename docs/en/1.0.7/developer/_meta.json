@@ -1,0 +1,11 @@
+{
+  "index": "Overview",
+  "architecture": "Architecture",
+  "framework": "Framework / Buses / ABI",
+  "Modules": "Module Reference",
+  "testing": "Testing",
+  "contributing": "Contributing",
+  "versioning": "Versioning",
+  "release": "Release",
+  "adr": "ADRs"
+}

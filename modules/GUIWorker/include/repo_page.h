@@ -21,6 +21,7 @@ public:
     bool isValid() const;
     void setUrl(const QString& url);
     int sourceType() const { return currentType_; }
+    QString repoPreference() const;
     void recordRecentCache(const QString& url, const QString& cachePath);
     void commitToHistory();
 
@@ -54,6 +55,7 @@ private:
     QPushButton* sshKeyBtn_ = nullptr;
     QStackedWidget* inputStack_ = nullptr;
     QComboBox* recentCombo_ = nullptr;
+    QComboBox* preferenceCombo_ = nullptr;
     QLabel*      hintLabel_  = nullptr;
     QLabel*      helpLabel_  = nullptr;
     QList<QPushButton*> typeBtns_;

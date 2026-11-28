@@ -1,0 +1,9 @@
+{
+  "index": "概览",
+  "base-framework": "base-framework",
+  "module-layout": "module-layout",
+  "event-bus": "event-bus",
+  "extension-registry": "extension-registry",
+  "plugin-contracts": "plugin-contracts",
+  "abi": "abi"
+}
