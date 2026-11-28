@@ -1,10 +1,16 @@
 # NSUM docs packaging
-# Builds the deployable docs subset from the bilingual source tree.
+# Builds the deployable docs subset from the bilingual, versioned source tree.
+#
+# Source layout: docs/<lang>/<version>/{user,pack-author,developer,extensions,releases}
 #
 # Profiles:
 #   runtime     -> user only
 #   with-editor -> user + pack-author (pack-author nested under _editor, promoted by NeoWorkspaceEditor on first run)
 #   full        -> all four sections (docs site / local preview)
+#
+# By default the latest version (first entry of docs/zh/_meta.json) is flattened
+# to docs/<lang>/... so the in-app help paths stay stable. Use -AllVersions with
+# -Profile full to publish every version directory unchanged.
 #
 # Example:
 #   pwsh -NoProfile -File tools/build_docs.ps1 -Profile with-editor -Out K:\tmp\nsum-docs
@@ -17,7 +23,11 @@ param(
     [string]$Out = (Join-Path $PSScriptRoot '..\build\docs_out'),
 
     [ValidateSet('all', 'zh', 'en')]
-    [string]$Locale = 'all'
+    [string]$Locale = 'all',
+
+    [string]$Version = '',
+
+    [switch]$AllVersions
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +40,12 @@ if (Test-Path $outRoot) { Remove-Item $outRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $outRoot | Out-Null
 
 $locales = if ($Locale -eq 'all') { @('zh', 'en') } else { @($Locale) }
+
+if (-not $Version) {
+    $rootMeta = Get-Content (Join-Path $docsRoot 'zh\_meta.json') -Raw | ConvertFrom-Json
+    $Version = @($rootMeta.PSObject.Properties.Name | Where-Object { $_ -ne 'index' })[0]
+}
+if (-not $Version) { throw 'cannot determine docs version' }
 
 function Copy-Tree([string]$source, [string]$target) {
     if (-not (Test-Path $source)) { return }
@@ -48,6 +64,25 @@ function Write-FilteredMeta([string]$source, [string]$target, [string[]]$keep) {
     [System.IO.File]::WriteAllText($target, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
 }
 
+# Flattening removes the <version> path segment. Links between version pages keep
+# the same relative depth, but links to shared assets/_meta lose one leading "../".
+function Flatten-Links([string]$dir) {
+    if (-not (Test-Path $dir)) { return }
+    Get-ChildItem $dir -Recurse -File -Filter '*.md' | ForEach-Object {
+        $text = [System.IO.File]::ReadAllText($_.FullName)
+        $text = [regex]::Replace($text, '\]\((\.\./[^)\s]*)\)', {
+            param($m)
+            $target = $m.Groups[1].Value
+            if ($target -match '^(\.\./)+(assets|_meta)/') {
+                return '](' + $target.Substring(3) + ')'
+            }
+            return $m.Value
+        })
+        [System.IO.File]::WriteAllText($_.FullName, $text,
+            (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
+
 # shared assets
 Copy-Tree (Join-Path $docsRoot 'assets') (Join-Path $outRoot 'assets')
 
@@ -63,10 +98,18 @@ $editorMetaLabels = @{
 }
 
 foreach ($lang in $locales) {
-    $src = Join-Path $docsRoot $lang
-    if (-not (Test-Path $src)) { throw "locale not found: $src" }
+    $langRoot = Join-Path $docsRoot $lang
+    if (-not (Test-Path $langRoot)) { throw "locale not found: $langRoot" }
     $dst = Join-Path $outRoot $lang
     New-Item -ItemType Directory -Force -Path $dst | Out-Null
+
+    if ($Profile -eq 'full' -and $AllVersions) {
+        Copy-Tree $langRoot $dst
+        continue
+    }
+
+    $src = Join-Path $langRoot $Version
+    if (-not (Test-Path $src)) { throw "docs version not found: $src" }
 
     Copy-Item (Join-Path $src 'index.md') $dst -Force
 
@@ -84,12 +127,15 @@ foreach ($lang in $locales) {
         if ($Profile -eq 'with-editor') {
             $editorLang = Join-Path $outRoot '_editor' $lang
             Copy-Tree (Join-Path $src 'pack-author') (Join-Path $editorLang 'pack-author')
+            Flatten-Links $editorLang
             $metaPath = Join-Path $outRoot ('_editor\_meta.' + $lang + '.json')
+            New-Item -ItemType Directory -Force -Path (Split-Path $metaPath) | Out-Null
             [System.IO.File]::WriteAllText($metaPath,
                 (($editorMetaLabels[$lang] | ConvertTo-Json) + "`n"),
                 (New-Object System.Text.UTF8Encoding($false)))
         }
     }
+    Flatten-Links $dst
 }
 
 if ($Profile -eq 'with-editor') {
@@ -110,5 +156,5 @@ Without the Editor installed this payload stays hidden and the in-app help only 
 
 $fileCount = (Get-ChildItem $outRoot -Recurse -File).Count
 $size = [Math]::Round(((Get-ChildItem $outRoot -Recurse -File | Measure-Object Length -Sum).Sum / 1KB), 1)
-Write-Host ("docs build OK: profile={0} locale={1} -> {2}" -f $Profile, $Locale, $outRoot) -ForegroundColor Green
+Write-Host ("docs build OK: profile={0} locale={1} version={2} -> {3}" -f $Profile, $Locale, $Version, $outRoot) -ForegroundColor Green
 Write-Host ("files={0} size={1}KB" -f $fileCount, $size)

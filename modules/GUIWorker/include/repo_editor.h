@@ -46,7 +46,10 @@ private:
     QLineEdit* modloaderVersionEdit_;
 
     QGroupBox* gitGroup_;
-    QLineEdit* remoteEdit_;
+    QLineEdit* sshEdit_;
+    QLineEdit* httpsEdit_;
+    QLineEdit* httpEdit_;
+    QComboBox* primaryCombo_;
     QLineEdit* defaultBranchEdit_;
     QPushButton* testBtn_;
     QLabel* testResult_;
@@ -60,8 +63,7 @@ private:
     QPushButton* saveBtn_;
 
     bool modified_;
-    nlohmann::json loadedRemotes_ = nlohmann::json::array();
-    std::string loadedRemote_;
+    QString primaryRepoUrl() const;
 };
 
 } // namespace GUIWorker

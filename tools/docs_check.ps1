@@ -70,7 +70,7 @@ if (Test-Path $placeholderFile) {
     }
 }
 
-# ---------- locale parity ----------
+# ---------- locale/version parity ----------
 $localeFiles = @{}
 foreach ($lang in $locales) {
     $root = Join-Path $docsRoot $lang
@@ -82,14 +82,30 @@ foreach ($lang in $locales) {
     }
     $localeFiles[$lang] = $files
 }
-if ($localeFiles.ContainsKey('zh') -and $localeFiles.ContainsKey('en')) {
+$versions = @()
+$zhRoot = Join-Path $docsRoot 'zh'
+if (Test-Path $zhRoot) {
+    $versions = @(Get-ChildItem $zhRoot -Directory |
+        Where-Object { $_.Name -match '^\d+(\.\d+)+$' } |
+        Sort-Object { [version]$_.Name } -Descending |
+        ForEach-Object { $_.Name })
+}
+if ($versions.Count -eq 0) { Add-Error 'no versioned docs directories found under docs/zh' }
+
+foreach ($version in $versions) {
     foreach ($rel in $localeFiles['zh'].Keys) {
+        if (-not $rel.StartsWith("$version/")) { continue }
         if (-not $localeFiles['en'].ContainsKey($rel)) { Add-Error "en missing page: $rel" }
     }
     foreach ($rel in $localeFiles['en'].Keys) {
+        if (-not $rel.StartsWith("$version/")) { continue }
         if (-not $localeFiles['zh'].ContainsKey($rel)) { Add-Error "zh missing page: $rel" }
     }
 }
+$rootZh = @($localeFiles['zh'].Keys | Where-Object { $_ -notmatch '^\d+(\.\d+)+/' })
+$rootEn = @($localeFiles['en'].Keys | Where-Object { $_ -notmatch '^\d+(\.\d+)+/' })
+foreach ($rel in $rootZh) { if (-not $localeFiles['en'].ContainsKey($rel)) { Add-Error "en missing page: $rel" } }
+foreach ($rel in $rootEn) { if (-not $localeFiles['zh'].ContainsKey($rel)) { Add-Error "zh missing page: $rel" } }
 
 # ---------- per-page checks ----------
 foreach ($lang in $locales) {
@@ -151,7 +167,7 @@ foreach ($lang in $locales) {
         }
 
         # cross-section relative links are not allowed from packaged sections
-        if (($rel.StartsWith('user/') -or $rel.StartsWith('pack-author/')) -and
+        if (($rel -match '^\d+(\.\d+)+/(user|pack-author)/') -and
             ($text -match '\]\((\.\./(developer|extensions)/)')) {
             Add-Error "$display : packaged section links to developer/extensions relatively; use an online URL"
         }

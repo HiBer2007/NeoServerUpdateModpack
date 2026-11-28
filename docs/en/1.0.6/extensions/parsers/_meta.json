@@ -1,0 +1,9 @@
+{
+  "index": "Overview",
+  "json": "json",
+  "yaml": "yaml",
+  "toml": "toml",
+  "snbt": "snbt",
+  "txt": "txt",
+  "properties": "properties"
+}

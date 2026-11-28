@@ -162,6 +162,7 @@ void ensureWorkspaceRepoUrls(nlohmann::json& workspace)
         array.push_back(entry);
     }
     git["remotes"] = array;
+    workspace["version"] = "1.1";
     if (!git.contains("remote") || git["remote"].get<std::string>().empty()) {
         git["remote"] = urls.front().url;
     }

@@ -1,8 +1,5 @@
 {
-  "index": "Home",
-  "user": "User Guide",
-  "pack-author": "Pack Authors",
-  "developer": "Developers",
-  "extensions": "Extensions",
-  "releases": "Releases"
+  "index": "Documentation",
+  "1.0.6": "1.0.6 (latest)",
+  "1.0.5": "1.0.5"
 }

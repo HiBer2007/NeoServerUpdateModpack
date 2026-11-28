@@ -648,6 +648,7 @@ void EditorWindow::connectSignals()
         [this](QString jsonStr) {
             auto config = nlohmann::json::parse(jsonStr.toStdString());
             auto& ws = workspaceConfig_;
+            if (config.contains("version")) ws["version"] = config["version"];
             if (config.contains("workspace")) ws["workspace"] = config["workspace"];
             if (config.contains("git")) ws["git"] = config["git"];
             if (config.contains("custom_mods")) ws["custom_mods"] = config["custom_mods"];

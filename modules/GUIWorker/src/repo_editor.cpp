@@ -1,4 +1,5 @@
 #include "repo_editor.h"
+#include <vector>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -57,8 +58,16 @@ void RepoEditor::buildUI()
 
     gitGroup_ = new QGroupBox("Git 仓库", scrollContent);
     auto* gitLayout = new QFormLayout(gitGroup_);
-    remoteEdit_ = new QLineEdit(gitGroup_);
-    remoteEdit_->setPlaceholderText("https://github.com/user/repo.git");
+    sshEdit_ = new QLineEdit(gitGroup_);
+    sshEdit_->setPlaceholderText("git@github.com:user/repo.git");
+    httpsEdit_ = new QLineEdit(gitGroup_);
+    httpsEdit_->setPlaceholderText("https://github.com/user/repo.git");
+    httpEdit_ = new QLineEdit(gitGroup_);
+    httpEdit_->setPlaceholderText("http://github.com/user/repo.git");
+    primaryCombo_ = new QComboBox(gitGroup_);
+    primaryCombo_->addItem("SSH", "ssh");
+    primaryCombo_->addItem("HTTPS", "https");
+    primaryCombo_->addItem("HTTP", "http");
     defaultBranchEdit_ = new QLineEdit(gitGroup_);
     defaultBranchEdit_->setPlaceholderText("main");
     defaultBranchEdit_->setText("main");
@@ -71,7 +80,10 @@ void RepoEditor::buildUI()
     testRow->addWidget(testResult_);
     testRow->addStretch();
 
-    gitLayout->addRow("远程地址:", remoteEdit_);
+    gitLayout->addRow("SSH 地址:", sshEdit_);
+    gitLayout->addRow("HTTPS 地址:", httpsEdit_);
+    gitLayout->addRow("HTTP 地址:", httpEdit_);
+    gitLayout->addRow("主地址:", primaryCombo_);
     gitLayout->addRow("默认分支:", defaultBranchEdit_);
     gitLayout->addRow("", testRow);
 
@@ -122,7 +134,11 @@ void RepoEditor::connectSignals()
     connect(minecraftEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
     connect(modloaderCombo_, &QComboBox::currentTextChanged, this, &RepoEditor::onCellChanged);
     connect(modloaderVersionEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
-    connect(remoteEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
+    connect(sshEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
+    connect(httpsEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
+    connect(httpEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
+    connect(primaryCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        this, &RepoEditor::onCellChanged);
     connect(defaultBranchEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
     connect(customModsPathEdit_, &QLineEdit::textChanged, this, &RepoEditor::onCellChanged);
     connect(syncPoliciesEditor_, &SyncPoliciesEditor::contentModified, this, &RepoEditor::onCellChanged);
@@ -146,10 +162,37 @@ void RepoEditor::loadFromJson(const nlohmann::json& config)
 
         if (config.contains("git")) {
             auto& git = config["git"];
-            remoteEdit_->setText(QString::fromStdString(git.value("remote", "")));
-            loadedRemote_ = git.value("remote", "");
-            loadedRemotes_ = git.contains("remotes") && git["remotes"].is_array()
-                ? git["remotes"] : nlohmann::json::array();
+            sshEdit_->clear();
+            httpsEdit_->clear();
+            httpEdit_->clear();
+            std::string remote = git.value("remote", "");
+            std::string primary = "ssh";
+            if (git.contains("remotes") && git["remotes"].is_array()) {
+                for (const auto& entry : git["remotes"]) {
+                    const std::string type = entry.value("type", "");
+                    const std::string url = entry.value("url", "");
+                    if (url.empty()) continue;
+                    if (type == "ssh") sshEdit_->setText(QString::fromStdString(url));
+                    else if (type == "https") httpsEdit_->setText(QString::fromStdString(url));
+                    else if (type == "http") httpEdit_->setText(QString::fromStdString(url));
+                }
+            }
+            if (sshEdit_->text().isEmpty() && httpsEdit_->text().isEmpty()
+                && httpEdit_->text().isEmpty() && !remote.empty()) {
+                if (remote.rfind("git@", 0) == 0 || remote.rfind("ssh://", 0) == 0) {
+                    sshEdit_->setText(QString::fromStdString(remote));
+                } else if (remote.rfind("http://", 0) == 0) {
+                    httpEdit_->setText(QString::fromStdString(remote));
+                } else {
+                    httpsEdit_->setText(QString::fromStdString(remote));
+                    primary = "https";
+                }
+            }
+            if (remote == httpsEdit_->text().toStdString()) primary = "https";
+            else if (remote == httpEdit_->text().toStdString()) primary = "http";
+            else if (remote == sshEdit_->text().toStdString()) primary = "ssh";
+            const int idx = primaryCombo_->findData(QString::fromStdString(primary));
+            if (idx >= 0) primaryCombo_->setCurrentIndex(idx);
             defaultBranchEdit_->setText(
                 QString::fromStdString(git.value("default_branch", "main")));
         }
@@ -172,6 +215,15 @@ void RepoEditor::loadFromJson(const nlohmann::json& config)
     modified_ = false;
 }
 
+QString RepoEditor::primaryRepoUrl() const
+{
+    const QString type = primaryCombo_->currentData().toString();
+    if (type == "ssh") return sshEdit_->text().trimmed();
+    if (type == "http") return httpEdit_->text().trimmed();
+    if (type == "https") return httpsEdit_->text().trimmed();
+    return {};
+}
+
 nlohmann::json RepoEditor::saveToJson() const
 {
     nlohmann::json config;
@@ -181,13 +233,26 @@ nlohmann::json RepoEditor::saveToJson() const
     config["workspace"]["modloader"] = modloaderCombo_->currentText().toStdString();
     config["workspace"]["modloader_version"] = modloaderVersionEdit_->text().toStdString();
 
-    config["git"]["remote"] = remoteEdit_->text().toStdString();
-    config["git"]["default_branch"] = defaultBranchEdit_->text().toStdString();
-    if (!loadedRemotes_.empty() && config["git"].value("remote", "") == loadedRemote_) {
-        config["git"]["remotes"] = loadedRemotes_;
-    } else {
-        NeoWorkspace::ensureWorkspaceRepoUrls(config);
+    config["version"] = "1.1";
+
+    std::vector<nlohmann::json> remotes;
+    const auto addRemote = [&remotes](const std::string& type, const QString& value) {
+        if (value.trimmed().isEmpty()) return;
+        remotes.push_back({{"type", type}, {"url", value.trimmed().toStdString()}});
+    };
+    const QString primary = primaryCombo_->currentData().toString();
+    const auto addByType = [&](const std::string& type) {
+        if (type == "ssh") addRemote("ssh", sshEdit_->text());
+        else if (type == "https") addRemote("https", httpsEdit_->text());
+        else if (type == "http") addRemote("http", httpEdit_->text());
+    };
+    addByType(primary.toStdString());
+    for (const auto& type : { "ssh", "https", "http" }) {
+        if (primary != QString::fromLatin1(type)) addByType(type);
     }
+    config["git"]["remotes"] = nlohmann::json(remotes);
+    config["git"]["remote"] = remotes.empty() ? "" : remotes.front().value("url", "");
+    config["git"]["default_branch"] = defaultBranchEdit_->text().toStdString();
 
     config["custom_mods"]["enabled"] = !customModsPathEdit_->text().isEmpty();
     config["custom_mods"]["path"] = customModsPathEdit_->text().toStdString();
@@ -208,7 +273,7 @@ void RepoEditor::onTestConnection()
     testBtn_->setEnabled(false);
     testResult_->setText("正在测试...");
     testResult_->setStyleSheet("color: gray;");
-    emit connectionTestClicked(remoteEdit_->text());
+    emit connectionTestClicked(primaryRepoUrl());
 }
 
 void RepoEditor::onCellChanged()

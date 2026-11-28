@@ -176,8 +176,8 @@ json buildManifest(const NeoCore::ExportMetadata& meta, const json& files,
     const std::string repo = extraString(extra, "repo");
 
     json j;
-    j["pack_format"] = 2;
-    j["schema"] = 2;
+    j["pack_format"] = 3;
+    j["schema"] = 3;
     j["type"] = "nsum";
 
     j["name"] = meta.name.empty() ? "NSUM" : meta.name;

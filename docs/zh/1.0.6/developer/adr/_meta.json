@@ -1,0 +1,13 @@
+{
+  "index": "设计决策（ADR）",
+  "0001-pointer-cache": "0001 · 指针文件与内容寻址缓存",
+  "0002-l1-l2-l3-sync": "0002 · 三层同步体系（L1/L2/L3）",
+  "0003-mclhr-store": "0003 · MCLHR mod store 与硬链接投影",
+  "0004-hic-flow": "0004 · HIC 声明式安装流程",
+  "0005-bridge-injection": "0005 · 启动流程注入（bridge）",
+  "0006-nsumpack-v2": "0006 · 清单型 .nsumpack（pack_format 2）",
+  "0007-parallel-download": "0007 · HTTP Range 并行下载",
+  "0008-editor-cli": "0008 · 编辑器无头 CLI",
+  "0009-bilingual-docs": "0009 · 中英双语文档体系",
+  "0010-module-boundaries": "0010 · 模块边界与独立仓库"
+}

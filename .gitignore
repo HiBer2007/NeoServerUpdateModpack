@@ -99,4 +99,6 @@ package-lock.json
 build_log.txt
 conanfile.txt
 src/tset.cpp
-
+!docs/**/parsers/
+!docs/**/pointers/
+!docs/**/exporters/

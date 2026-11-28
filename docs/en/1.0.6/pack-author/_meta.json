@@ -1,0 +1,12 @@
+{
+  "index": "Overview",
+  "repo-structure": "repo-structure",
+  "sync-rules": "sync-rules",
+  "editor-gui": "editor-gui",
+  "editor-cli": "editor-cli",
+  "build-and-export": "build-and-export",
+  "nsumpack": "nsumpack",
+  "pointers": "pointers",
+  "best-practices": "best-practices",
+  "publish": "publish"
+}
