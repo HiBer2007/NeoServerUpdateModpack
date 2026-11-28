@@ -16,7 +16,8 @@ Full release history: [GitHub Releases](https://github.com/HiBer2007/NeoServerUp
 - **Automatic fastest address**: with multiple URLs the runtime CLI probes each address and the bridge probes in parallel and prefer the lowest-latency one;
 - **Timeout fallback**: per-address timeouts (8s probe / 120s clone / 300s sync) automatically try the next address;
 - **Manual selection**: `--repo-preference auto|ssh|https|http|manual` (runtime), `.hmcl/nsum/repo.properties` `preference=auto|ssh|https|http|manual|<URL>` (bridge), editor primary selector and explicit URL input;
-- The main program repository page adds an **Address priority** selector (auto fastest / prefer SSH / HTTPS / HTTP); a clone attempt times out after 60s and falls back.
+- The main program repository page adds an **Address priority** selector (auto fastest / prefer SSH / HTTPS / HTTP); a clone attempt times out after 60s and falls back;
+- Companion **MCDR server plugin 0.4.0**: forwards `repo_preference` / `repo_timeout_seconds` to the Runtime for fastest selection and timeout fallback.
 
 ## 1.0.6 (2026-11-28)
 

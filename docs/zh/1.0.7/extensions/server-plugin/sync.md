@@ -3,7 +3,7 @@ title: 服务端同步
 description: MCDR 插件如何调用 Runtime 同步 server 分支并处理插件目录。
 lang: zh
 status: complete
-updated: 2026-11-27
+2026-11-28
 ---
 
 # 服务端同步
@@ -28,8 +28,11 @@ sequenceDiagram
 
 ```powershell
 NeoServerUpdateModpack.exe exec build --repo <仓库> --modpack server --git-branch main `
-    --format hmcl --export <服务器目录>
+    --repo-preference auto --format hmcl --export <服务器目录>
 ```
+
+- `--repo-preference` / `--repo-timeout` 由插件配置 `repo_preference` / `repo_timeout_seconds` 透传；
+- 插件配置 `timeout_seconds`（默认 1800s）是整次同步的总超时，超时会终止 Runtime 并阻止启动。
 
 ## 插件目录合并
 

@@ -3,7 +3,7 @@ title: Server Plugin
 description: NSUM's MCDR plugin: server core install, config rewrite, repository sync and launch.
 lang: en
 status: complete
-updated: 2026-11-27
+2026-11-28
 translation_of: /zh/1.0.7/extensions/server-plugin/index.md
 ---
 
@@ -11,9 +11,9 @@ translation_of: /zh/1.0.7/extensions/server-plugin/index.md
 
 The NSUM server side is driven by an MCDR plugin (separate repository): it installs the core, syncs repository content and launches the server.
 
-<!-- slot:MCDR_PLUGIN_REPO -->
-
-> **TBD**: repository/release links will be added when available.
+- Repository: [HiBer2007/nsum-bridge-mcdr](https://github.com/HiBer2007/nsum-bridge-mcdr)
+- Current version: **0.4.0**
+- Requires NSUM Runtime **>= 1.0.7** (older runtimes still sync, but without fastest selection/timeout fallback)
 
 ## Capabilities
 
@@ -22,8 +22,24 @@ The NSUM server side is driven by an MCDR plugin (separate repository): it insta
 | Core install | vanilla / plugin / modded / hybrid / proxy / geyser |
 | Config rewrite | Update MCDR `config.yml` handler per core |
 | Repository sync | Run the Runtime sync for the `server` branch |
+| Multi-address selection | `repo_preference` is forwarded to the Runtime: fastest / timeout fallback / manual |
 | Plugin merge | Merge `plugin/<name>/` into `plugins/<name>/` |
 | Bundled Git | Resolve bundled Git via `gitpath` and prepend PATH |
+
+## Plugin configuration
+
+```json
+{
+  "repo": "git@github.com:you/your-server-repo.git",
+  "repo_preference": "auto",
+  "repo_timeout_seconds": 0
+}
+```
+
+- `repo_preference`: `auto` (default, fastest) / `ssh` / `https` / `http` / `manual` (only `repo`);
+- `repo_timeout_seconds`: per-address probe/clone timeout; `0` uses the Runtime defaults (8s probe, 120s clone).
+
+The file lives in the MCDR plugin data directory (`config/nsum_bridge/config.json`); the CLI sync also accepts `--repo-preference` / `--repo-timeout`.
 
 ## Core categories
 

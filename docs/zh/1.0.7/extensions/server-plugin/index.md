@@ -3,16 +3,16 @@ title: 服务端插件
 description: NSUM 的 MCDR 插件：服务端核心安装、配置改写、仓库同步与启动。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # 服务端插件
 
 NSUM 服务端由 MCDR 插件驱动（独立仓库），负责在服务器上安装核心、同步仓库内容并启动服务器。
 
-<!-- slot:MCDR_PLUGIN_REPO -->
-
-> **待补**：MCDR 插件仓库与发布页链接完成后在此补充。
+- 仓库：[HiBer2007/nsum-bridge-mcdr](https://github.com/HiBer2007/nsum-bridge-mcdr)
+- 当前版本：**0.4.0**
+- 需要 NSUM Runtime **>= 1.0.7**（旧 Runtime 仍可同步，但没有自动选优/超时回退）
 
 ## 能力
 
@@ -21,8 +21,24 @@ NSUM 服务端由 MCDR 插件驱动（独立仓库），负责在服务器上安
 | 核心安装 | vanilla / plugin / modded / hybrid / proxy / geyser 分类 |
 | 配置改写 | 按核心修改 MCDR `config.yml` 的 handler |
 | 仓库同步 | 调用 Runtime 同步 `server` 分支 |
+| 多地址选择 | `repo_preference` 透传 Runtime，自动最快 / 超时回退 / 手动指定 |
 | 插件合并 | `plugin/<name>/` 合并进 `plugins/<name>/` |
 | 内置 Git | 通过 `gitpath` 解析内置 Git 并前置 PATH |
+
+## 插件配置
+
+```json
+{
+  "repo": "git@github.com:you/your-server-repo.git",
+  "repo_preference": "auto",
+  "repo_timeout_seconds": 0
+}
+```
+
+- `repo_preference`：`auto`（默认，最快）/ `ssh` / `https` / `http` / `manual`（只用 `repo`）；
+- `repo_timeout_seconds`：每个地址的探测/克隆超时秒数，`0` 使用 Runtime 默认（探测 8s、克隆 120s）。
+
+配置文件位于 MCDR 插件配置目录（`config/nsum_bridge/config.json`）；命令行同步也可用 `--repo-preference` / `--repo-timeout`。
 
 ## 核心分类
 

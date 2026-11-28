@@ -3,7 +3,7 @@ title: Server Sync
 description: How the MCDR plugin syncs the server branch and merges plugin directories.
 lang: en
 status: complete
-updated: 2026-11-27
+2026-11-28
 translation_of: /zh/1.0.7/extensions/server-plugin/sync.md
 ---
 
@@ -27,8 +27,11 @@ sequenceDiagram
 
 ```powershell
 NeoServerUpdateModpack.exe exec build --repo <repository> --modpack server --git-branch main `
-    --format hmcl --export <server directory>
+    --repo-preference auto --format hmcl --export <server directory>
 ```
+
+- `--repo-preference` / `--repo-timeout` come from the plugin's `repo_preference` / `repo_timeout_seconds`;
+- `timeout_seconds` (default 1800s) is the total sync timeout; the Runtime is terminated and startup is blocked on expiry.
 
 ## Plugin merge
 
