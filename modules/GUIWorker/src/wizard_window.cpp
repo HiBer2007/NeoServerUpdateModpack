@@ -23,6 +23,9 @@
 #include <QStatusBar>
 #include <QLabel>
 #include <QTimer>
+#include <QElapsedTimer>
+#include <QVector>
+#include <algorithm>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QScreen>
@@ -840,6 +843,27 @@ void WizardWindow::startClone(const QString& url)
         cloneCandidates_ << url;
     }
     const QString preference = repoPage_ ? repoPage_->repoPreference() : QStringLiteral("auto");
+    if (preference == QStringLiteral("auto") && cloneCandidates_.size() > 1) {
+        struct Probe { QString url; qint64 latency; };
+        QVector<Probe> probes;
+        for (const auto& candidate : cloneCandidates_) {
+            progressStatusLabel_->setText(QStringLiteral("\u6b63\u5728\u63a2\u6d4b\u5730\u5740: %1").arg(candidate));
+            QCoreApplication::processEvents();
+            QElapsedTimer timer;
+            timer.start();
+            QProcess probe;
+            probe.start(QStringLiteral("git"), { QStringLiteral("ls-remote"), candidate });
+            const bool ok = probe.waitForFinished(8000) && probe.exitCode() == 0;
+            probes.push_back({ candidate, ok ? timer.elapsed() : -1 });
+        }
+        std::stable_sort(probes.begin(), probes.end(), [](const Probe& a, const Probe& b) {
+            if (a.latency < 0) return false;
+            if (b.latency < 0) return true;
+            return a.latency < b.latency;
+        });
+        cloneCandidates_.clear();
+        for (const auto& probe : probes) cloneCandidates_ << probe.url;
+    }
     if (preference == QStringLiteral("ssh") || preference == QStringLiteral("https")
         || preference == QStringLiteral("http")) {
         QStringList reordered;
