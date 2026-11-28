@@ -147,6 +147,9 @@ void RepoEditor::loadFromJson(const nlohmann::json& config)
         if (config.contains("git")) {
             auto& git = config["git"];
             remoteEdit_->setText(QString::fromStdString(git.value("remote", "")));
+            loadedRemote_ = git.value("remote", "");
+            loadedRemotes_ = git.contains("remotes") && git["remotes"].is_array()
+                ? git["remotes"] : nlohmann::json::array();
             defaultBranchEdit_->setText(
                 QString::fromStdString(git.value("default_branch", "main")));
         }
@@ -180,7 +183,11 @@ nlohmann::json RepoEditor::saveToJson() const
 
     config["git"]["remote"] = remoteEdit_->text().toStdString();
     config["git"]["default_branch"] = defaultBranchEdit_->text().toStdString();
-    NeoWorkspace::ensureWorkspaceRepoUrls(config);
+    if (!loadedRemotes_.empty() && config["git"].value("remote", "") == loadedRemote_) {
+        config["git"]["remotes"] = loadedRemotes_;
+    } else {
+        NeoWorkspace::ensureWorkspaceRepoUrls(config);
+    }
 
     config["custom_mods"]["enabled"] = !customModsPathEdit_->text().isEmpty();
     config["custom_mods"]["path"] = customModsPathEdit_->text().toStdString();

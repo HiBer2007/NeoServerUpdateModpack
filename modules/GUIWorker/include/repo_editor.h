@@ -60,6 +60,8 @@ private:
     QPushButton* saveBtn_;
 
     bool modified_;
+    nlohmann::json loadedRemotes_ = nlohmann::json::array();
+    std::string loadedRemote_;
 };
 
 } // namespace GUIWorker
