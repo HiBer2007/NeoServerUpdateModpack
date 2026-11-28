@@ -8,10 +8,12 @@
 | 路径 | audience | 状态 | 负责人 |
 |---|---|---|---|
 | `docs/zh/index.md` / `docs/en/index.md` | all | complete | docs |
-| `user/` | player | wip | docs-user |
-| `pack-author/` | pack author | wip | docs-pack |
-| `developer/` | developer | wip | docs-dev |
-| `extensions/` | all | wip | docs-ext |
+| `docs/{zh,en}/1.0.6/` | all | complete | docs |
+| `docs/{zh,en}/1.0.5/` | all | complete（冻结） | docs |
+| `1.0.6/user/` | player | complete | docs-user |
+| `1.0.6/pack-author/` | pack author | complete | docs-pack |
+| `1.0.6/developer/` | developer | complete | docs-dev |
+| `1.0.6/extensions/` | all | complete | docs-ext |
 
 ## 板块 1 · user
 
