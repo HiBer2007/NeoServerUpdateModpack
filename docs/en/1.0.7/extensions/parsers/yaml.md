@@ -4,7 +4,7 @@ description: NeoParser_YAML: key-level merging for `.yml` `.yaml`.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/parsers/yaml.md
+translation_of: /zh/1.0.7/extensions/parsers/yaml.md
 ---
 
 # YAML Parser

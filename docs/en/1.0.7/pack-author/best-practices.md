@@ -4,7 +4,7 @@ description: Directory conventions, size control, branch splitting, sync policie
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/best-practices.md
+translation_of: /zh/1.0.7/pack-author/best-practices.md
 ---
 
 # Best Practices

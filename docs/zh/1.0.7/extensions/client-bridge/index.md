@@ -3,7 +3,7 @@ title: 客户端 bridge
 description: nsum-bridge（HMCL/FLF 扩展）：NSUM 页面、整合包类型、启动注入与 Runtime 安装。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # 客户端 bridge
@@ -20,6 +20,7 @@ updated: 2026-11-27
 | 分支选择 | 首次启动三步选择（内嵌对话框） |
 | Runtime 安装 | 从 metadata 下载并校验安装 |
 | 并行下载 | Range 分片 + 单流回退 |
+| 多地址选择 | 并行探测取最快，超时自动切换，可手动指定 |
 | 内嵌文件缓存 | `.hmcl/nsum/cache/files/<sha256>` |
 | MCLHR 集成 | 同步后投影 mod store |
 
@@ -27,9 +28,27 @@ updated: 2026-11-27
 
 | 项 | 值 |
 |---|---|
-| 版本 | `0.4.4.17`（当前） |
+| 版本 | `0.4.6.17`（当前） |
 | 依赖 | HMCL 3.17.2 / FLF API 2.x |
 | Java | 与 HMCL 运行环境一致（17+） |
+
+## 仓库地址选择
+
+自 0.4.6.17 起，bridge 对 `repository.urls[]` 中的多个地址**并行探测**（`git ls-remote`），延迟最低的优先；每个地址独立超时，超时/失败自动换下一个。已有检出会复用原目录（`git remote set-url`），不会为每个地址克隆一份。
+
+配置文件 `.hmcl/nsum/repo.properties`（可选）：
+
+```properties
+preference=auto
+probeTimeoutSeconds=8
+cloneTimeoutSeconds=180
+syncTimeoutSeconds=300
+```
+
+- `preference`：`auto`（默认，最快）/ `ssh` / `https` / `http` / `manual`（保持清单顺序）/ 显式 URL；
+- 同步超时后 bridge 会结束该次 Runtime 进程并尝试下一个地址；
+- 系统属性 `-Dnsum.repo.preference=...`、`-Dnsum.repo.probeTimeoutSeconds=...` 等可覆盖文件（环境变量 `NSUM_REPO_PREFERENCE` 等同样可用）；
+- 成功后记录 `activeRepoUrl`，下次启动优先使用，避免重复探测。
 
 ## 页面
 
@@ -47,6 +66,7 @@ updated: 2026-11-27
 | `.hmcl/nsum/logs/` | 同步日志 |
 | `.hmcl/nsum/cache/files/` | 内嵌文件缓存 |
 | `.hmcl/nsum/download.properties` | 下载器配置 |
+| `.hmcl/nsum/repo.properties` | 仓库地址选择配置 |
 
 ## 相关
 

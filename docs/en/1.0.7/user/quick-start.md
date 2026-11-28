@@ -4,7 +4,7 @@ description: From receiving a .nsumpack to your first successful join.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/user/quick-start.md
+translation_of: /zh/1.0.7/user/quick-start.md
 ---
 
 # Quick Start

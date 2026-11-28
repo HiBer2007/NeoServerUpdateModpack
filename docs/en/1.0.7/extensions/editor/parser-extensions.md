@@ -4,7 +4,7 @@ description: Editor config parser extensions (NeoEditorExtension_Parser_*): high
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/editor/parser-extensions.md
+translation_of: /zh/1.0.7/extensions/editor/parser-extensions.md
 ---
 
 # Parser Extensions

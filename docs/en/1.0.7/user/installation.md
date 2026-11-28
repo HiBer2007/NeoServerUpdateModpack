@@ -3,13 +3,24 @@ title: Installation
 description: Install NSUM Runtime, nsum-bridge and the optional Editor, with verification steps.
 lang: en
 status: complete
-updated: 2026-11-27
-translation_of: /zh/1.0.6/user/installation.md
+updated: 2026-11-28
+translation_of: /zh/1.0.7/user/installation.md
 ---
 
 # Installation
 
-> **Address selection (since 1.0.7)**: multiple URLs are probed and the fastest is used; choose **prefer SSH/HTTPS/HTTP** on the repository page, or force the entered URL with `--repo-preference manual`.
+## Address selection
+
+Since 1.0.7, when a `.nsumpack` carries multiple repository URLs the runtime **probes them and picks the lowest-latency address**; a single address that times out or fails **automatically falls back to the next one**. SSH / HTTPS / HTTP addresses stay in the pack, so clients choose according to their own network without repacking.
+
+| Mode | Behavior | How to set |
+|---|---|---|
+| Auto fastest (default) | Probe each address with `git ls-remote`, prefer the lowest latency, fall back on failure/timeout | `--repo-preference auto`; **Address priority: auto fastest** in the main program |
+| Prefer protocol | Prefer the chosen SSH / HTTPS / HTTP address, then fall back | `--repo-preference ssh\|https\|http`; GUI selector |
+| Manual | Use only the given URL, no probing or switching | `--repo-preference manual`, or enter a full URL |
+| Bridge | Follow `preference` in `.hmcl/nsum/repo.properties` | See [Client bridge](https://github.com/HiBer2007/NeoServerUpdateModpack/blob/main/docs/en/1.0.7/extensions/client-bridge/index.md) |
+
+Default timeouts: 8s probe, 120s clone (60s in the main GUI), 300s bridge sync. Adjust with `--repo-timeout <seconds>` or `repo.properties`; only when every address fails does the command report an error, and the log lists each probe latency and failure reason.
 
 ![Figure 1-2 NSUM installer welcome page](../../../assets/screenshots/screen-installer-welcome.png)
 

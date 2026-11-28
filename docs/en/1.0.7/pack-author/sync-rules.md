@@ -4,7 +4,7 @@ description: The three sync tiers (L1/L2/L3), sync_policies, file markers and se
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/sync-rules.md
+translation_of: /zh/1.0.7/pack-author/sync-rules.md
 ---
 
 # Sync Rules

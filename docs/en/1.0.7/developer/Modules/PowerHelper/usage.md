@@ -4,7 +4,7 @@ description: Rendering, view and bridge APIs, the render/toc/group CLI, and how 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/PowerHelper/usage.md
+translation_of: /zh/1.0.7/developer/Modules/PowerHelper/usage.md
 ---
 
 # PowerHelper usage

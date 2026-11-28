@@ -4,7 +4,7 @@ description: Product-agnostic installer framework: zero-Qt hci_core, JSON+Lua fl
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/HiBerCommonInstaller/README.md
+translation_of: /zh/1.0.7/developer/Modules/HiBerCommonInstaller/README.md
 ---
 
 # HiBerCommonInstaller module

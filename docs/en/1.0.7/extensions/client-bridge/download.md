@@ -4,7 +4,7 @@ description: NSumParallelDownloader: Range chunks, fallback, configuration and p
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/client-bridge/download.md
+translation_of: /zh/1.0.7/extensions/client-bridge/download.md
 ---
 
 # Bridge Downloads

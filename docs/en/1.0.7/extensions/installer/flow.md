@@ -4,7 +4,7 @@ description: HIC JSON flows: step types, variables, conditions and optional step
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/installer/flow.md
+translation_of: /zh/1.0.7/extensions/installer/flow.md
 ---
 
 # Flow Scripts

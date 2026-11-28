@@ -3,7 +3,7 @@ title: 数据模型
 description: workspace.json、branch_config、file_manifest、pointer、缓存与实例标记的关系。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # 数据模型
@@ -28,7 +28,7 @@ erDiagram
 
 工作区级配置：workspace（mc/modloader）、git（remote/default_branch）、branches[]、sync_policies、export.metadata。
 
-`git.remotes` 记录同一仓库的多种访问地址，按优先级排序；`git.remote` 仍是主地址（旧字段）。仓库编辑器保存、分支写回时自动补齐三种地址，`exec repo-remotes` 可显式维护：
+`git.remotes` 记录同一仓库的多种访问地址，按优先级排序；`git.remote` 仍是主地址（旧字段）。运行时按 `--repo-preference` 或默认 `auto` 探测延迟，选择最快地址并保留失败回退顺序（自 1.0.7）。仓库编辑器保存、分支写回时自动补齐三种地址，`exec repo-remotes` 可显式维护：
 
 ```json
 "git": {

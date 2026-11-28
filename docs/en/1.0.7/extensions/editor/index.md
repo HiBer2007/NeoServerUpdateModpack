@@ -4,7 +4,7 @@ description: How NSUM Editor extensions work: config parser extensions and point
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/editor/index.md
+translation_of: /zh/1.0.7/extensions/editor/index.md
 ---
 
 # Editor Extensions

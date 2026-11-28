@@ -4,7 +4,7 @@ description: CLI and GUI usage of CrashTracker.exe, how to read its reports, the
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/CrashTracker/usage.md
+translation_of: /zh/1.0.7/developer/Modules/CrashTracker/usage.md
 ---
 
 # CrashTracker usage

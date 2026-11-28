@@ -4,7 +4,7 @@ description: From repository build to four export formats: pipeline, commands, f
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/build-and-export.md
+translation_of: /zh/1.0.7/pack-author/build-and-export.md
 ---
 
 # Build and Export

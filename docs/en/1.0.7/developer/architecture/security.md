@@ -4,7 +4,7 @@ description: Path constraints, encoding, content verification, credentials and t
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/architecture/security.md
+translation_of: /zh/1.0.7/developer/architecture/security.md
 ---
 
 # Security

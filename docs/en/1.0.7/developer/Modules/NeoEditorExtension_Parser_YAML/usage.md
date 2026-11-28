@@ -4,7 +4,7 @@ description: NeoEditorExtension_Parser_YAML interface and registration.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoEditorExtension_Parser_YAML/usage.md
+translation_of: /zh/1.0.7/developer/Modules/NeoEditorExtension_Parser_YAML/usage.md
 ---
 
 # NeoEditorExtension_Parser_YAML usage

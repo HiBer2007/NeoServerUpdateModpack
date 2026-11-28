@@ -3,8 +3,8 @@ title: Troubleshooting
 description: Diagnose NSUM install, sync and launch problems by symptom, with log keywords and fixes.
 lang: en
 status: complete
-updated: 2026-11-27
-translation_of: /zh/1.0.6/user/troubleshooting.md
+updated: 2026-11-28
+translation_of: /zh/1.0.7/user/troubleshooting.md
 ---
 
 # Troubleshooting
@@ -70,6 +70,21 @@ Fix: re-select the Git branch in the branch dialog; confirm the branch exists.
 3. Check that game version/loader match the server;
 4. Read `crash-reports` and the HMCL log;
 5. Remove conflicting client mods.
+
+## Symptom: repository address is slow, hangs or times out
+
+**Log keywords**: `Repository probe`, `Address failed`, `Process timed out`, `trying the next address`.
+
+Cause: SSH key not configured, HTTPS blocked by a proxy/firewall, or a slow DNS/GitHub route.
+
+Handling:
+
+1. Default `auto` logs each probe latency; check `builder.log` for the slowest/unreachable address;
+2. Change **Address priority** in the main program to **prefer SSH/HTTPS/HTTP**, or pass `--repo-preference ssh|https|http`;
+3. To pin one address, use `--repo-preference manual` with that exact URL;
+4. Shorten waits with `--repo-timeout 30` (runtime) or `probeTimeoutSeconds` / `cloneTimeoutSeconds` / `syncTimeoutSeconds` in `repo.properties` (bridge);
+5. For SSH failures, use **SSH Key...** in the main program or run `exec git-ssh-key --test`;
+6. Existing checkouts are reused via `git remote set-url` (bridge) or the cache directory (Runtime), never cloned twice.
 
 ## Symptom 5: Unicode/non-ASCII path errors
 

@@ -4,7 +4,7 @@ description: pack_format 3 manifest-only packs: fields, embed rules, import sequ
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/nsumpack.md
+translation_of: /zh/1.0.7/pack-author/nsumpack.md
 ---
 
 # The `.nsumpack` Format
@@ -61,7 +61,7 @@ translation_of: /zh/1.0.6/pack-author/nsumpack.md
 |---|---|
 | `pack_format` / `schema` | File structure version (2), unrelated to pack version |
 | `repository.url` | Primary repository URL (legacy field, still written; clients prefer `urls`) |
-| `repository.urls` | Ordered URL list: `ssh` / `https` / `http`; clients fall back in order (since 1.0.6 / pack_format 3) |
+| `repository.urls` | Ordered URL list: `ssh` / `https` / `http`; clients probe and prefer the lowest-latency address, with timeout fallback (since 1.0.7; older clients use list order, since 1.0.6 / pack_format 3) |
 | `repository.default_branch` | Default Git branch |
 | `repository.branch` | Modpack branch |
 | `repository.git_branch` / `commit` | Git branch and commit used to build |

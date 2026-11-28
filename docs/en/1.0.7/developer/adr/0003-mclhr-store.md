@@ -4,7 +4,7 @@ description: MCLHR mod store and hard-link projection
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/adr/0003-mclhr-store.md
+translation_of: /zh/1.0.7/developer/adr/0003-mclhr-store.md
 ---
 
 # ADR 0003 · MCLHR mod store and hard-link projection

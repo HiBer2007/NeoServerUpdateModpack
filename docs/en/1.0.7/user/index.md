@@ -4,7 +4,7 @@ description: Install NSUM Runtime, import a modpack, sync and launch, update and
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/user/index.md
+translation_of: /zh/1.0.7/user/index.md
 ---
 
 # User Guide

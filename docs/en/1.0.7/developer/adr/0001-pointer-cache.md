@@ -4,7 +4,7 @@ description: Pointer files and content-addressed cache
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/adr/0001-pointer-cache.md
+translation_of: /zh/1.0.7/developer/adr/0001-pointer-cache.md
 ---
 
 # ADR 0001 · Pointer files and content-addressed cache

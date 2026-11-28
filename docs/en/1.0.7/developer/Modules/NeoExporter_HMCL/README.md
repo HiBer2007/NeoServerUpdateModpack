@@ -4,7 +4,7 @@ description: Exporter plugin for hmcl ((directory)).
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoExporter_HMCL/README.md
+translation_of: /zh/1.0.7/developer/Modules/NeoExporter_HMCL/README.md
 ---
 
 # NeoExporter_HMCL

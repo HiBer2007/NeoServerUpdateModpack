@@ -4,7 +4,7 @@ description: API for parsing and serializing .gitignore markup, round-trip examp
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/GitIgnoreMarkup/usage.md
+translation_of: /zh/1.0.7/developer/Modules/GitIgnoreMarkup/usage.md
 ---
 
 # GitIgnoreMarkup usage

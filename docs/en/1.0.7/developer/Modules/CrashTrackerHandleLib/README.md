@@ -4,7 +4,7 @@ description: In-process crash backstop library (HiBerCTM) that writes dump/trace
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/CrashTrackerHandleLib/README.md
+translation_of: /zh/1.0.7/developer/Modules/CrashTrackerHandleLib/README.md
 ---
 
 # CrashTrackerHandleLib module

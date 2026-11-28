@@ -3,7 +3,7 @@ title: NeoWorkspace 使用
 description: 工作区引擎 API：加载 workspace、分支查询、Git 操作与同步。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # NeoWorkspace 使用
@@ -34,6 +34,7 @@ for (const auto& branch : manager.branches()) {
 | `findBranch` | `BranchConfig findBranch(const std::string& name) const` | 查找分支（按值返回） |
 | `defaultBranch` | `std::string defaultBranch() const` | Git 默认分支 |
 | `GitOperations::clone` | `GitResult clone(const std::string& url, const std::string& targetDir, int timeoutMs = 120000)` | 克隆 |
+| `GitOperations::lsRemote` | `GitResult lsRemote(const std::string& url, int timeoutMs = 8000)` | 探测仓库地址（`git ls-remote`） |
 | `GitOperations::fetch` | `GitResult fetch(const std::string& repoDir, const std::string& remote = "origin")` | 抓取 |
 | `GitOperations::checkout` | `GitResult checkout(const std::string& repoDir, const std::string& branch)` | 切换分支 |
 | `SyncEngine::init` | `bool init(const std::string& targetDir, const std::string& cacheDir)` | 初始化同步 |

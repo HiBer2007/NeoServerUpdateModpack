@@ -4,7 +4,7 @@ description: NeoExporter_NSUM generates manifest-only .nsumpack (pack_format 3) 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/exporters/nsum.md
+translation_of: /zh/1.0.7/extensions/exporters/nsum.md
 ---
 
 # NSUM Exporter

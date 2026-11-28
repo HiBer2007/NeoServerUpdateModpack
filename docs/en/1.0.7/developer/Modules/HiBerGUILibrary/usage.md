@@ -4,7 +4,7 @@ description: API and real call snippets for progress, cards, tree panels, code e
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/HiBerGUILibrary/usage.md
+translation_of: /zh/1.0.7/developer/Modules/HiBerGUILibrary/usage.md
 ---
 
 # HiBerGUILibrary usage

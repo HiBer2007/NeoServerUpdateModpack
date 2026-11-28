@@ -4,7 +4,7 @@ description: NSUM's key design decisions, alternatives and consequences.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/adr/index.md
+translation_of: /zh/1.0.7/developer/adr/index.md
 ---
 
 # Architecture Decision Records

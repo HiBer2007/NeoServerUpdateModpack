@@ -4,7 +4,7 @@ description: HIC --external-download contract: list downloads, exit 10, prepare 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/installer/external-download.md
+translation_of: /zh/1.0.7/extensions/installer/external-download.md
 ---
 
 # External Download Mode

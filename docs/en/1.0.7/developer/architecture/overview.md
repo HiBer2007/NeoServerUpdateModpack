@@ -4,7 +4,7 @@ description: NSUM components, process boundaries and data flow: Runtime, CLI/GUI
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/architecture/overview.md
+translation_of: /zh/1.0.7/developer/architecture/overview.md
 ---
 
 # Overview

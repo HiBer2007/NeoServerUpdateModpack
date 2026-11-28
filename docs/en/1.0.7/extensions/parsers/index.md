@@ -4,7 +4,7 @@ description: NSUM config parser extensions: merge repository configs by key or l
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/parsers/index.md
+translation_of: /zh/1.0.7/extensions/parsers/index.md
 ---
 
 # Config Parsers

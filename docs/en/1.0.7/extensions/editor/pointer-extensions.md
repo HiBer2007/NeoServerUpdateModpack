@@ -4,7 +4,7 @@ description: Editor pointer extensions (NeoEditorExtension_Pointer_*) for config
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/editor/pointer-extensions.md
+translation_of: /zh/1.0.7/extensions/editor/pointer-extensions.md
 ---
 
 # Pointer Extensions

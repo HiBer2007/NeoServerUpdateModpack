@@ -4,7 +4,7 @@ description: NSUM's test layers and copy-paste commands: structural checks, E2E 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/testing.md
+translation_of: /zh/1.0.7/developer/testing.md
 ---
 
 # Testing

@@ -4,7 +4,7 @@ description: NeoParser_TOML: key-level merging for `.toml`.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/parsers/toml.md
+translation_of: /zh/1.0.7/extensions/parsers/toml.md
 ---
 
 # TOML Parser

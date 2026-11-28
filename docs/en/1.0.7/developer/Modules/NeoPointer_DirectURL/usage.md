@@ -4,7 +4,7 @@ description: NeoPointer_DirectURL resolver name, metadata and API.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoPointer_DirectURL/usage.md
+translation_of: /zh/1.0.7/developer/Modules/NeoPointer_DirectURL/usage.md
 ---
 
 # NeoPointer_DirectURL usage

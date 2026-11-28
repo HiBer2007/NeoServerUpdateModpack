@@ -4,7 +4,7 @@ description: How the MCDR plugin syncs the server branch and merges plugin direc
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/server-plugin/sync.md
+translation_of: /zh/1.0.7/extensions/server-plugin/sync.md
 ---
 
 # Server Sync

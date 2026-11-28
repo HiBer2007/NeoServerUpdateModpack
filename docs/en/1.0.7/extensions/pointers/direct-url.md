@@ -4,7 +4,7 @@ description: NeoPointer_DirectURL downloads from the URL in the pointer metadata
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/pointers/direct-url.md
+translation_of: /zh/1.0.7/extensions/pointers/direct-url.md
 ---
 
 # DirectURL Resolver

@@ -4,7 +4,7 @@ description: NSUM repository layout, sync rules, Editor usage, builds and the .n
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/index.md
+translation_of: /zh/1.0.7/pack-author/index.md
 ---
 
 # Pack Authors

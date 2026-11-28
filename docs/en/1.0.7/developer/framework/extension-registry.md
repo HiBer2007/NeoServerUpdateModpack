@@ -4,7 +4,7 @@ description: How plugins are discovered, loaded, registered and unloaded.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/framework/extension-registry.md
+translation_of: /zh/1.0.7/developer/framework/extension-registry.md
 ---
 
 # Extension Registry

@@ -3,7 +3,7 @@ title: 故障排查
 description: 按症状定位 NSUM 安装、同步、启动问题：日志关键字、原因与修复步骤。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # 故障排查
@@ -69,6 +69,21 @@ flowchart TD
 3. 检查游戏版本/加载器（NeoForge/Fabric）是否与服务器一致；
 4. 查看 `crash-reports` 与 HMCL 日志；
 5. 删除冲突模组（服务器要求之外的客户端模组）。
+
+## 症状：仓库地址慢、卡住或超时
+
+**日志关键字**：`Repository probe`、`Address failed`、`Process timed out`、`trying the next address`。
+
+原因：SSH 未配置密钥、HTTPS 被代理/防火墙阻断、DNS 或 GitHub 线路慢。
+
+处理：
+
+1. 默认 `auto` 会列出每个地址的探测延迟；先看 `builder.log` 中哪条地址最慢/不可达；
+2. 主程序仓库页把「地址优先级」改为「优先 SSH/HTTPS/HTTP」；CLI 用 `--repo-preference ssh|https|http`；
+3. 需要固定某个地址时用 `--repo-preference manual` 并直接传该 URL；
+4. 缩短等待：`--repo-timeout 30`（运行时）或 `repo.properties` 的 `probeTimeoutSeconds` / `cloneTimeoutSeconds` / `syncTimeoutSeconds`（bridge）；
+5. SSH 地址失败时先在主程序点「SSH 密钥...」或执行 `exec git-ssh-key --test` 验证密钥；
+6. 已有仓库不会重复克隆：bridge 用 `git remote set-url` 复用原目录，Runtime 使用缓存目录。
 
 ## 症状五：中文/Unicode 路径异常
 

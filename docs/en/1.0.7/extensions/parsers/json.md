@@ -4,7 +4,7 @@ description: NeoParser_JSON: key-level merging for `.json` `.json5` `.jsonc`.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/parsers/json.md
+translation_of: /zh/1.0.7/extensions/parsers/json.md
 ---
 
 # JSON Parser

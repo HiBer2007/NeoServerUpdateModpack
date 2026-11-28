@@ -4,7 +4,7 @@ description: Branch/commit conventions, PR checklist, code rules (UTF-8 paths, E
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/contributing.md
+translation_of: /zh/1.0.7/developer/contributing.md
 ---
 
 # Contributing

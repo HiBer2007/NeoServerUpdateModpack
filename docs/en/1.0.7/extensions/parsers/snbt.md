@@ -4,7 +4,7 @@ description: NeoParser_SNBT: key-level merging for `.snbt`.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/parsers/snbt.md
+translation_of: /zh/1.0.7/extensions/parsers/snbt.md
 ---
 
 # SNBT Parser

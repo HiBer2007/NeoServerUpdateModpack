@@ -3,7 +3,7 @@ title: NSUM Docs
 description: Official NSUM (NeoServerUpdateModpack) documentation: launcher usage, pack authoring, development and extensions.
 lang: en
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # NSUM Docs
@@ -24,7 +24,9 @@ the server maintains a Git repository, and clients sync and launch through HMCL 
 
 ## Version
 
-These docs target **NSUM Runtime 1.0.5 / internal 0.1.11**. Page-level version notes are added where behavior differs.
+These docs target **NSUM Runtime 1.0.7 / internal 0.1.13**. Page-level version notes are added where behavior differs.
+
+This release focuses on automatic fastest repository selection, per-address timeout fallback and manual priority (see [Installation](./user/installation.md#address-selection) and [CLI](./user/cli.md#address-selection)).
 
 ## Related links
 

@@ -4,7 +4,7 @@ description: NSUM repository directories, workspace.json fields, branch configs 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/repo-structure.md
+translation_of: /zh/1.0.7/pack-author/repo-structure.md
 ---
 
 # Repository Layout

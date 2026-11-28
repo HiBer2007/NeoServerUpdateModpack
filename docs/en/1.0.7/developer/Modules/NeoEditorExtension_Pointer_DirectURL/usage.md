@@ -4,7 +4,7 @@ description: NeoEditorExtension_Pointer_DirectURL interface and registration.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoEditorExtension_Pointer_DirectURL/usage.md
+translation_of: /zh/1.0.7/developer/Modules/NeoEditorExtension_Pointer_DirectURL/usage.md
 ---
 
 # NeoEditorExtension_Pointer_DirectURL usage

@@ -4,7 +4,7 @@ description: Marked .gitignore blocks and an editing GUI for safe, tool-managed 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/libraries/gitignore-markup.md
+translation_of: /zh/1.0.7/extensions/libraries/gitignore-markup.md
 ---
 
 # GitIgnoreMarkup

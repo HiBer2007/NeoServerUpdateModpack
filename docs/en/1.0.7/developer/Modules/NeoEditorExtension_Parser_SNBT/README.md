@@ -4,7 +4,7 @@ description: Editor extension: edit/validate UI for `.snbt` configs.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoEditorExtension_Parser_SNBT/README.md
+translation_of: /zh/1.0.7/developer/Modules/NeoEditorExtension_Parser_SNBT/README.md
 ---
 
 # NeoEditorExtension_Parser_SNBT

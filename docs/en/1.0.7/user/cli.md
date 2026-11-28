@@ -3,13 +3,13 @@ title: Command Line (CLI)
 description: Runtime CLI command categories, JSON output and exit codes for advanced users and automation.
 lang: en
 status: complete
-updated: 2026-11-27
-translation_of: /zh/1.0.6/user/cli.md
+updated: 2026-11-28
+translation_of: /zh/1.0.7/user/cli.md
 ---
 
 # Command Line (CLI)
 
-> `--repo-preference auto|ssh|https|http|manual` and `--repo-timeout <seconds>` are available since **1.0.7**: auto probes addresses in parallel and picks the fastest, manual uses only the given URL.
+> `--repo-preference auto|ssh|https|http|manual` and `--repo-timeout <seconds>` are available since **1.0.7**: auto probes each address and picks the fastest, manual uses only the given URL.
 
 > `repo-remotes`, `git-ssh-key` and multi-URL export are available since **1.0.6**.
 
@@ -91,6 +91,31 @@ Global options:
 ```
 
 GUI: main program **SSH Key...** next to the repository input; editor **Git → SSH Key...**.
+
+## Address selection
+
+`--repo` for `exec build` / `exec export` may be a single URL. When SSH / HTTPS / HTTP alternatives can be derived from `.nsumpack` `repository.urls` or workspace `git.remotes`, the default `auto` probes latency before cloning:
+
+```powershell
+# Default: fastest address, fall back on failure
+.\NeoServerUpdateModpack.exe exec export --repo https://github.com/owner/repo.git `
+    --modpack base --format nsum --export out.nsumpack --repo-preference auto
+
+# Prefer SSH, fall back to HTTPS/HTTP
+.\NeoServerUpdateModpack.exe exec export --repo https://github.com/owner/repo.git `
+    --modpack base --format nsum --export out.nsumpack --repo-preference ssh
+
+# Use only the given URL; at most 30 seconds per address
+.\NeoServerUpdateModpack.exe exec export --repo https://github.com/owner/repo.git `
+    --modpack base --format nsum --export out.nsumpack --repo-preference manual --repo-timeout 30
+```
+
+- `--repo-preference`: `auto` (default) / `ssh` / `https` / `http` / `manual`;
+- `--repo-timeout <seconds>`: per-address timeout for both probe and clone (defaults: 8s probe, 120s clone);
+- Environment variable `NSUM_REPO_PREFERENCE` supplies the default; the command line wins;
+- `Repository probe: <url> -> <ms>` in the log shows measured latency; after `Address failed` the next address is tried, and only when all fail does the command exit 1.
+
+>
 
 ## JSON output
 

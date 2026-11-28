@@ -4,7 +4,7 @@ description: Manifest-only .nsumpack (pack_format 2)
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/adr/0006-nsumpack-v2.md
+translation_of: /zh/1.0.7/developer/adr/0006-nsumpack-v2.md
 ---
 
 # ADR 0006 · Manifest-only .nsumpack (pack_format 2)

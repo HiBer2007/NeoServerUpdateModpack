@@ -4,7 +4,7 @@ description: Integration order, the public HiBerCTM APIs, artifact directory lay
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/CrashTrackerHandleLib/usage.md
+translation_of: /zh/1.0.7/developer/Modules/CrashTrackerHandleLib/usage.md
 ---
 
 # CrashTrackerHandleLib usage

@@ -4,7 +4,7 @@ description: The NSUM main program (GUI): wizard, build page, history and settin
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/user/launcher-guide.md
+translation_of: /zh/1.0.7/user/launcher-guide.md
 ---
 
 # Launcher UI

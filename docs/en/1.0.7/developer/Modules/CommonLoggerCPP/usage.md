@@ -4,7 +4,7 @@ description: CLogger initialization, level and sink control, console ownership, 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/CommonLoggerCPP/usage.md
+translation_of: /zh/1.0.7/developer/Modules/CommonLoggerCPP/usage.md
 ---
 
 # CommonLoggerCPP usage

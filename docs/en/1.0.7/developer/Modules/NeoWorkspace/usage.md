@@ -3,8 +3,8 @@ title: NeoWorkspace usage
 description: NeoWorkspace APIs and typical usage: loading the workspace model, querying branches, driving Git and syncing files through the hash cache.
 lang: en
 status: complete
-updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoWorkspace/usage.md
+updated: 2026-11-28
+translation_of: /zh/1.0.7/developer/Modules/NeoWorkspace/usage.md
 ---
 
 # NeoWorkspace usage
@@ -45,6 +45,7 @@ const std::string gitDefault = manager.defaultBranch();
 | `pointerFiles` | `std::unordered_map<std::string, NeoCore::PointerInfo> pointerFiles() const` | pointer entries declared by the workspace |
 | `loadBranchManifest` | `BranchManifest loadBranchManifest(const std::string& branchName) const` | reads the branch's marker file |
 | `GitOperations::clone` | `GitResult clone(const std::string& url, const std::string& targetDir, int timeoutMs = 120000)` | clone |
+| `GitOperations::lsRemote` | `GitResult lsRemote(const std::string& url, int timeoutMs = 8000)` | Probe a repository address (`git ls-remote`) |
 | `GitOperations::fetch` | `GitResult fetch(const std::string& repoDir, const std::string& remote = "origin")` | fetch remote-tracking refs only |
 | `GitOperations::checkout` | `GitResult checkout(const std::string& repoDir, const std::string& branch)` | checkout a branch |
 | `GitOperations::revParse` | `GitResult revParse(const std::string& repoDir, const std::string& ref = "HEAD")` | resolve a ref to a commit |

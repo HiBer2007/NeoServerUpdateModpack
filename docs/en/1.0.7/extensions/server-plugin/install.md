@@ -4,7 +4,7 @@ description: MCDR plugin core selection, download and installation (including Bu
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/server-plugin/install.md
+translation_of: /zh/1.0.7/extensions/server-plugin/install.md
 ---
 
 # Server Installation

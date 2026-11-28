@@ -4,7 +4,7 @@ description: Crash report analysis tool (CrashTracker.exe): parses minidump/trac
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/CrashTracker/README.md
+translation_of: /zh/1.0.7/developer/Modules/CrashTracker/README.md
 ---
 
 # CrashTracker module

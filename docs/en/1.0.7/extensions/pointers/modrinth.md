@@ -4,7 +4,7 @@ description: NeoPointer_Modrinth resolves project/version IDs through the Modrin
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/pointers/modrinth.md
+translation_of: /zh/1.0.7/extensions/pointers/modrinth.md
 ---
 
 # Modrinth Resolver

@@ -4,7 +4,7 @@ description: NSUM foundation library (STATIC): plugin interfaces, parser loader,
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoCore/README.md
+translation_of: /zh/1.0.7/developer/Modules/NeoCore/README.md
 ---
 
 # NeoCore

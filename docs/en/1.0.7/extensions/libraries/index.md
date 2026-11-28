@@ -4,7 +4,7 @@ description: Shared libraries used by NSUM: CrashTracker, PowerHelper, HiBerGUIL
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/libraries/index.md
+translation_of: /zh/1.0.7/extensions/libraries/index.md
 ---
 
 # Libraries

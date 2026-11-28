@@ -4,7 +4,7 @@ description: NSUM version highlights and release links.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/releases/index.md
+translation_of: /zh/1.0.7/releases/index.md
 ---
 
 # Releases
@@ -13,7 +13,7 @@ Full release history: [GitHub Releases](https://github.com/HiBer2007/NeoServerUp
 
 ## 1.0.7 (2026-11-28)
 
-- **Automatic fastest address**: with multiple URLs the runtime CLI and bridge probe them in parallel and prefer the lowest-latency one;
+- **Automatic fastest address**: with multiple URLs the runtime CLI probes each address and the bridge probes in parallel and prefer the lowest-latency one;
 - **Timeout fallback**: per-address timeouts (8s probe / 120s clone / 300s sync) automatically try the next address;
 - **Manual selection**: `--repo-preference auto|ssh|https|http|manual` (runtime), `.hmcl/nsum/repo.properties` `preference=auto|ssh|https|http|manual|<URL>` (bridge), editor primary selector and explicit URL input;
 - The main program repository page adds an **Address priority** selector (auto fastest / prefer SSH / HTTPS / HTTP); a clone attempt times out after 60s and falls back.

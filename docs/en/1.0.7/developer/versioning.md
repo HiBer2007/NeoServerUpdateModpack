@@ -4,7 +4,7 @@ description: NSUM dual version numbers (external/internal/full), version.json, b
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/versioning.md
+translation_of: /zh/1.0.7/developer/versioning.md
 ---
 
 # Versioning

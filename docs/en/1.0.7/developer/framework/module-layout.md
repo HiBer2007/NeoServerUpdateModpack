@@ -4,7 +4,7 @@ description: Module target types, dependency direction, build artifacts and depl
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/framework/module-layout.md
+translation_of: /zh/1.0.7/developer/framework/module-layout.md
 ---
 
 # Module Layout

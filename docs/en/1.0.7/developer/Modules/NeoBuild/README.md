@@ -4,7 +4,7 @@ description: Build engine (STATIC): clone/fetch, parent-chain merge, file and co
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoBuild/README.md
+translation_of: /zh/1.0.7/developer/Modules/NeoBuild/README.md
 ---
 
 # NeoBuild

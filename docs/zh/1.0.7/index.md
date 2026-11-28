@@ -3,7 +3,7 @@ title: NSUM 文档
 description: NSUM（NeoServerUpdateModpack）官方文档：主程序使用、整合包制作、开发与拓展参考。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # NSUM 文档
@@ -24,7 +24,9 @@ NSUM（NeoServerUpdateModpack）是 Minecraft 服务器整合包的**仓库化�
 
 ## 版本
 
-本文档对应 **NSUM Runtime 1.0.5 / 内部 0.1.11**。页面内标注了适用版本的例外情况。
+本文档对应 **NSUM Runtime 1.0.7 / 内部 0.1.13**。页面内标注了适用版本的例外情况。
+
+本版重点：仓库地址自动选最快、单地址超时自动切换与手动优先级（见 [安装](./user/installation.md#仓库地址选择) 与 [CLI](./user/cli.md#仓库地址选择)）。
 
 ## 相关链接
 

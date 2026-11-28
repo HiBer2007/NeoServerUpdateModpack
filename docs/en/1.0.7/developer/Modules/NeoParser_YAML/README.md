@@ -4,7 +4,7 @@ description: YAML config parser plugin: capability, interface implementation and
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoParser_YAML/README.md
+translation_of: /zh/1.0.7/developer/Modules/NeoParser_YAML/README.md
 ---
 
 # NeoParser_YAML

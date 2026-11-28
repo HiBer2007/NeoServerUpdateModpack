@@ -4,7 +4,7 @@ description: Capabilities and usage of NeoParser_YAML.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoParser_YAML/usage.md
+translation_of: /zh/1.0.7/developer/Modules/NeoParser_YAML/usage.md
 ---
 
 # NeoParser_YAML usage

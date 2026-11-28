@@ -4,7 +4,7 @@ description: All NSUM pluggable extensions grouped by type: parsers, pointers, e
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/index.md
+translation_of: /zh/1.0.7/extensions/index.md
 ---
 
 # Extensions

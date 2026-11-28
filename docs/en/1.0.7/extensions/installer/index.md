@@ -4,7 +4,7 @@ description: HiBerCommonInstaller (HIC): CLI, flow scripts, extensions and exter
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/installer/index.md
+translation_of: /zh/1.0.7/extensions/installer/index.md
 ---
 
 # Installer (HIC)

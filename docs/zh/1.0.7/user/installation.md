@@ -3,12 +3,23 @@ title: 安装
 description: 安装 NSUM Runtime、nsum-bridge 与可选编辑器（Editor）的完整步骤与校验方法。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # 安装
 
-> **地址选择（自 1.0.7）**：多地址时默认自动探测最快地址；可在仓库页选择「优先 SSH/HTTPS/HTTP」，或用 `--repo-preference manual` 强制使用输入的 URL。
+## 仓库地址选择
+
+自 1.0.7 起，`.nsumpack` 记录多个仓库地址时，运行时**自动探测并选择延迟最低的地址**；单个地址超时或失败会**自动尝试下一个**。SSH / HTTPS / HTTP 三个地址都保留在包内，客户端按实际网络选择，不需要重新打包。
+
+| 模式 | 行为 | 设置方式 |
+|---|---|---|
+| 自动最快（默认） | 对每个地址执行 `git ls-remote` 测延迟，最低的优先；失败/超时回退 | `--repo-preference auto`；主程序「地址优先级：自动最快」 |
+| 优先协议 | 指定的 SSH / HTTPS / HTTP 优先，失败再回退其他地址 | `--repo-preference ssh\|https\|http`；主程序下拉 |
+| 手动 | 只用给定 URL，不探测、不换源 | `--repo-preference manual`，或直接输入完整 URL |
+| bridge | 按 `.hmcl/nsum/repo.properties` 的 `preference` 执行 | 见[客户端 bridge](https://github.com/HiBer2007/NeoServerUpdateModpack/blob/main/docs/zh/1.0.7/extensions/client-bridge/index.md) |
+
+超时默认值：探测 8s、克隆 120s（主程序 GUI 60s）、bridge 同步 300s。可用 `--repo-timeout <秒>` 或 `repo.properties` 调整；全部地址都失败才报错，日志会列出每个地址的探测延迟与失败原因。
 
 ![图 1-2 NSUM 安装器欢迎页](../../../assets/screenshots/screen-installer-welcome.png)
 

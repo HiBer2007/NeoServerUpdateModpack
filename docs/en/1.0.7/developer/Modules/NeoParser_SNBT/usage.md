@@ -4,7 +4,7 @@ description: Capabilities and usage of NeoParser_SNBT.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoParser_SNBT/usage.md
+translation_of: /zh/1.0.7/developer/Modules/NeoParser_SNBT/usage.md
 ---
 
 # NeoParser_SNBT usage

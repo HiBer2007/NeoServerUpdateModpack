@@ -4,7 +4,7 @@ description: NeoExporter_HMCL syncs builds directly into an HMCL instance direct
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/exporters/hmcl.md
+translation_of: /zh/1.0.7/extensions/exporters/hmcl.md
 ---
 
 # HMCL Exporter

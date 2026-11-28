@@ -4,7 +4,7 @@ description: Run editor_demo to compare the Qt and WebView2 editors, try the mer
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/EditorDemo/usage.md
+translation_of: /zh/1.0.7/developer/Modules/EditorDemo/usage.md
 ---
 
 # EditorDemo usage

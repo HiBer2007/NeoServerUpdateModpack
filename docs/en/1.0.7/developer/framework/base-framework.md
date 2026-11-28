@@ -4,7 +4,7 @@ description: NeoCore public infrastructure: paths, logging, cancellation, error 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/framework/base-framework.md
+translation_of: /zh/1.0.7/developer/framework/base-framework.md
 ---
 
 # Base Framework

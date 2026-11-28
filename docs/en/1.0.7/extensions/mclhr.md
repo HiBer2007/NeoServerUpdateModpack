@@ -4,7 +4,7 @@ description: MCLHR mod store: hard-link shared mods into instance mods/ without 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/mclhr.md
+translation_of: /zh/1.0.7/extensions/mclhr.md
 ---
 
 # MCLHR Integration

@@ -3,8 +3,8 @@ title: Data Model
 description: Relationships between workspace.json, branch_config, file_manifest, pointers, caches and instance markers.
 lang: en
 status: complete
-updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/architecture/data-model.md
+2026-11-28
+translation_of: /zh/1.0.7/developer/architecture/data-model.md
 ---
 
 # Data Model
@@ -29,7 +29,7 @@ erDiagram
 
 Workspace-level config: workspace (mc/modloader), git (remote/default_branch), branches[], sync_policies, export.metadata.
 
-`git.remotes` records every access URL for the same repository in priority order; `git.remote` remains the primary legacy field. RepoEditor saves, branch writes and `exec repo-remotes` keep all three address types:
+`git.remotes` records every access URL for the same repository in priority order; `git.remote` remains the primary legacy field. At runtime the fastest address is probed according to `--repo-preference` or the default `auto`, while the failure fallback order is preserved (since 1.0.7). RepoEditor saves, branch writes and `exec repo-remotes` keep all three address types:
 
 ```json
 "git": {

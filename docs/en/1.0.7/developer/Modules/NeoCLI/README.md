@@ -4,7 +4,7 @@ description: CLI subsystem (STATIC): argument parsing, info/exec/flow dispatch, 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoCLI/README.md
+translation_of: /zh/1.0.7/developer/Modules/NeoCLI/README.md
 ---
 
 # NeoCLI

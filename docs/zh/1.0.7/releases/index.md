@@ -12,7 +12,7 @@ updated: 2026-11-27
 
 ## 1.0.7（2026-11-28）
 
-- **仓库地址自动选优**：多地址时并行 `git ls-remote` 探测，优先使用延迟最低的地址（bridge 与运行时 CLI）；
+- **仓库地址自动选优**：多地址时逐地址 `git ls-remote` 探测（bridge 并行），优先使用延迟最低的地址（bridge 与运行时 CLI）；
 - **超时自动切换**：每个地址独立超时（默认 8s 探测 / 120s 克隆 / 300s 同步），超时或失败自动尝试下一个；
 - **手动指定**：`--repo-preference auto|ssh|https|http|manual`（运行时），bridge 支持 `.hmcl/nsum/repo.properties` 的 `preference=auto|ssh|https|http|manual|<URL>`；编辑器主地址下拉与直接输入 URL 仍可手动指定；
 - 主程序仓库页新增「地址优先级」下拉（自动最快 / 优先 SSH / 优先 HTTPS / 优先 HTTP），克隆 60s 超时后自动切换。

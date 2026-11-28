@@ -4,7 +4,7 @@ description: NeoParser_Properties: key-level merging for `.properties`.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/parsers/properties.md
+translation_of: /zh/1.0.7/extensions/parsers/properties.md
 ---
 
 # Properties Parser

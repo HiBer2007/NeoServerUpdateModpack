@@ -4,7 +4,7 @@ description: The full chain from clicking launch to entering the game: injection
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/user/sync-and-launch.md
+translation_of: /zh/1.0.7/user/sync-and-launch.md
 ---
 
 # Sync and Launch

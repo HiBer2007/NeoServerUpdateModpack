@@ -4,7 +4,7 @@ description: NSUM's built-in Markdown documentation reader: WebView2 rendering, 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/libraries/powerhelper.md
+translation_of: /zh/1.0.7/extensions/libraries/powerhelper.md
 ---
 
 # PowerHelper

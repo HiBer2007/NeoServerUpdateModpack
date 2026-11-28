@@ -4,7 +4,7 @@ description: Generic Qt widget library: tree panels, Git panel, progress cards, 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/libraries/guibergui.md
+translation_of: /zh/1.0.7/extensions/libraries/guibergui.md
 ---
 
 # HiBerGUILibrary

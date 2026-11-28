@@ -4,7 +4,7 @@ description: HIC extension host and built-ins (git/winget/apt, NSUM argument ext
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/installer/extensions.md
+translation_of: /zh/1.0.7/extensions/installer/extensions.md
 ---
 
 # Installer Extensions

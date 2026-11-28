@@ -4,7 +4,7 @@ description: GUI domain layer (STATIC, namespace GUIWorker): build wizard and pa
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/GUIWorker/README.md
+translation_of: /zh/1.0.7/developer/Modules/GUIWorker/README.md
 ---
 
 # GUIWorker

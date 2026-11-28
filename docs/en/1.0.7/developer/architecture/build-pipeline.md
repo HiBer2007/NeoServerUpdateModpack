@@ -4,7 +4,7 @@ description: BuildEngine steps: clone/fetch, checkout, parent merge, scan, point
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/architecture/build-pipeline.md
+translation_of: /zh/1.0.7/developer/architecture/build-pipeline.md
 ---
 
 # Build Pipeline

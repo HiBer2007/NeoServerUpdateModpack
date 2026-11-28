@@ -4,7 +4,7 @@ description: Markdown documentation reader (PowerHelperCore + PowerHelperBridgeL
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/PowerHelper/README.md
+translation_of: /zh/1.0.7/developer/Modules/PowerHelper/README.md
 ---
 
 # PowerHelper module

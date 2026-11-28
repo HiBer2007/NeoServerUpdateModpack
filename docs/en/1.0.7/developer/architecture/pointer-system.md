@@ -4,7 +4,7 @@ description: Pointer files, resolver resolution, content-addressed cache and zer
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/architecture/pointer-system.md
+translation_of: /zh/1.0.7/developer/architecture/pointer-system.md
 ---
 
 # Pointer System

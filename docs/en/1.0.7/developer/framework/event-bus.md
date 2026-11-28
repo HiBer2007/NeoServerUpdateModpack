@@ -4,7 +4,7 @@ description: HIC EventBus / ServiceRegistry APIs and threading, plus NSUM's own 
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/framework/event-bus.md
+translation_of: /zh/1.0.7/developer/framework/event-bus.md
 ---
 
 # Event Bus

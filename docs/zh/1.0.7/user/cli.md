@@ -3,12 +3,12 @@ title: 命令行（CLI）
 description: NSUM 运行时 CLI 的三类命令、JSON 输出与退出码，面向高级用户与自动化。
 lang: zh
 status: complete
-updated: 2026-11-27
+updated: 2026-11-28
 ---
 
 # 命令行（CLI）
 
-> `--repo-preference auto|ssh|https|http|manual` 与 `--repo-timeout <秒>` 自 **1.0.7** 起提供：auto 并行探测最快地址，manual 只用给定 URL。
+> `--repo-preference auto|ssh|https|http|manual` 与 `--repo-timeout <秒>` 自 **1.0.7** 起提供：auto 逐地址探测并选择最快地址，manual 只用给定 URL。
 
 > `repo-remotes`、`git-ssh-key` 与多地址导出自 **1.0.6** 起提供。
 
@@ -90,6 +90,31 @@ NeoServerUpdateModpack.exe <category> <verb> [options]
 ```
 
 GUI 中：主程序「选择仓库源」页输入框右侧 **SSH 密钥...**；编辑器 **Git → SSH 密钥...**。
+
+## 仓库地址选择
+
+`exec build` / `exec export` 的 `--repo` 可以是一个 URL。若能从 `.nsumpack` 的 `repository.urls` 或 workspace 的 `git.remotes` 推导出 SSH / HTTPS / HTTP 多个地址，默认 `auto` 会先测延迟再克隆：
+
+```powershell
+# 默认：自动选最快，失败自动换下一个
+.\NeoServerUpdateModpack.exe exec export --repo https://github.com/owner/repo.git `
+    --modpack base --format nsum --export out.nsumpack --repo-preference auto
+
+# 优先 SSH，SSH 不可用再回退 HTTPS/HTTP
+.\NeoServerUpdateModpack.exe exec export --repo https://github.com/owner/repo.git `
+    --modpack base --format nsum --export out.nsumpack --repo-preference ssh
+
+# 只用输入的 URL，不探测、不换源；每个地址最多 30 秒
+.\NeoServerUpdateModpack.exe exec export --repo https://github.com/owner/repo.git `
+    --modpack base --format nsum --export out.nsumpack --repo-preference manual --repo-timeout 30
+```
+
+- `--repo-preference`：`auto`（默认）/ `ssh` / `https` / `http` / `manual`；
+- `--repo-timeout <秒>`：同时设置探测与克隆的每地址超时（默认探测 8s、克隆 120s）；
+- 环境变量 `NSUM_REPO_PREFERENCE` 可作为默认值，命令行优先；
+- 日志中的 `Repository probe: <url> -> <ms>` 显示实际延迟；`Address failed` 后继续下一个，全部失败才退出 1。
+
+>
 
 ## JSON 输出
 

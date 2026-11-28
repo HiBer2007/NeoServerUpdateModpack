@@ -60,7 +60,7 @@ updated: 2026-11-27
 |---|---|
 | `pack_format` / `schema` | 文件结构版本（当前 3），与整合包版本无关 |
 | `repository.url` | 主仓库地址（旧字段，仍写入；新客户端优先 `urls`） |
-| `repository.urls` | 仓库地址列表：`ssh` / `https` / `http` 三种，保序；客户端按顺序回退（自 1.0.6 / pack_format 3） |
+| `repository.urls` | 仓库地址列表：`ssh` / `https` / `http` 三种，保序；客户端优先探测延迟最低的地址并超时回退（自 1.0.7；旧客户端按清单顺序，自 1.0.6 / pack_format 3） |
 | `repository.default_branch` | 默认 Git 分支 |
 | `repository.branch` | 整合包分支 |
 | `repository.git_branch` / `commit` | 构建所用 Git 分支与提交 |

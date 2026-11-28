@@ -4,7 +4,7 @@ description: L1/L2/L3 tiers, policy execution, file markers and deletion protect
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/architecture/sync-engine.md
+translation_of: /zh/1.0.7/developer/architecture/sync-engine.md
 ---
 
 # Sync Engine

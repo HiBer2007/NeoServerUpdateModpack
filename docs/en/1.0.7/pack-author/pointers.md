@@ -4,7 +4,7 @@ description: Creating, converting, resolving and troubleshooting pointer files.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/pointers.md
+translation_of: /zh/1.0.7/pack-author/pointers.md
 ---
 
 # Pointers

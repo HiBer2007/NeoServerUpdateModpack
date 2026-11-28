@@ -4,7 +4,7 @@ description: GUI startup, every info/exec CLI subcommand, the JSON output contra
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoWorkspaceEditor/usage.md
+translation_of: /zh/1.0.7/developer/Modules/NeoWorkspaceEditor/usage.md
 ---
 
 # NeoWorkspaceEditor usage

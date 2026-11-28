@@ -4,7 +4,7 @@ description: Full NSUM release runbook: version bump, build/deploy, clean packag
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/release.md
+translation_of: /zh/1.0.7/developer/release.md
 ---
 
 # Release

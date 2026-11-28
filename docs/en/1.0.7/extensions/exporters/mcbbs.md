@@ -4,7 +4,7 @@ description: NeoExporter_MCBBS generates MCBBS / PCL / HMCL universal modpack zi
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/exporters/mcbbs.md
+translation_of: /zh/1.0.7/extensions/exporters/mcbbs.md
 ---
 
 # MCBBS Exporter

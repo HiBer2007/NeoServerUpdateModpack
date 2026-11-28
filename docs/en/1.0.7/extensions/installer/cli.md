@@ -4,7 +4,7 @@ description: hci_cli options, exit codes and JSON output for headless installs.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/extensions/installer/cli.md
+translation_of: /zh/1.0.7/extensions/installer/cli.md
 ---
 
 # HIC CLI

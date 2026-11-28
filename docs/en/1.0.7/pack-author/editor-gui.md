@@ -4,7 +4,7 @@ description: NSUM Editor tabs, repository/output trees, Git panel, pointer edito
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/pack-author/editor-gui.md
+translation_of: /zh/1.0.7/pack-author/editor-gui.md
 ---
 
 # Editor UI
@@ -35,7 +35,7 @@ After launch it loads `workspace.json`; the Git panel is on the left and three t
 
 - Workspace name, Minecraft version, loader and version;
 - Three repository URL fields (SSH / HTTPS / HTTP) plus a primary URL (`git.remote`, since 1.0.6);
-- The main program repository page has an **Address priority** selector (auto fastest / prefer SSH / HTTPS / HTTP, since 1.0.7); a failed clone or 60s timeout tries the next address;
+- The main program (not the Editor) repository page has an **Address priority** selector (auto fastest / prefer SSH / HTTPS / HTTP, since 1.0.7); a failed clone or 60s timeout tries the next address; inside the Editor, the primary selector and three URL fields remain the manual controls;
 - Saving writes `git.remotes[]` (`ssh`/`https`/`http`, primary first) and upgrades `version` to `1.1`;
 - Default branch;
 - Default export metadata (name/version/author/description);

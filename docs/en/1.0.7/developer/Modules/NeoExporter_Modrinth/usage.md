@@ -4,7 +4,7 @@ description: NeoExporter_Modrinth format, fields and usage.
 lang: en
 status: complete
 updated: 2026-11-27
-translation_of: /zh/1.0.6/developer/Modules/NeoExporter_Modrinth/usage.md
+translation_of: /zh/1.0.7/developer/Modules/NeoExporter_Modrinth/usage.md
 ---
 
 # NeoExporter_Modrinth usage
